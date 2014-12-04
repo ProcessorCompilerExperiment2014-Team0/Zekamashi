@@ -1,0 +1,10 @@
+.omakedb*
+*.omc
+*.cm?
+*.o
+asmLexer.ml
+asmParser.ml
+asmParser.mli
+asagumo
+asagumo.run
+sample
