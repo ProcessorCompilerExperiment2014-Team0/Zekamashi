@@ -31,8 +31,8 @@ inst:
 ;
 
 labels:
-| LABEL eol1 labels {$1::$3}
-| LABEL {[$1]}
+| LABEL COLON eol1 labels {$1::$4}
+| LABEL COLON {[$1]}
 | {[]}
 ;
 

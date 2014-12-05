@@ -167,26 +167,26 @@ let encode tbl (lbl,place,mn,args) =
     | (M_SLL, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x39
     | (M_SRL, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x34
     | (M_SRA, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x3c
-    | (M_LDS, [A_R a; A_Disp (b, d)]) -> enc_mem 0x22 a b (check_immd 16 true d)
-    | (M_STS, [A_R a; A_Disp (b, d)]) -> enc_mem 0x26 a b (check_immd 16 true d)
-    | (M_FBEQ, [A_R a; A_Immd d]) -> enc_bra 0x31 a (check_immd 21 true d)
-    | (M_FBEQ, [A_R a; A_Label l]) -> let d = get_disp tbl place l in
+    | (M_LDS, [A_F a; A_Disp (b, d)]) -> enc_mem 0x22 a b (check_immd 16 true d)
+    | (M_STS, [A_F a; A_Disp (b, d)]) -> enc_mem 0x26 a b (check_immd 16 true d)
+    | (M_FBEQ, [A_F a; A_Immd d]) -> enc_bra 0x31 a (check_immd 21 true d)
+    | (M_FBEQ, [A_F a; A_Label l]) -> let d = get_disp tbl place l in
                                       enc_bra 0x31 a (check_signed 21 d)
-    | (M_FBNE, [A_R a; A_Immd d]) -> enc_bra 0x35 a (check_immd 21 true d)
-    | (M_FBNE, [A_R a; A_Label l]) -> let d = get_disp tbl place l in
+    | (M_FBNE, [A_F a; A_Immd d]) -> enc_bra 0x35 a (check_immd 21 true d)
+    | (M_FBNE, [A_F a; A_Label l]) -> let d = get_disp tbl place l in
                                       enc_bra 0x35 a (check_signed 21 d)
-    | (M_CMPSEQ, [A_R a; A_R b; A_R c]) -> enc_opr 0x16 a b c 0x0a5
-    | (M_CMPSLE, [A_R a; A_R b; A_R c]) -> enc_opr 0x16 a b c 0x0a7
-    | (M_CMPSLT, [A_R a; A_R b; A_R c]) -> enc_opr 0x16 a b c 0x0a6
-    | (M_ADDS, [A_R a; A_R b; A_R c]) -> enc_opr 0x16 a b c 0x080
-    | (M_SUBS, [A_R a; A_R b; A_R c]) -> enc_opr 0x16 a b c 0x081
-    | (M_MULS, [A_R a; A_R b; A_R c]) -> enc_opr 0x16 a b c 0x082
-    | (M_INVS, [A_R b; A_R c]) -> enc_opr 0x16 0x1f b c 0x083
-    | (M_SQRTS, [A_R b; A_R c]) -> enc_opr 0x14 0x1f b c 0x08b
-    | (M_CVTSL_C, [A_R b; A_R c]) -> enc_opr 0x16 0x1f b c 0x02f
-    | (M_CVTLS, [A_R b; A_R c]) -> enc_opr 0x16 0x1f b c 0x0be
-    | (M_FTOIS, [A_R a; A_R c]) -> enc_opr 0x1c a 0x1f c 0x078
-    | (M_ITOFS, [A_R a; A_R c]) -> enc_opr 0x14 a 0x1f c 0x004
+    | (M_CMPSEQ, [A_F a; A_F b; A_F c]) -> enc_opr 0x16 a b c 0x0a5
+    | (M_CMPSLE, [A_F a; A_F b; A_F c]) -> enc_opr 0x16 a b c 0x0a7
+    | (M_CMPSLT, [A_F a; A_F b; A_F c]) -> enc_opr 0x16 a b c 0x0a6
+    | (M_ADDS, [A_F a; A_F b; A_F c]) -> enc_opr 0x16 a b c 0x080
+    | (M_SUBS, [A_F a; A_F b; A_F c]) -> enc_opr 0x16 a b c 0x081
+    | (M_MULS, [A_F a; A_F b; A_F c]) -> enc_opr 0x16 a b c 0x082
+    | (M_INVS, [A_F b; A_F c]) -> enc_opr 0x16 0x1f b c 0x083
+    | (M_SQRTS, [A_F b; A_F c]) -> enc_opr 0x14 0x1f b c 0x08b
+    | (M_CVTSL_C, [A_F b; A_F c]) -> enc_opr 0x16 0x1f b c 0x02f
+    | (M_CVTLS, [A_F b; A_F c]) -> enc_opr 0x16 0x1f b c 0x0be
+    | (M_FTOIS, [A_F a; A_R c]) -> enc_opr 0x1c a 0x1f c 0x078
+    | (M_ITOFS, [A_R a; A_F c]) -> enc_opr 0x14 a 0x1f c 0x004
     | _ -> raise (Unknown_instruction (lbl,place,mn,args)))
   with
   | Failure s -> raise (Immd_out_of_bounds (lbl,place,mn,args))
