@@ -2,18 +2,30 @@
 #define EXEC_H
 
 #include <iostream>
+#include <map>
+#include <cstdint>
 using namespace std;
 
 #define NUM_OF_R 32
 #define SIZE_OF_MEM (1 << 20)
 
 enum Opt {
-  OPTION_D, OPTION_R, OPTION_M, OPTION_N
+  OPTION_D, OPTION_R, OPTION_M, OPTION_S, OPTION_N,
+  OPTION_N_ADDS, OPTION_N_SUBS, OPTION_N_MULS, OPTION_N_INVS, OPTION_N_SQRTS,
+  OPTION_N_CVTSL, OPTION_N_CVTLS
+};
+
+enum Inst {
+  I_LDA, I_LDAH, I_LDL, I_STL, I_BEQ, I_BNE, I_BR, I_BSR, I_JMP, I_JSR, I_RET,
+  I_ADDL, I_SUBL, I_CMPEQ, I_CMPLE, I_CMPLT, I_AND, I_BIS, I_XOR, I_SLL, I_SRL,
+  I_SRA, I_LDS, I_STS, I_FBEQ, I_FBNE, I_CMPSEQ, I_CMPSLE, I_CMPSLT,
+  I_ADDS, I_SUBS, I_MULS, I_INVS, I_SQRTS, I_CVTSL, I_CVTLS, I_FTOIS, I_ITOFS,
+  I_SENTINEL
 };
 
 union data_type {
-  unsigned u;
-  int i;
+  uint32_t u;
+  int32_t i;
   float f;
 };
 
@@ -23,20 +35,27 @@ private:
   unsigned inst_len;
   data_type ir[NUM_OF_R];
   data_type fr[NUM_OF_R];
-  unsigned *mem;
+  uint32_t *mem;
 
   long long i_count;
   long long i_limit;
+  long long i_stat[I_SENTINEL];
+  char stat_file[256];
   unsigned opt; 
-
+  map<int, uint32_t> test_map;
+  map<unsigned, long long> br_map;
 public:
   core(int argc, char **argv);
   ~core();
+  int verify();
   void run();
+  void show(ostream &os);
+  void write_br_stat();
   friend ostream &operator<<(ostream &os, const core &c);
 private:
-  inline void mem_st_lw(unsigned &src, int addr);
-  inline void mem_ld_lw(unsigned &dst, int addr);
+  void set_test(const char*);
+  inline void mem_st_lw(uint32_t &src, int addr);
+  inline void mem_ld_lw(uint32_t &dst, int addr);
   inline void inc_pc();
   inline void i_lda(int ra, int rb, int disp);
   inline void i_ldah(int ra, int rb, int disp);
@@ -78,6 +97,7 @@ private:
   inline void i_ftois(int fa, int rc);
 
   inline static int extend(int v, int len);
+  inline static ostream &dmanip(ostream &st);
 };
 
 #endif
