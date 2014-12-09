@@ -777,9 +777,9 @@ void core::show(ostream &os) {
   os << "PC  : " << dmanip << pc << '\n';
   for(int i=0; i<NUM_OF_R; i++) {
     os << "$" << dec << setfill(' ') << setw(2) << left << i << " : "
-       << core::dmanip << ir[i].u
+       << dmanip << ir[i].u
        << "    $f" << dec << setfill(' ') << setw(2) << left << i << " : "
-       << core::dmanip << fr[i].u << '\n';
+       << dmanip << fr[i].u << '\n';
   }
   
   os.flags(initflag);
