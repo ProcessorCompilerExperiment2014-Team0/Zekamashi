@@ -2,14 +2,62 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <list>
 #include <cstring>
 #include <cmath>
+#include <cstdint>
 #include "exec.h"
+#include "fpu.h"
 using namespace std;
 
+const char *INST_NAME[] = {
+  "LDA    ",
+  "LDAH   ",
+  "LDL    ",
+  "STL    ",
+  "BEQ    ",
+  "BNE    ",
+  "BR     ",
+  "BSR    ",
+  "JMP    ",
+  "JSR    ",
+  "RET    ",
+  "ADDL   ",
+  "SUBL   ",
+  "CMPEQ  ",
+  "CMPLE  ",
+  "CMPLT  ",
+  "AND    ",
+  "BIS    ",
+  "XOR    ",
+  "SLL    ",
+  "SRL    ",
+  "SRA    ",
+  "LDS    ",
+  "STS    ",
+  "FBEQ   ",
+  "FBNE   ",
+  "CMPSEQ ",
+  "CMPSLE ",
+  "CMPSLT ",
+  "ADDS   ",
+  "SUBS   ",
+  "MULS   ",
+  "INVS   ",
+  "SQRTS  ",
+  "CVTSL/C",
+  "CVTLS  ",
+  "FTOIS  ",
+  "ITOFS  ",
+};
+
 core::core(int argc, char **argv) {
-  mem = new unsigned[SIZE_OF_MEM];
+  mem = new uint32_t[SIZE_OF_MEM];
   ifstream input(argv[1], ios::binary);
+  if(!input) {
+    cerr << "Cannot open input file\n";
+    exit(1);
+  }
   int l = input.seekg(0, ios::end).tellg();
   input.seekg(0, ios::beg);
   input.read((char*)mem, l);
@@ -21,27 +69,80 @@ core::core(int argc, char **argv) {
     ir[i].i = 0;
     fr[i].i = 0;
   }
+  opt = 0u;
   i_limit = -1LL;
+  for(int i=0; i<I_SENTINEL; i++) {
+    i_stat[i] = 0LL;
+  }
 
-  for(int i=2; i<argc; i++) {
-    if(!strcmp(argv[i], "-d")) {
-      opt |= 1 << OPTION_D;
-    } else if(!strcmp(argv[i], "-r")) {
-      opt |= 1 << OPTION_R;
-      opt |= 1 << OPTION_D;
-    } else if(!strcmp(argv[i], "-m")) {
-      opt |= 1 << OPTION_M;
-    } else if(!strcmp(argv[i], "-n")) {
-      opt |= 1 << OPTION_N;
-    } else if(!strcmp(argv[i], "-l")) {
+  if(argc < 3) return;
+  int i = 2;
+  if(argv[2][0] != '-') {
+    try {
+      set_test(argv[2]);
       i++;
-      if(i >= argc) {
-        throw "Invalid Option";
-      }
-      sscanf(argv[i], "%lld", &i_limit);
-    } else {
-      throw "Invalid Option";
+    } catch (const char *s) {
+      cerr << s << '\n';
+      exit(1);
     }
+  }
+  try {
+    for(; i<argc; i++) {
+      if(!strcmp(argv[i], "-d")) {
+        opt |= 1 << OPTION_D;
+      } else if(!strcmp(argv[i], "-r")) {
+        opt |= 1 << OPTION_R;
+        opt |= 1 << OPTION_D;
+      } else if(!strcmp(argv[i], "-m")) {
+        opt |= 1 << OPTION_M;
+      } else if(!strcmp(argv[i], "-n")) {
+        if(i+1 >= argc || argv[i+1][0] == '-') {
+          opt |= 1 << OPTION_N;
+        } else {
+          for(i++; i<argc; i++) {
+            if(argv[i][0] == '-') {
+              i--;
+              break;
+            } else if(!strcmp(argv[i], "adds")) {
+              opt |= 1 << OPTION_N_ADDS;
+            } else if(!strcmp(argv[i], "subs")) {
+              opt |= 1 << OPTION_N_SUBS;
+            } else if(!strcmp(argv[i], "muls")) {
+              opt |= 1 << OPTION_N_MULS;
+            } else if(!strcmp(argv[i], "invs")) {
+              opt |= 1 << OPTION_N_INVS;
+            } else if(!strcmp(argv[i], "sqrts")) {
+              opt |= 1 << OPTION_N_SQRTS;
+            } else if(!strcmp(argv[i], "cvtsl")) {
+              opt |= 1 << OPTION_N_CVTSL;
+            } else if(!strcmp(argv[i], "cvtls")) {
+              opt |= 1 << OPTION_N_CVTLS;
+            } else {
+              throw argv[i];
+            }
+          }
+        }
+      } else if(!strcmp(argv[i], "-s")) {
+        opt |= 1 << OPTION_S;
+        if(i+1 >= argc || argv[i+1][0] == '-') {
+          strcpy(stat_file, argv[1]);
+          strcat(stat_file, ".log");
+        } else {
+          strcpy(stat_file, argv[++i]);
+        }
+      } else if(!strcmp(argv[i], "-l")) {
+        i++;
+        if(i >= argc) {
+          throw argv[i];
+        }
+        sscanf(argv[i], "%lld", &i_limit);
+      } else {
+        throw argv[i];
+      }
+    }
+  } catch (char *s) {
+    cerr << "Invalid Option: " << s << endl;
+    exit(1);
   }
 }
 
@@ -49,17 +150,38 @@ core::~core() {
   delete [] mem;
 }
 
+void core::set_test(const char *test_file_path) {
+  ifstream test_file(test_file_path);
+  if(!test_file) throw "Cannot open test file";
+  char s[100];
+  int reg;
+  uint32_t val;
+  while(!test_file.eof()) {
+    test_file >> s >> hex >> val;
+    if(s[1] == 'f') {
+      sscanf(s, "$f%d", &reg);
+      reg += NUM_OF_R;
+    } else {
+      sscanf(s, "$%d", &reg);
+    }
+    test_map.insert(make_pair(reg, val));
+  }
+}
+
 void core::run() {
-  unsigned inst;
-  unsigned opcd;
+  uint32_t inst;
+  uint32_t opcd;
   int ra, rb, rc, df, b;
   for(i_count = 0LL; pc!=inst_len && (i_limit<0 || i_count<i_limit); i_count++) {
     inst = mem[pc];
     opcd = inst >> 26;
+    if(opt >> OPTION_R & 1) {
+      show(cerr);
+      cerr << '\n';
+    }
     if(opt >> OPTION_D & 1) {
-      cerr << hex << uppercase << setfill('0');
-      cerr << "PC: " << setw(8) << pc << ", "
-           << "inst: " << setw(8) << inst << '\n';
+      cerr << "PC: " << dmanip << pc << ", "
+           << "inst: " << dmanip << inst << '\n';
     }
     try {
       switch(opcd >> 3) {
@@ -281,17 +403,40 @@ void core::run() {
       default:
         throw inst;
       }
-    } catch (unsigned i) {
+    } catch (uint32_t i) {
       cerr << "Unknown instruction: "
            << hex << setfill('0') << setw(8) << uppercase << i;
       return;
     }
     ir[NUM_OF_R - 1].i = 0;
     fr[NUM_OF_R - 1].i = 0;
-    if(opt >> OPTION_R & 1) {
-      cerr << *this << endl;
+  }
+}
+
+int core::verify() {
+  int diff = 0;
+  int r;
+  map<int, uint32_t>::iterator p;
+  for(p=test_map.begin(); p!=test_map.end(); p++) {
+    if(p->first < NUM_OF_R) {
+      r = p->first;
+      if(ir[r].u != p->second) {
+        cerr << "test failed: $" << r << '\n'
+             << "expected: " << dmanip << p->second << '\n'
+             << "actual  : " << dmanip << ir[r].u << '\n';
+        diff = 1;
+      }
+    } else {
+      r = p->first - NUM_OF_R;
+      if(fr[r].u != p->second) {
+        cerr << "test failed: $f" << r << '\n'
+             << "expected: " << dmanip << p->second << '\n'
+             << "actual  : " << dmanip << fr[r].u << '\n';
+        diff = 1;
+      }
     }
   }
+  return diff;
 }
 
 /* sign extend v as (len) bits integer */
@@ -302,35 +447,35 @@ int core::extend(int v, int len) {
   return v;
 }
 
-void core::mem_st_lw(unsigned &src, int addr) {
+void core::mem_st_lw(uint32_t &src, int addr) {
   if(addr < 0 || addr >= SIZE_OF_MEM) {
     cerr << "ERROR: store: memory address is out of range ("
-         << hex << setfill('0') << setw(8) << addr
+         << dmanip << addr
          << ")\n";
     return;
   }
-  unsigned old = mem[addr];
+  uint32_t old = mem[addr];
   mem[addr] = src;
   if(opt >> OPTION_M & 1) {
-    cerr << hex << setfill('0') << uppercase << "st: addr = "
-         << setw(8) << addr << ", value = "
-         << setw(8) << old << " -> "
-         << setw(8) << src << '\n';
+    cerr << dmanip << "st: addr = "
+         << dmanip << addr << ", value = "
+         << dmanip << old << " -> "
+         << dmanip << src << '\n';
   }
 }
 
-void core::mem_ld_lw(unsigned &dst, int addr) {
+void core::mem_ld_lw(uint32_t &dst, int addr) {
   if(addr < 0 || addr >= SIZE_OF_MEM) {
     cerr << "ERROR: load: memory address is out of range ("
-         << hex << setfill('0') << setw(8) << addr
+         << dmanip << addr
          << ")\n";
     return;
   }
   dst = mem[addr];
   if(opt >> OPTION_M & 1) {
-    cerr << hex << setfill('0') << uppercase << "ld: addr = "
-         << setw(8) << addr << ", value = "
-         << setw(8) << dst << '\n';
+    cerr << dmanip << "ld: addr = "
+         << dmanip << addr << ", value = "
+         << dmanip << dst << '\n';
   }
 }
 
@@ -341,35 +486,41 @@ void core::inc_pc() {
 void core::i_lda(int ra, int rb, int disp) {
   ir[ra].i = ir[rb].i + extend(disp, 16);
   inc_pc();
+  i_stat[I_LDA]++;
 }
 
 void core::i_ldah(int ra, int rb, int disp) {
   ir[ra].i = ir[rb].i + extend(disp, 16) * 65536;
   inc_pc();
+  i_stat[I_LDAH]++;
 }
 
 void core::i_lds(int ra, int rb, int disp) {
   int addr = ir[rb].i + extend(disp, 16);
   mem_ld_lw(fr[ra].u, addr);
   inc_pc();
+  i_stat[I_LDS]++;
 }
 
 void core::i_sts(int ra, int rb, int disp) {
   int addr = ir[rb].i + extend(disp, 16);
   mem_st_lw(fr[ra].u, addr);
   inc_pc();
+  i_stat[I_STS]++;
 }
 
 void core::i_ldl(int ra, int rb, int disp) {
   int addr = ir[rb].i + extend(disp, 16);
   mem_ld_lw(ir[ra].u, addr);
   inc_pc();
+  i_stat[I_LDL]++;
 }
 
 void core::i_stl(int ra, int rb, int disp) {
   int addr = ir[rb].i + extend(disp, 16);
   mem_st_lw(ir[ra].u, addr);
   inc_pc();
+  i_stat[I_STL]++;
 }
 
 int core::i_br(int ra, int disp) {
@@ -378,12 +529,22 @@ int core::i_br(int ra, int disp) {
     return 1;
   }
   pc += extend(disp, 16);
+  i_stat[I_BR]++;
   return 0;
 }
 
 void core::i_bsr(int ra, int disp) {
   ir[ra].i = pc;
   pc += extend(disp, 16);
+  if(opt >> OPTION_S & 1) {
+    map<unsigned, long long>::iterator p = br_map.find(pc);
+    if(p == br_map.end()) {
+      br_map.insert(make_pair(pc, 1LL));
+    } else {
+      p->second++;
+    }
+  }
+  i_stat[I_BSR]++;
 }
 
 void core::i_beq(int ra, int disp) {
@@ -392,6 +553,7 @@ void core::i_beq(int ra, int disp) {
   } else {
     inc_pc();
   }
+  i_stat[I_BEQ]++;
 }
 
 void core::i_bne(int ra, int disp) {
@@ -400,6 +562,7 @@ void core::i_bne(int ra, int disp) {
   } else {
     inc_pc();
   }
+  i_stat[I_BNE]++;
 }
 
 void core::i_fbeq(int fa, int disp) {
@@ -408,6 +571,7 @@ void core::i_fbeq(int fa, int disp) {
   } else {
     inc_pc();
   }
+  i_stat[I_FBEQ]++;
 }
 
 void core::i_fbne(int fa, int disp) {
@@ -416,150 +580,236 @@ void core::i_fbne(int fa, int disp) {
   } else {
     inc_pc();
   }
+  i_stat[I_FBNE]++;
 }
 
 void core::i_jmp(int ra, int rb, int func) {
   ir[ra].i = pc;
   pc = ir[rb].i;
+  i_stat[I_JMP]++;
 }
 
 void core::i_jsr(int ra, int rb, int func) {
   ir[ra].i = pc;
   pc = ir[rb].i;
+  i_stat[I_JSR]++;
 }
 
 void core::i_ret(int ra, int rb, int func) {
   ir[ra].i = pc;
   pc = ir[rb].i;
+  i_stat[I_RET]++;
 }
 
 void core::i_addl(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i + b;
   inc_pc();
+  i_stat[I_ADDL]++;
 }
 
 void core::i_subl(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i - b;
   inc_pc();
+  i_stat[I_SUBL]++;
 }
 
 void core::i_cmpeq(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i == b ? 1 : 0;
   inc_pc();
+  i_stat[I_CMPEQ]++;
 }
 
 void core::i_cmple(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i <= b ? 1 : 0;
   inc_pc();
+  i_stat[I_CMPLE]++;
 }
 
 void core::i_cmplt(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i < b ? 1 : 0;
   inc_pc();
+  i_stat[I_CMPLT]++;
 }
 
 void core::i_and(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i & b;
   inc_pc();
+  i_stat[I_AND]++;
 }
 
 void core::i_bis(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i | b;
   inc_pc();
+  i_stat[I_BIS]++;
 }
 
 void core::i_xor(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i ^ b;
   inc_pc();
+  i_stat[I_XOR]++;
 }
 
 void core::i_sll(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i << b;
   inc_pc();
+  i_stat[I_SLL]++;
 }
 
 void core::i_srl(int ra, int b, int rc) {
   ir[rc].u = ir[ra].u >> b;
   inc_pc();
+  i_stat[I_SRL]++;
 }
 
 void core::i_sra(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i >> b;
   inc_pc();
+  i_stat[I_SRA]++;
 }
 
 void core::i_itofs(int ra, int fc) {
   fr[fc].u = ir[ra].u;
   inc_pc();
+  i_stat[I_ITOFS]++;
 }
 
 void core::i_adds(int fa, int fb, int fc) {
-  fr[fc].f = fr[fa].f + fr[fb].f;
+  if(opt >> OPTION_N & 1 || opt >> OPTION_N_ADDS & 1) {
+    fr[fc].f = fr[fa].f + fr[fb].f;
+  } else {
+    fr[fc].u = fadd(fr[fa].u, fr[fb].u);
+  }
   inc_pc();
+  i_stat[I_ADDS]++;
 }
 
 void core::i_subs(int fa, int fb, int fc) {
-  fr[fc].f = fr[fa].f - fr[fb].f;
+  if(opt >> OPTION_N & 1 || opt >> OPTION_N_SUBS & 1) {
+    fr[fc].f = fr[fa].f - fr[fb].f;
+  } else {
+    fr[fc].u = fsub(fr[fa].u, fr[fb].u);
+  }
   inc_pc();
+  i_stat[I_SUBS]++;
 }
 
 void core::i_muls(int fa, int fb, int fc) {
-  fr[fc].f = fr[fa].f * fr[fb].f;
+  if(opt >> OPTION_N & 1 || opt >> OPTION_N_MULS & 1) {
+    fr[fc].f = fr[fa].f * fr[fb].f;
+  } else {
+    fr[fc].u = fmul(fr[fa].u, fr[fb].u);
+  }
   inc_pc();
+  i_stat[I_MULS]++;
 }
 
 void core::i_invs(int fb, int fc) {
-  fr[fc].f = 1.0 / fr[fb].f;
+  if(opt >> OPTION_N & 1 || opt >> OPTION_N_INVS & 1) {
+    fr[fc].f = 1.0 / fr[fb].f;
+  } else {
+    fr[fc].u = finv(fr[fb].u);
+  }
   inc_pc();
+  i_stat[I_INVS]++;
 }
 
 void core::i_sqrts(int fb, int fc) {
-  fr[fc].f = sqrtf(fr[fb].f);
+  if(opt >> OPTION_N & 1 || opt >> OPTION_N_SQRTS & 1) {
+    fr[fc].f = sqrtf(fr[fb].f);
+  } else {
+    fr[fc].u = fsqrt(fr[fb].u);
+  }
   inc_pc();
+  i_stat[I_SQRTS]++;
 }
 
 void core::i_cmpseq(int fa, int fb, int fc) {
   fr[fc].f = fr[fa].f == fr[fb].f ? 2.0 : 0.0;
   inc_pc();
+  i_stat[I_CMPSEQ]++;
 }
 
 void core::i_cmpsle(int fa, int fb, int fc) {
   fr[fc].f = fr[fa].f <= fr[fb].f ? 2.0 : 0.0;
   inc_pc();
+  i_stat[I_CMPSLE]++;
 }
 
 void core::i_cmpslt(int fa, int fb, int fc) {
   fr[fc].f = fr[fa].f < fr[fb].f ? 2.0 : 0.0;
   inc_pc();
+  i_stat[I_CMPSLT]++;
 }
 
 void core::i_cvtsl_c(int fb, int fc) {
-  fr[fc].i = (int)fr[fb].f;
+  if(opt >> OPTION_N & 1 || opt >> OPTION_N_CVTSL & 1) {
+    fr[fc].i = (int32_t)fr[fb].f;
+  } else {
+    fr[fc].u = ftrc(fr[fb].u);
+  }
   inc_pc();
+  i_stat[I_CVTSL]++;
 }
 
 void core::i_cvtls(int fb, int fc) {
-  fr[fc].f = (float)fr[fb].i;
+  if(opt >> OPTION_N & 1 || opt >> OPTION_N_CVTLS & 1) {
+    fr[fc].f = (float)fr[fb].i;
+  } else {
+    fr[fc].u = itof(fr[fb].u);
+  }
   inc_pc();
+  i_stat[I_CVTLS]++;
 }
 
 void core::i_ftois(int fa, int rc) {
   ir[rc].u = fr[fa].u;
   inc_pc();
+  i_stat[I_FTOIS]++;
 }
+
+ostream &core::dmanip(ostream &st) {
+  st << hex << setfill('0') << setw(8) << right << uppercase;
+  return st;
+}
+
+void core::show(ostream &os) {
+  ios_base::fmtflags initflag = os.flags();
+  os << "PC  : " << dmanip << pc << '\n';
+  for(int i=0; i<NUM_OF_R; i++) {
+    os << "$" << dec << setfill(' ') << setw(2) << left << i << " : "
+       << dmanip << ir[i].u
+       << "    $f" << dec << setfill(' ') << setw(2) << left << i << " : "
+       << dmanip << fr[i].u << '\n';
+  }
+  
+  os.flags(initflag);
+}  
 
 ostream &operator<<(ostream &os, const core &c) {
   ios_base::fmtflags initflag = os.flags();
-  os << hex << setfill('0') << uppercase;
-  os << "PC  : " << setw(8) << c.pc << '\n';
+  os << "PC  : " << core::dmanip << c.pc << '\n';
   for(int i=0; i<NUM_OF_R; i++) {
     os << "$" << dec << setfill(' ') << setw(2) << left << i << " : "
-       << hex << setfill('0') << setw(8) << right << c.ir[i].u
+       << core::dmanip << c.ir[i].u
        << " = " << dec << setfill(' ') << setw(11) << c.ir[i].i
        << "    $f" << setw(2) << left << i << " : "
-       << hex << setfill('0') << setw(8) << right << c.fr[i].u
+       << core::dmanip << c.fr[i].u
        << " = " << c.fr[i].f << '\n';
+  }
+  os << "total  : " << dec << c.i_count << '\n';
+  for(int i=0; i<I_SENTINEL; i++) {
+    os << INST_NAME[i] << ": " << c.i_stat[i] << '\n';
   }
   os.flags(initflag);
   return os;
+}
+
+void core::write_br_stat() {
+  if(!(opt >> OPTION_S & 1)) return;
+  ofstream os(stat_file);
+  map<unsigned, long long>::iterator p;
+  for(p = br_map.begin(); p != br_map.end(); p++) {
+    os << p->first << " " << p->second << '\n';
+  }
+  os.close();
 }

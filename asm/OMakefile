@@ -78,15 +78,24 @@ FILES1[] =
 	conv
 	asagumo
 
+FILES2[] =
+	asmSyntax
+	asmParser
+	asmLexer
+	conv
+	stat
+
 #
 PROGRAM1 = asagumo
+PROGRAM2 = stat
 # OCAML_LIBS +=
 # OCAML_CLIBS +=
 OCAML_OTHER_LIBS += str
 # OCAML_LIB_FLAGS +=
 #
 
-TARGETS = $(OCamlProgram $(PROGRAM1), $(FILES1))
+TARGETS = $(OCamlProgram $(PROGRAM1), $(FILES1)) \
+          $(OCamlProgram $(PROGRAM2), $(FILES2))
 
 all: $(TARGETS)
 

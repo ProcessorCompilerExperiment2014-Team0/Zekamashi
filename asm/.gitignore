@@ -7,4 +7,6 @@ asmParser.ml
 asmParser.mli
 asagumo
 asagumo.run
+stat
+stat.run
 sample
