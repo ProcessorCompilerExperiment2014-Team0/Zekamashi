@@ -35,6 +35,7 @@ let string_of_mn = function
   | M_AND -> "AND"
   | M_BIS -> "BIS"
   | M_XOR -> "XOR"
+  | M_EQV -> "EQV"
   | M_SLL -> "SLL"
   | M_SRL -> "SRL"
   | M_SRA -> "SRA"
@@ -172,6 +173,8 @@ let encode tbl (lbl,place,mn,args) =
     | (M_BIS, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x11 a (check_immd 8 false b) c 0x20
     | (M_XOR, [A_R a; A_R b; A_R c]) -> enc_opr 0x11 a b c 0x40
     | (M_XOR, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x11 a (check_immd 8 false b) c 0x40
+    | (M_EQV, [A_R a; A_R b; A_R c]) -> enc_opr 0x11 a b c 0x48
+    | (M_EQV, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x11 a (check_immd 8 false b) c 0x48
     | (M_SLL, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x39
     | (M_SLL, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x12 a (check_immd 8 false b) c 0x39
     | (M_SRL, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x34

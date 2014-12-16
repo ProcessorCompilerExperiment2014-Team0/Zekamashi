@@ -30,6 +30,7 @@ type mnemonic =
 | M_AND
 | M_BIS
 | M_XOR
+| M_EQV
 | M_SLL
 | M_SRL
 | M_SRA
