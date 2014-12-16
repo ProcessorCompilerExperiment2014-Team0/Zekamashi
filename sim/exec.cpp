@@ -524,7 +524,7 @@ void core::i_stl(int ra, int rb, int disp) {
 }
 
 int core::i_br(int ra, int disp) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   if(disp == 0) {
     return 1;
   }
@@ -534,7 +534,7 @@ int core::i_br(int ra, int disp) {
 }
 
 void core::i_bsr(int ra, int disp) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc += extend(disp, 16);
   if(opt >> OPTION_S & 1) {
     map<unsigned, long long>::iterator p = br_map.find(pc);
@@ -584,19 +584,19 @@ void core::i_fbne(int fa, int disp) {
 }
 
 void core::i_jmp(int ra, int rb, int func) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc = ir[rb].i;
   i_stat[I_JMP]++;
 }
 
 void core::i_jsr(int ra, int rb, int func) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc = ir[rb].i;
   i_stat[I_JSR]++;
 }
 
 void core::i_ret(int ra, int rb, int func) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc = ir[rb].i;
   i_stat[I_RET]++;
 }
