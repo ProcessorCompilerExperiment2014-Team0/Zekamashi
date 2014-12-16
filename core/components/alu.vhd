@@ -1,148 +1,91 @@
+-------------------------------------------------------------------------------
+-- Declaration
+-------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library work;
-use work.zebius_type_p.all;
-
-package zebius_alu_p is
+package zkms_alu_p is
 
   type alu_inst_t is (
     ALU_INST_NOP,
     ALU_INST_ADD,
     ALU_INST_SUB,
+    ALU_INST_EQ,
+    ALU_INST_LE,
+    ALU_INST_LT,
     ALU_INST_AND,
     ALU_INST_OR,
-    ALU_INST_NOT,
     ALU_INST_XOR,
-    ALU_INST_SHLD,
-    ALU_INST_EQ,
-    ALU_INST_GT,
-    ALU_INST_INC_PC,
-    ALU_INST_DISP_PC_L);
+    ALU_INST_NOT,
+    ALU_INST_SLL,
+    ALU_INST_SRL,
+    ALU_INST_SRA);
 
-  type alu_in_t is record
+  type zkms_alu_in_t is record
     inst : alu_inst_t;
-    i1   : reg_data_t;
-    i2   : reg_data_t;
+    i1   : unsigned(31 downto 0);
+    i2   : unsigned(31 downto 0);
   end record;
 
-  type alu_out_t is record
-    o : reg_data_t;
+  type zkms_alu_out_t is record
+    o : unsigned(31 downto 0);
   end record;
 
-  component zebius_alu
-    port ( din  : in  alu_in_t;
-           dout : out alu_out_t);
+  component zkms_alu
+    port (
+      din  : in  zkms_alu_in_t;
+      dout : out zkms_alu_out_t);
   end component;
 
-end zebius_alu_p;
+end zkms_alu_p;
 
-
+-------------------------------------------------------------------------------
+-- Definition
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zebius_alu_p.all;
-use work.zebius_type_p.all;
+use work.zkms_alu_p.all;
+
+entity zkms_alu is
+  port (
+    din  : in  zkms_alu_in_t;
+    dout : out zkms_alu_out_t);
+end zkms_alu;
 
 
-entity zebius_alu is
-  port ( din  : in  alu_in_t;
-         dout : out alu_out_t);
-end zebius_alu;
-
-
-architecture behavior of zebius_alu is
-
-  function alu_add ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin return a+b; end;
-
-  function alu_sub ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin return a-b; end;
-
-  function alu_and ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin return a and b; end;
-
-  function alu_or ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin return a or b; end;
-
-  function alu_not ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin return not a; end;
-
-  function alu_xor ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin return a xor b; end;
-
-  function alu_shld ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-    variable c: reg_data_t;
-    variable tmp: reg_data_t;
-  begin
-
-    if signed(a) > 0 then
-      c := shift_left(b, to_integer(a(4 downto 0)));
-    elsif a(4 downto 0) = "00000" then
-      c := b;
-    else
-      tmp := unsigned(-signed(a));
-      c := shift_right(b, to_integer(tmp(4 downto 0)));
-    end if;
-
-    return c;
-  end;
-
-  function alu_eq ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin
-    if a = b then
-      return to_unsigned(1, 32);
-    else
-      return to_unsigned(0, 32);
-    end if;
-  end;
-
-  function alu_gt ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin
-    if signed(a) > signed(b) then
-      return to_unsigned(1, 32);
-    else
-      return to_unsigned(0, 32);
-    end if;
-  end;
-
-  function alu_nop ( a: reg_data_t; b: reg_data_t) return reg_data_t is
-  begin return to_unsigned(0, 32); end;
-
-
-  function alu_inc_pc ( a: reg_data_t; disp: reg_data_t) return reg_data_t is
-  begin
-    return unsigned(signed(a+4)+signed(disp(11 downto 0))*2);
-  end;
-
-  function alu_disp_pc_l ( a: reg_data_t; disp: reg_data_t) return reg_data_t is
-  begin
-    return unsigned(signed(a and x"fffffffc")+signed(disp(11 downto 0))*4+4);
-  end;
-
-
+architecture behavior of zkms_alu is
 begin
 
-  process(din)
+  process (din) is
+    variable i1, i2 : unsigned(31 downto 0);
+    variable o : unsigned(31 downto 0);
   begin
+    i1 := din.i1;
+    i2 := din.i2;
+    
     case din.inst is
-      when ALU_INST_ADD  => dout.o <= alu_add(din.i1, din.i2);
-      when ALU_INST_SUB  => dout.o <= alu_sub(din.i1, din.i2);
-      when ALU_INST_AND  => dout.o <= alu_and(din.i1, din.i2);
-      when ALU_INST_OR   => dout.o <= alu_or(din.i1, din.i2);
-      when ALU_INST_NOT  => dout.o <= alu_not(din.i1, din.i2);
-      when ALU_INST_XOR  => dout.o <= alu_xor(din.i1, din.i2);
-      when ALU_INST_SHLD => dout.o <= alu_shld(din.i1, din.i2);
-      when ALU_INST_EQ   => dout.o <= alu_eq(din.i1, din.i2);
-      when ALU_INST_GT   => dout.o <= alu_gt(din.i1, din.i2);
-      when ALU_INST_INC_PC => dout.o <= alu_inc_pc(din.i1, din.i2);
-      when ALU_INST_DISP_PC_L => dout.o <= alu_disp_pc_l(din.i1, din.i2);
-      when ALU_INST_NOP => dout.o <= alu_nop(din.i1, din.i2);
+      when ALU_INST_NOP => o := 0;
+      when ALU_INST_ADD => o := i1 + i2;
+      when ALU_INST_SUB => o := i1 - i2;
+      when ALU_INST_EQ  => if i1 =  i2 then o := 1 else o := 0 end if;
+      when ALU_INST_LE  => if i1 <  i2 then o := 1 else o := 0 end if;
+      when ALU_INST_LT  => if i1 <= i2 then o := 1 else o := 0 end if;
+      when ALU_INST_AND => o := i1 and i2;
+      when ALU_INST_OR  => o := i1 or  i2;
+      when ALU_INST_XOR => o := i1 xor i2;
+      when ALU_INST_NOT => o := not i1;
+      when ALU_INST_SLL => o := shift_left(i1, to_integer(i2(4 downto 0)));
+      when ALU_INST_SLR => o := shift_right(i1, to_integer(i2(4 downto 0)));
+      when ALU_INST_SLA => o := unsgined(shift_right(signed(i1), to_integer(i2(4 downto 0))));
     end case;
+
+    dout.o <= o;
   end process;
 
 end behavior;
