@@ -17,7 +17,7 @@ enum Opt {
 
 enum Inst {
   I_LDA, I_LDAH, I_LDL, I_STL, I_BEQ, I_BNE, I_BR, I_BSR, I_JMP, I_JSR, I_RET,
-  I_ADDL, I_SUBL, I_CMPEQ, I_CMPLE, I_CMPLT, I_AND, I_BIS, I_XOR, I_SLL, I_SRL,
+  I_ADDL, I_SUBL, I_CMPEQ, I_CMPLE, I_CMPLT, I_AND, I_BIS, I_XOR, I_EQV, I_SLL, I_SRL,
   I_SRA, I_LDS, I_STS, I_FBEQ, I_FBNE, I_CMPSEQ, I_CMPSLE, I_CMPSLT,
   I_ADDS, I_SUBS, I_MULS, I_INVS, I_SQRTS, I_CVTSL, I_CVTLS, I_FTOIS, I_ITOFS,
   I_SENTINEL
@@ -80,6 +80,7 @@ private:
   inline void i_and(int ra, int b, int rc);
   inline void i_bis(int ra, int b, int rc);
   inline void i_xor(int ra, int b, int rc);
+  inline void i_eqv(int ra, int b, int rc);
   inline void i_sll(int ra, int b, int rc);
   inline void i_srl(int ra, int b, int rc);
   inline void i_sra(int ra, int b, int rc);

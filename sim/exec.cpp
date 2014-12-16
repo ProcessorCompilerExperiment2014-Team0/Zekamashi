@@ -30,6 +30,7 @@ const char *INST_NAME[] = {
   "AND    ",
   "BIS    ",
   "XOR    ",
+  "EQV    ",
   "SLL    ",
   "SRL    ",
   "SRA    ",
@@ -376,6 +377,9 @@ void core::run() {
             case 0x40:
               i_xor(ra, b, rc);
               break;
+            case 0x48:
+              i_eqv(ra, b, rc);
+              break;
             default:
               throw inst;
             }
@@ -647,6 +651,12 @@ void core::i_xor(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i ^ b;
   inc_pc();
   i_stat[I_XOR]++;
+}
+
+void core::i_eqv(int ra, int b, int rc) {
+  ir[rc].i = ir[ra].i ^ ~b;
+  inc_pc();
+  i_stat[I_EQV]++;
 }
 
 void core::i_sll(int ra, int b, int rc) {
