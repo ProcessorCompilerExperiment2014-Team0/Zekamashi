@@ -18,6 +18,7 @@ package zkms_alu_p is
     ALU_INST_AND,
     ALU_INST_OR,
     ALU_INST_XOR,
+    ALU_INST_EQV,
     ALU_INST_NOT,
     ALU_INST_SLL,
     ALU_INST_SRL,
@@ -56,8 +57,7 @@ entity zkms_alu is
   port (
     din  : in  zkms_alu_in_t;
     dout : out zkms_alu_out_t);
-end zkms_alu;
-
+end entity zkms_alu;
 
 architecture behavior of zkms_alu is
 begin
@@ -79,6 +79,7 @@ begin
       when ALU_INST_AND => o := i1 and i2;
       when ALU_INST_OR  => o := i1 or  i2;
       when ALU_INST_XOR => o := i1 xor i2;
+      when ALU_INST_EQV => o := i1 xor not i2;
       when ALU_INST_NOT => o := not i1;
       when ALU_INST_SLL => o := shift_left(i1, to_integer(i2(4 downto 0)));
       when ALU_INST_SLR => o := shift_right(i1, to_integer(i2(4 downto 0)));
@@ -88,4 +89,4 @@ begin
     dout.o <= o;
   end process;
 
-end behavior;
+end architecture behavior;
