@@ -35,6 +35,7 @@ let string_of_mn = function
   | M_AND -> "AND"
   | M_BIS -> "BIS"
   | M_XOR -> "XOR"
+  | M_EQV -> "EQV"
   | M_SLL -> "SLL"
   | M_SRL -> "SRL"
   | M_SRA -> "SRA"
@@ -124,7 +125,7 @@ let enc_opr_lit opcd ra lb rc fc =
   opcd lsl 26 lor
     ra lsl 21 lor
     lb lsl 13 lor
-    0x100 lor
+    0x1000 lor
     fc lsl 5 lor
     rc
 
@@ -157,16 +158,29 @@ let encode tbl (lbl,place,mn,args) =
     | (M_JSR, [A_R a; A_Rm b]) -> enc_mem 0x1a a b 0x40
     | (M_RET, [A_R a; A_Rm b]) -> enc_mem 0x1a a b 0x80
     | (M_ADDL, [A_R a; A_R b; A_R c]) -> enc_opr 0x10 a b c 0x00
+    | (M_ADDL, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x10 a (check_immd 8 false b) c 0x00
     | (M_SUBL, [A_R a; A_R b; A_R c]) -> enc_opr 0x10 a b c 0x09
+    | (M_SUBL, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x10 a (check_immd 8 false b) c 0x09
     | (M_CMPEQ, [A_R a; A_R b; A_R c]) -> enc_opr 0x10 a b c 0x2d
+    | (M_CMPEQ, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x10 a (check_immd 8 false b) c 0x2d
     | (M_CMPLE, [A_R a; A_R b; A_R c]) -> enc_opr 0x10 a b c 0x6d
+    | (M_CMPLE, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x10 a (check_immd 8 false b) c 0x6d
     | (M_CMPLT, [A_R a; A_R b; A_R c]) -> enc_opr 0x10 a b c 0x4d
+    | (M_CMPLT, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x10 a (check_immd 8 false b) c 0x4d
     | (M_AND, [A_R a; A_R b; A_R c]) -> enc_opr 0x11 a b c 0x00
+    | (M_AND, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x11 a (check_immd 8 false b) c 0x00
     | (M_BIS, [A_R a; A_R b; A_R c]) -> enc_opr 0x11 a b c 0x20
+    | (M_BIS, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x11 a (check_immd 8 false b) c 0x20
     | (M_XOR, [A_R a; A_R b; A_R c]) -> enc_opr 0x11 a b c 0x40
+    | (M_XOR, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x11 a (check_immd 8 false b) c 0x40
+    | (M_EQV, [A_R a; A_R b; A_R c]) -> enc_opr 0x11 a b c 0x48
+    | (M_EQV, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x11 a (check_immd 8 false b) c 0x48
     | (M_SLL, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x39
+    | (M_SLL, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x12 a (check_immd 8 false b) c 0x39
     | (M_SRL, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x34
+    | (M_SRL, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x12 a (check_immd 8 false b) c 0x34
     | (M_SRA, [A_R a; A_R b; A_R c]) -> enc_opr 0x12 a b c 0x3c
+    | (M_SRA, [A_R a; A_Immd b; A_R c]) -> enc_opr_lit 0x12 a (check_immd 8 false b) c 0x3c
     | (M_LDS, [A_F a; A_Disp (b, d)]) -> enc_mem 0x22 a b (check_immd 16 true d)
     | (M_STS, [A_F a; A_Disp (b, d)]) -> enc_mem 0x26 a b (check_immd 16 true d)
     | (M_FBEQ, [A_F a; A_Immd d]) -> enc_bra 0x31 a (check_immd 21 true d)

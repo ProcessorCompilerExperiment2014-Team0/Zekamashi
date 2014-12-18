@@ -24,6 +24,7 @@
     ("AND", AND);
     ("BIS", BIS);
     ("XOR", XOR);
+    ("EQV", EQV);
     ("SLL", SLL);
     ("SRL", SRL);
     ("SRA", SRA);

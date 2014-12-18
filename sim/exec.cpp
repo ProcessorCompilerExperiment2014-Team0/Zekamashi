@@ -30,6 +30,7 @@ const char *INST_NAME[] = {
   "AND    ",
   "BIS    ",
   "XOR    ",
+  "EQV    ",
   "SLL    ",
   "SRL    ",
   "SRA    ",
@@ -376,6 +377,9 @@ void core::run() {
             case 0x40:
               i_xor(ra, b, rc);
               break;
+            case 0x48:
+              i_eqv(ra, b, rc);
+              break;
             default:
               throw inst;
             }
@@ -524,7 +528,7 @@ void core::i_stl(int ra, int rb, int disp) {
 }
 
 int core::i_br(int ra, int disp) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   if(disp == 0) {
     return 1;
   }
@@ -534,7 +538,7 @@ int core::i_br(int ra, int disp) {
 }
 
 void core::i_bsr(int ra, int disp) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc += extend(disp, 16);
   if(opt >> OPTION_S & 1) {
     map<unsigned, long long>::iterator p = br_map.find(pc);
@@ -584,19 +588,19 @@ void core::i_fbne(int fa, int disp) {
 }
 
 void core::i_jmp(int ra, int rb, int func) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc = ir[rb].i;
   i_stat[I_JMP]++;
 }
 
 void core::i_jsr(int ra, int rb, int func) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc = ir[rb].i;
   i_stat[I_JSR]++;
 }
 
 void core::i_ret(int ra, int rb, int func) {
-  ir[ra].i = pc;
+  ir[ra].i = pc + 1;
   pc = ir[rb].i;
   i_stat[I_RET]++;
 }
@@ -647,6 +651,12 @@ void core::i_xor(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i ^ b;
   inc_pc();
   i_stat[I_XOR]++;
+}
+
+void core::i_eqv(int ra, int b, int rc) {
+  ir[rc].i = ir[ra].i ^ ~b;
+  inc_pc();
+  i_stat[I_EQV]++;
 }
 
 void core::i_sll(int ra, int b, int rc) {
