@@ -5,9 +5,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-library work;
-use work.zkms_common_p.all;
-
 package zkms_instcache_p is
 
   type zkms_instcache_in_t is record
