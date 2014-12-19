@@ -8,6 +8,11 @@ using namespace std;
 
 #define NUM_OF_R 32
 #define SIZE_OF_MEM (1 << 20)
+#define ADDR_RD_STATUS 0x100000
+#define ADDR_RD_DATA   0x100001
+#define ADDR_WT_STATUS 0x100002
+#define ADDR_WT_DATA   0x100003
+#define ADDR_SENTINEL  0x100004
 
 enum Opt {
   OPTION_D, OPTION_R, OPTION_M, OPTION_S, OPTION_N,
@@ -35,6 +40,8 @@ private:
   unsigned inst_len;
   data_type ir[NUM_OF_R];
   data_type fr[NUM_OF_R];
+  data_type rd_data;
+  data_type wt_data;
   uint32_t *mem;
 
   long long i_count;

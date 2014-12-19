@@ -425,7 +425,7 @@ int core::verify() {
     if(p->first < NUM_OF_R) {
       r = p->first;
       if(ir[r].u != p->second) {
-        cerr << "test failed: $" << r << '\n'
+        cerr << "test failed: $" << dec << r << '\n'
              << "expected: " << dmanip << p->second << '\n'
              << "actual  : " << dmanip << ir[r].u << '\n';
         diff = 1;
@@ -433,7 +433,7 @@ int core::verify() {
     } else {
       r = p->first - NUM_OF_R;
       if(fr[r].u != p->second) {
-        cerr << "test failed: $f" << r << '\n'
+        cerr << "test failed: $f" << dec << r << '\n'
              << "expected: " << dmanip << p->second << '\n'
              << "actual  : " << dmanip << fr[r].u << '\n';
         diff = 1;
@@ -452,16 +452,33 @@ int core::extend(int v, int len) {
 }
 
 void core::mem_st_lw(uint32_t &src, int addr) {
-  if(addr < 0 || addr >= SIZE_OF_MEM) {
+  if(addr < 0 || addr >= ADDR_SENTINEL) {
     cerr << "ERROR: store: memory address is out of range ("
          << dmanip << addr
          << ")\n";
+    return;
+  } else if(addr >= SIZE_OF_MEM && addr < ADDR_SENTINEL) {
+    switch(addr) {
+    case ADDR_RD_STATUS:
+      cerr << "WARNING: read status register is read-only\n";
+      break;
+    case ADDR_RD_DATA:
+      cerr << "WARNING: read data register is read-only\n";
+      break;
+    case ADDR_WT_STATUS:
+      cerr << "WARNING: write status register is read-only\n";
+      break;
+    case ADDR_WT_DATA:
+      wt_data.u = src & 0xFFu;
+      cout << (char)wt_data.u;
+      break;
+    }
     return;
   }
   uint32_t old = mem[addr];
   mem[addr] = src;
   if(opt >> OPTION_M & 1) {
-    cerr << dmanip << "st: addr = "
+    cerr << "st: addr = "
          << dmanip << addr << ", value = "
          << dmanip << old << " -> "
          << dmanip << src << '\n';
@@ -469,15 +486,31 @@ void core::mem_st_lw(uint32_t &src, int addr) {
 }
 
 void core::mem_ld_lw(uint32_t &dst, int addr) {
-  if(addr < 0 || addr >= SIZE_OF_MEM) {
+  if(addr < 0 || addr >= ADDR_SENTINEL) {
     cerr << "ERROR: load: memory address is out of range ("
          << dmanip << addr
          << ")\n";
     return;
+  } else if(addr >= SIZE_OF_MEM && addr < ADDR_SENTINEL) {
+    switch(addr) {
+    case ADDR_RD_STATUS:
+      dst = 1u;
+      break;
+    case ADDR_RD_DATA:
+      dst = rd_data.u = getchar();
+      break;
+    case ADDR_WT_STATUS:
+      dst = 1u;
+      break;
+    case ADDR_WT_DATA:
+      dst = wt_data.u;
+      break;
+    }
+    return;
   }
   dst = mem[addr];
   if(opt >> OPTION_M & 1) {
-    cerr << dmanip << "ld: addr = "
+    cerr << "ld: addr = "
          << dmanip << addr << ", value = "
          << dmanip << dst << '\n';
   }
