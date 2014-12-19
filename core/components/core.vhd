@@ -1,4 +1,3 @@
-
 -------------------------------------------------------------------------------
 -- Declaration
 -------------------------------------------------------------------------------
@@ -16,11 +15,13 @@ package zkms_core_p is
   type zkms_core_in_t is record
     instcache : zkms_instcache_out_t;
     alu       : zkms_alu_out_t;
+    mmu       : zkms_mmu_out_t;
   end record zkms_core_in_t;
 
   type zkms_core_out_t is record
     instcache : zkms_instcache_in_t;
     alu       : zkms_alu_in_t;
+    mmu       : zkms_mmu_in_t;
   end record zkms_core_out_t;
 
   component zkms_core is
@@ -64,39 +65,41 @@ architecture behavior of zkms_core is
     OP_JMP);
 
   type latch_ifid_t is record
-    pc : unsigned(31 downto 0);
+    pc   : unsigned(31 downto 0);
+    inst : unsigned(31 downto 0);
   end record latch_ifid_t;
 
   type latch_idexe_t is record
     pc       : unsigned(31 downto 0);
-    i1       : unsigned(31 downto 0);
-    i2       : unsigned(31 downto 0);
-    wb       : integer range 0 to 63;
-    alu_inst : alu_inst_t;
     opmode   : opmode_t;
+    inst     : unsigned(31 downto 0);
+    rav      : unsigned(31 downto 0);
+    rbv      : unsigned(31 downto 0);
+    ra       : integer range 0 to 31;
+    rb       : integer range 0 to 31;
+    wb       : integer range 0 to 31;
+    alu_inst : alu_inst_t;
   end record latch_idexe_t;
 
   type latch_exemem_t is record
-    pc     : unsigned(31 downto 0);
-    wb     : integer range 0 to 63;
-    data   : unsigned(31 downto 0);
-    opmode : opmode_t;
+    pc      : unsigned(31 downto 0);
+    wb      : integer range 0 to 63;
+    alu_out : unsigned(31 downto 0);
+    data    : unsigned(31 downto 0);
+    opmode  : opmode_t;
   end record latch_exemem_t;
 
   type latch_memwb_t is record
-    wb     : integer range 0 to 63;
-    data   : unsigned(31 downto 0);
-    opmode : opmode_t;
+    wb      : integer range 0 to 63;
+    alu_out : unsigned(31 downto 0);
+    opmode  : opmode_t;
   end record latch_memwb_t;
 
 
   type latch_t is record
-    -- program counter
-    pc : unsigned(31 downt0o 0);
-    -- register file
-    --- 0-31  : integer register
-    --- 32-63 : floating-point register
-    rf : array(0 to 63) of unsigned(31 downto 0);
+    pc : unsigned(31 downtto 0);        -- program counter
+    ir : array(0 to 31) of unsigned(31 downto 0);  -- integer register
+    fr : array(0 to 31) of unsigned(31 downto 0);  -- floating-point register
     -- latches
     d  : latch_ifid_t;
     e  : latch_idexe_t;
@@ -119,22 +122,30 @@ begin
     procedure flush_pipeline (
       v : out latch_t) is
     begin
-      
+      v.d.inst := "010001111111111100000100000011111";  -- BIS R31,R31,R31
     end procedure flush_pipeline;
 
-    -- purpose: fetch register data, fowarding data if necessary
     function fetch_reg (
-      n   : integer range 0 to 63;
-      r   : latch_t;
-      din : zkms_core_in_t)
+      r   : array(0 to 31) of unsigned(31 downto 0);
+      n   : integer range 0 to 31)
       return unsigned(31 downto 0) is
     begin
-      if n = 31 or n = 63 then
+      if n = 31 then
         return to_unsigned(0, 32);
       else
         return r.rf(n);
       end if;
     end function fetch_reg;
+
+    procedure store_reg (
+      r : out array(0 to 31) of unsigned(31 downto 0);
+      n : in integer range 0 to 31;
+      v : in unsigned(31 downto 0)) is
+    begin
+      if n /= 31 then
+        r(n) := v;
+      end if;
+    end procedure store_reg;
 
     function decode_alu_inst (
       opcode : unsigned(5 downto 0);
@@ -173,20 +184,32 @@ begin
 
     -- variables for instruction decode
     variable opcode : unsigned(5 downto 0);
-    variable ra     : integer range 0 to 31;
-    variable rb     : integer range 0 to 31;
-    variable mdisp  : unsigned(15 downto 0);
-    variable bdisp  : unsigned(20 downto 0);
     variable rc     : integer range 0 to 31;
-    variable lit    : unsigned(7 downto 0);
-    variable litp   : std_logic;
     variable opfunc : unsigned(6 downot 0);
     variable fpfunc : unsigned(10 downto 0);
 
-  end procedure decode_instruction;
+    -- utilities for pipeline stall
+    type hazard_t is (HZ_FINE, HZ_RAW, HZ_CACHEMISS);
+    
+    function detect_hazard (
+      r : latch_t)
+      return hazard_t is
+    begin
+
+      if din.mmu.miss = '1' then
+        assert r.w.optype = OP_LOAD report "mmu says there is cache miss, but operation is not load" severity error;
+        return HZ_CACHEMISS;
+        elsif 
+      end if;
+      return HZ_FINE;
+    end function detect_hazard;
+
+    variable hazard : hazard_t;
 
   begin
     v := r;
+
+    hazard = detect_hazard(r);
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
@@ -196,33 +219,35 @@ begin
     v.d.pc   := r.pc;
     v.pc     := r.pc + 1;
 
+    case hazard is
+      when HZ_WAR | HZ_CACHEMISS =>
+        v.d  := r.d;
+        v.pc := r.pc;
+      when others => null;
+    end case;
+
     -------------------------------------------------------------------------
     -- Instruction Decode
     -------------------------------------------------------------------------
 
     v.e.nextpc := r.d.nextpc;
 
+    v.e.ra   := to_integer(r.d.inst(25 downto 21));
+    v.e.rb   := to_integer(r.d.inst(20 downto 16));
+    v.e.rav  := fetch_reg(v.ir, v.e.ra);
+    v.e.rbv  := fetch_reg(v.ir, v.e.rb);
+    v.e.inst := r.d.inst;
+
+    rc     := to_integer(r.d.inst(4 downto 0));
     opcode := r.d.inst(31 downto 26);
-    ra     := to_integer(r.d.inst(25 downto 21));
-    rb     := to_integer(r.d.inst(20 downto 16));
 
     case opcode(5 downto 3) is
       when 2 =>                         -- operation format
-        rc := to_integer(r.d.inst(4 downto 0));
-
         case opcode is
           when x"10", x"11", x"12" =>   -- integer arithmetic
             v.e.opmode := OP_ALU;
-            v.e.i1     := fetch_reg(ra, r, din);
             v.e.wb     := rc;
 
-            litp := r.d.inst(12);
-            lit  := resize(r.d.inst(20 downto 13), 32);
-            if litp = '1' then
-              v.e.i2 := lit;
-            else
-              v.e.i2 := fetch_reg(rb, r, din);
-            end if;
             opfunc       := r.d.inst(11 downto 5);
             v.e.alu_inst := decode_alu_inst(opcode, opfunc);
 
@@ -235,39 +260,17 @@ begin
         end case;
 
       when 1, 3, 5 =>                   -- memory format
-        mdisp := r.d.inst(15 downto 0);
-        v.e.wb := ra;
+        v.e.wb := rai;
+        v.e.alu_inst := ALU_INST_ADD;
 
         case opcode is
-          when x"08" =>               -- LDA
-            v.e.opmode   := OP_ALU;
-            v.e.i1       := fetch_reg(rb, r, din);
-            v.e.i2       := x"0000" & mdisp;
-            v.e.wb       := ra;
-            v.e.alu_inst := ALU_INST_ADD;
-
-          when x"09" =>               -- LDAH
-            v.e.opmode   := OP_ALU;
-            v.e.i1       := fetch_reg(rb, r, din);
-            v.e.i2       := mdisp & x"0000";
-            v.e.wb       := ra;
-            v.e.alu_inst := ALU_INST_ADD;
-
-          when x"28" =>               -- LDL
-            v.e.opmode := OP_LOAD;
-            -- fixme
-
-          when x"2c" =>               -- STL
-            v.e.opmode := OP_STORE;
-            -- fixme
-
-          when x"1a" =>               -- JMP
-            v.e.opmode   := OP_JMP;
-            v.e.i1       := r.d.pc;
-            v.e.i2       := to_unsigned(1, 32);
-            v.e.wb       := ra;
-            v.e.alu_inst := ALU_INST_ADD;
-
+          when x"08" => v.e.opmode := OP_LDA;
+          when x"09" => v.e.opmode := OP_LDAH;
+          when x"28" => v.e.opmode := OP_LOAD;
+          when x"2c" => v.e.opmode := OP_STORE;
+          when x"1a" =>                 -- JMP
+            v.e.opmode := OP_JMP;
+            -- fiiix me!!
             v.pc := fetch_reg(rb, r, din);
             flush_pipeline(v);
 
@@ -277,18 +280,8 @@ begin
 
       when 4, 6 =>                      -- branch format
         v.e.opmode := OP_BRA;
-        bdisp := r.d.inst(20 downto 0);
 
-        if branch_p(fetch_reg(ra, r, din), opcode) then
-          v.e.opmode   := OP_BRA;
-          v.e.i1       := r.d.pc;
-          v.e.i2       := to_unsigned(1, 32);
-          v.e.wb       := rb;
-          v.e.alu_inst := ALU_INST_ADD;
-
-          v.pc := fetch_reg(rb, r, din);
-          flush_pipeline(v);
-        end if;
+        -- fixme!!
 
       when others =>
         assert false report "invalid instruction" severity failure;
@@ -298,38 +291,79 @@ begin
     -- Execute
     -------------------------------------------------------------------------
 
+    dout.alu.inst <= r.e.alu_inst;
+    mdisp := r.e.inst(15 downto 0);
+
     case r.e.opmode is
-      when OP_ALU | OP_LOAD | OP_STORE =>
-        dout.alu.i1   <= r.e.i1;
-        dout.alu.i2   <= r.e.i2;
-        dout.alu.inst <= r.e.alu_inst;
-
-        v.m.data := din.alu.o;
-
-      when OP_FPU => ;
+      when OP_ALU =>
+        dout.alu.i1 <= resolve_data_hazard(r, r.e.rav, r.e.ra);
+        if r.e.inst(12) = '1' then      -- litp
+          dout.alu.i2 <= resize(r.e.inst(20 downto 13), 32);
+        else
+          dout.alu.i2 <= resolve_data_hazard(r, r.e.rbv, r.e.rb);
+        end if;
+      when OP_LDA =>
+        dout.alu.i1 <= x"0000" & mdisp;
+        dout.alu.i2 <= resolve_data_hazard(r, r.e.rbv, r.e.rb);
+      when OP_LDAH =>
+        dout.alu.i1 <= mdisp & x"0000";
+        dout.alu.i2 <= resolve_data_hazard(r, r.e.rbv, r.e.rb);
+      when OP_LOAD | OP_STORE =>
+        dout.alu.i1 <= unsigned(resize(signed(mdisp), 32));
+        dout.alu.i2 <= resolve_data_hazard(r, r.e.rbv, r.e.rb);
+      when OP_JMP =>
+        dout.alu.i1 <= r.e.pc;
+        dout.alu.i2 <= to_unsigned(1, 32);
+      when OP_FPU =>;
                      -- fixme
 
       when others => null;
     end case;
-
-    v.m.wb     := r.e.wb;
-    v.m.opmode := r.e.opmode;
+    
+    v.m.alu_out := din.alu.o;
+    v.m.wb      := r.e.wb;
+    v.m.opmode  := r.e.opmode;
+    v.m.data    := resolve_data_hazard(r, r.e.rav, r.e.ra);  -- necessary for
+                                                             -- only store
 
     -------------------------------------------------------------------------
     -- Memory
     -------------------------------------------------------------------------
 
-    v.w.wb     := r.m.wb;
-    v.w.data   := r.m.data;
-    v.w.opmode := r.m.opmode;
+    case r.m.opmode is
+      when OP_LOAD =>
+        dout.mmu <= (addr => r.m.alu_out(21 downto 0),
+                     data => (others => '0'),
+                     en   => '1',
+                     we   => '0');
+      when OP_STORE =>
+        dout.mmu <= (addr => r.m.alu_out(21 downto 0),
+                     data => r.m.data,
+                     en   => '1',
+                     we   => '1');
+      when others =>
+        dout.mmu <= (addr => (others => '-')
+                     data => (others => '-'),
+                     en   => '0',
+                     we   => '0');
+    end case;
+
+    v.w.wb      := r.m.wb;
+    v.w.alu_out := r.m.alu_out;
+    v.w.opmode  := r.m.opmode;
 
     -------------------------------------------------------------------------
     -- Write Back
     -------------------------------------------------------------------------
 
-    if r.w.opmode /= OP_NOP and r.w.opmode /= OP_STORE then
-      v.rf(r.w.wb) := r.w.data;
-    end if;
+    case r.w.opmode is
+      when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
+        store_reg(v.ir, v.w.wb, v.w.alu_out);
+      when OP_FPU => ;                  -- fixme
+      when OP_LOAD =>
+        if din.mmu.miss = '0' then store_reg(v.ir, v.w.wb, din.mmu.data); end if;
+      when others => null;
+    end case;    
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
