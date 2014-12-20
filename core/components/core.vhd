@@ -189,7 +189,10 @@ begin
     variable fpfunc : unsigned(10 downto 0);
 
     -- utilities for pipeline stall
-    type hazard_t is (HZ_FINE, HZ_RAW, HZ_CACHEMISS);
+    type hazard_t is (
+      HZ_FINE, -- there is no hazard
+      HZ_WAR, -- there is raw hazard, where op cannot see the result of load
+      HZ_CACHEMISS); -- there is cache miss
     
     function detect_hazard (
       r : latch_t)
@@ -197,12 +200,18 @@ begin
     begin
 
       if din.mmu.miss = '1' then
-        assert r.w.optype = OP_LOAD report "mmu says there is cache miss, but operation is not load" severity error;
+        assert r.w.opmode = OP_LOAD report "something is wrong with memory operation" severity error;
         return HZ_CACHEMISS;
-        elsif 
+      elsif r.m.opmode = OP_LOAD and
+        ((r.e.opmode = OP_ALU or r.e.opmode = OP_STORE) and r.e.ra /= 31 and r.m.wb = r.e.wb) or
+        ((r.e.opmode = OP_LDA or r.e.opmode = OP_LDAH or r.e.opmode = OP_LOAD or
+          r.e.opmode = OP_STORE or (r.e.opmode = OP_ALU and r.e.inst(12) = '0')) and
+         r.e.rb /= 31 and r.m.wb = r.e.wb) then
+        return HZ_WAR;
+      else
+        return HZ_FINE;
       end if;
-      return HZ_FINE;
-    end function detect_hazard;
+        
 
     variable hazard : hazard_t;
 
@@ -278,7 +287,7 @@ begin
             assert false report "invalid instruction" severity failure;
         end case;
 
-      when 4, 6 =>                      -- branch format
+      when 6, 7 =>                      -- branch format
         v.e.opmode := OP_BRA;
 
         -- fixme!!
