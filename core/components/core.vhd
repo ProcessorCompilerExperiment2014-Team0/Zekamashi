@@ -203,7 +203,6 @@ begin
       case opcode is
         when x"39"         => return cond = 0;   -- BEQ
         when x"3d"         => return cond /= 0;  -- BNE
-        when x"30" | x"34" => return true;       -- BRA
         when others =>
           assert false report "invalid branch instruction" severity error;
           return false;
@@ -378,8 +377,7 @@ begin
     -- Instruction Decode
     -------------------------------------------------------------------------
 
-    v.e.nextpc := r.d.nextpc;
-
+    v.e.pc   := r.d.pc;
     v.e.ra   := to_integer(r.d.inst(25 downto 21));
     v.e.rb   := to_integer(r.d.inst(20 downto 16));
     v.e.rav  := fetch_reg(v.ir, v.e.ra);
@@ -408,7 +406,7 @@ begin
         end case;
 
       when 1, 3, 5 =>                   -- memory format
-        v.e.wb := rai;
+        v.e.wb := v.e.ra;
         v.e.alu_inst := ALU_INST_ADD;
 
         case opcode is
@@ -423,13 +421,25 @@ begin
         end case;
 
       when 6, 7 =>                      -- branch format
-        v.e.wb       := 31;
-        v.e.alu_inst := ALU_INST_NOP;
-        v.e.opmode   := OP_BRA;
-        bdisp        := r.d.inst(20 downto 0);
-        cond         := forward_data_ir_id(r, v.e.rai, v.e.ra);
-        if branch_success_p(cond, opcode) then
-          v.pc := unsigned(signed(v.d.pc) + signed(bdisp));
+        -- integer conditional branch
+        if opcode(5 downto 3) = 7 then
+          v.e.wb       := 31;
+          v.e.alu_inst := ALU_INST_NOP;
+          v.e.opmode   := OP_BRA;
+          bdisp        := r.d.inst(20 downto 0);
+          cond         := forward_data_ir_id(r, v.e.rai, v.e.ra);
+          if branch_success_p(cond, opcode) then
+            v.pc := unsigned(signed(v.d.pc) + signed(bdisp));
+          end if;
+        -- unconditional branch
+        elsif opcode = "110000" or opcode = "110100" then
+          v.e.wb       := v.e.ra;
+          v.e.alu_inst := ALU_INST_ADD;
+          v.e.opmode   := OP_JMP;
+          bdisp        := r.d.inst(20 downto 0);
+          v.pc         := unsigned(signed(v.d.pc) + signed(bdisp));
+        else
+          assert false report "invalid branch instruction" severity error;
         end if;
 
       when others =>
