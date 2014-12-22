@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-package zebius_u232c_out_p is
+package zkms_u232c_out_p is
 
   type u232c_out_in_t is record
     data : unsigned (7 downto 0);
@@ -25,7 +25,7 @@ package zebius_u232c_out_p is
       dout : out u232c_out_out_t);
   end component;
 
-end zebius_u232c_out_p;
+end zkms_u232c_out_p;
 
 
 
@@ -38,7 +38,7 @@ use ieee.numeric_std.all;
 use ieee.std_logic_textio.all;
 
 library work;
-use work.zebius_u232c_out_p.all;
+use work.zkms_u232c_out_p.all;
 
 
 entity u232c_out is

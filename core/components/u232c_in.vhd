@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-package zebius_u232c_in_p is
+package zkms_u232c_in_p is
 
   type u232c_in_in_t is record
     rden : std_logic;
@@ -33,7 +33,7 @@ library unisim;
 use unisim.vcomponents.all;
 
 library work;
-use work.zebius_u232c_in_p.all;
+use work.zkms_u232c_in_p.all;
 
 
 entity u232c_in is
