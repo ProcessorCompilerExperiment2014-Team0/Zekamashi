@@ -20,6 +20,16 @@ package zkms_mmu_p is
     miss : std_logic;
   end record zkms_mmu_out_t;
 
+  type zkms_mmu_io_in_t is record
+    sin  : zkms_u232c_in_out_t;
+    sout : zkms_u232c_out_out_t;
+  end record zkms_mmu_io_in_t;
+
+  type zkms_mmu_io_out_t is record
+    sin  : zkms_u232c_in_in_t;
+    sout : zkms_u232c_out_in_t;
+  end record zkms_mmu_io_out_t;
+
   component zkms_mmu is
     port (
       zd     : inout std_logic_vector(31 downto 0);
@@ -37,6 +47,8 @@ package zkms_mmu_p is
       xft    : out   std_logic;
       xlbo   : out   std_logic;
       zza    : out   std_logic;
+      sin    : in    zkms_mmu_io_in_t;
+      sout   : out   zkms_mmu_io_out_t;
 
       din  : in  zkms_mmu_in_t;
       dout : out zkms_mmu_out_t);

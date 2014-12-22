@@ -17,6 +17,8 @@ architecture testbench of coretb is
   signal clk : std_logic;
   signal ci : zkms_core_in_t;
   signal co : zkms_core_out_t;
+  signal si : zkms_mmu_io_in_t;
+  signal so : zkms_mmu_io_out_t;
 
   signal zd    : std_logic_vector(31 downto 0);
   signal zdp   : std_logic_vector(3  downto 0);
@@ -69,9 +71,26 @@ begin
       xft    => xft,
       xlbo   => xlbo,
       zza    => zza,
+      sin    => si,
+      sout   => so.
+      din    => co.mmu,
+      dout   => ci.mmu);
 
-      din  => co.mmu,
-      dout => ci.mmu);
+  u232c_in : zkms_u232c_in_sim
+    generic map (
+      report_read => false)
+    port map (
+      clk  => clk,
+      din  => so.sin,
+      dout => si.sin);
+
+  u232c_out : zkms_u232c_out_sim
+    generic map (
+      report_write => false)
+    port map (
+      clk  => clk,
+      din  => so.sout,
+      dout => si.sout);
 
   sram_unit0 : GS8160Z18
     generic map (
