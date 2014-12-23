@@ -35,6 +35,10 @@ end package zkms_u232c_sim_p;
 -- Definition
 -------------------------------------------------------------------------------
 
+-------------------------------------------------------------------------------
+-- Input
+-------------------------------------------------------------------------------
+
 library std;
 use std.textio.all;
 
@@ -42,10 +46,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use ieee.std_logic_textio.all;
-
--------------------------------------------------------------------------------
--- Input
--------------------------------------------------------------------------------
 
 entity u232c_in_sim is
     generic (
@@ -60,13 +60,38 @@ architecture simulation of u232c_in_sim is
 
 begin
 
-  -- fixme
+  process (clk) is
+    variable l : line;
+    variable v : std_logic_vector(7 downto 0);
+  begin
+    if rising_edge(clk) then
+      if din.rden = '1' then
+        if endfile(input) then
+          dout.empty <= '1';
+          dout.data  <= (others => '1');
+        else
+          readline(input, l);
+          hread(l, v);
+          dout.empty <= '0';
+          doxut.data  <= v;
+        end if;
+      end if;
+    end if;
+  end process;
 
 end architecture simulation;
 
 -------------------------------------------------------------------------------
 -- Output
 -------------------------------------------------------------------------------
+
+library std;
+use std.textio.all;
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use ieee.std_logic_textio.all;
 
 entity u232c_out_sim is
   generic (
@@ -78,9 +103,21 @@ entity u232c_out_sim is
 end entity u232c_out_sim;
 
 architecture simulation of u232c_out_sim is
-
 begin
 
-  -- fixme
+  dout.busy <= '0';
+
+  process (clk) is
+    variable l : line;
+    variable v : std_logic_vector(7 downto 0);
+  begin
+    if rising_edge(clk) then
+      if din.go = '1' then
+        v := std_logic_vector(din.data);
+        hwrite(l, v);
+        writeline(output, l);
+      end if;
+    end if;
+  end process;
 
 end architecture simulation;
