@@ -55,7 +55,7 @@ let hdigit = ['0'-'9' 'A'-'F' 'a'-'f']
 let num = ('+'|'-')?digit+
 let hnum = "0x"hdigit+
 let alpha = ['a'-'z' 'A'-'Z' '_' '.']
-let ident = alpha (alpha | digit)*
+let ident = alpha (alpha | digit | '/')*
 
 rule token = parse
   | space+ {token lexbuf}
