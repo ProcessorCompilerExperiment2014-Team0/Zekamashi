@@ -140,4 +140,12 @@ begin
       xft  => xft,
       xlbo => xlbo);
 
+  clockgen: process
+  begin
+    clk <= '0';
+    wait for 5 ns;
+    clk <= '1';
+    wait for 5 ns;
+  end process;
+
 end architecture testbench;
