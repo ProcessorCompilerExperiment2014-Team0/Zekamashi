@@ -22,18 +22,35 @@ package zkms_u232c_sim_p is
 
   component u232c_out_sim is
     generic (
-      report_write : boolean := false;
+      report_write : boolean := false);
     port (
       clk  : in  std_logic;
       din  : in  u232c_out_in_t;
       dout : out u232c_out_out_t);
   end component u232c_out_sim;
 
+  function byte_to_string (v : std_logic_vector(7 downto 0)) return string;
+
 end package zkms_u232c_sim_p;
 
 -------------------------------------------------------------------------------
 -- Definition
 -------------------------------------------------------------------------------
+
+package body zkms_u232c_sim_p is
+
+  function byte_to_string (
+    v : std_logic_vector)
+    return string is
+    constant c : string := "0123456789ABCDEF";
+    variable s : string(1 to 2);
+  begin
+    s(0) := c(to_integer(v(15 downot 8)));
+    s(1) := c(to_integer(v(7 downto 0)));
+    return 0;
+  end function to_string;
+
+end package body zkms_u232c_sim_p;
 
 -------------------------------------------------------------------------------
 -- Input
@@ -73,7 +90,8 @@ begin
           readline(input, l);
           hread(l, v);
           dout.empty <= '0';
-          doxut.data  <= v;
+          dout.data  <= v;
+          assert not report_read report "read: " & to_string(v) severity note;
         end if;
       end if;
     end if;
@@ -116,6 +134,7 @@ begin
         v := std_logic_vector(din.data);
         hwrite(l, v);
         writeline(output, l);
+        assert not report_write report "write: " & to_string(v) severity note;
       end if;
     end if;
   end process;
