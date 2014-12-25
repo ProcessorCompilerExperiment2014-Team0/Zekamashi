@@ -9,4 +9,5 @@ asagumo
 asagumo.run
 stat
 stat.run
-sample
+sample/*
+!sample/*.s
