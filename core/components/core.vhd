@@ -27,6 +27,7 @@ package zkms_core_p is
   component zkms_core is
     port (
       clk  : in  std_logic;
+      rst  : in  std_logic;
       din  : in  zkms_core_in_t;
       dout : out zkms_core_out_t);
   end component zekamashi_core;
@@ -62,7 +63,6 @@ architecture behavior of zkms_core is
   constant unop : word_t := "010001111111111100000100000011111"
 
   type opmode_t is (
-    OP_NOP,
     OP_LOAD,
     OP_STORE,
     OP_ALU,
@@ -114,8 +114,27 @@ architecture behavior of zkms_core is
 
   constant latch_init_value : latch_t := (  -- fixme
     pc => 0,
-    ir => (others => 0),
-    fr => (others => 0));
+    ir => (others  => 0),
+    fr => (others  => 0),
+    d  => (pc      => (others => '0'),
+           inst    => unop),
+    e  => (opmode  => OP_ALU,
+           pc      => (others => '0'),
+           inst    => unop,
+           rav     => (others => '0'),
+           rbv     => (others => '0'),
+           ra      => 31,
+           rb      => 31,
+           wb      => 31,
+           alu_inst => ALU_OR),
+    m  => (opmode  => OP_ALU,
+           pc      => (others => '0'),
+           wb      => 31,
+           alu_out => (others => '-'),
+           data    => (others => '-')),
+    w  => (opmode  => OP_ALU,
+           wb      => 31,
+           alu_out => (others => '0'));
 
   signal r, rin : latch_t := latch_init_value;
 
