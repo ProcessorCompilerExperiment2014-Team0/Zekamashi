@@ -4,10 +4,13 @@ use ieee.numeric_std.all;
 
 library work;
 use work.sramsim.all;
+use work.zkms_alu_p.all;
 use work.zkms_core_p.all;
+use work.zkms_instcache_p.all;
 use work.zkms_mmu_p.all;
 use work.zkms_u232c_in_p.all;
 use work.zkms_u232c_out_p.all;
+use work.zkms_u232c_sim_p.all;
 
 entity coretb is
 end entity coretb;
@@ -15,6 +18,7 @@ end entity coretb;
 architecture testbench of coretb is
 
   signal clk : std_logic;
+  signal rst : std_logic;
   signal ci : zkms_core_in_t;
   signal co : zkms_core_out_t;
   signal si : zkms_mmu_io_in_t;
@@ -38,14 +42,18 @@ architecture testbench of coretb is
 
 begin
 
+  rst <= '0';
+
   core : zkms_core
     port map (
-      clk => clk,
-      ci  => ci,
-      co  => co);
+      clk  => clk,
+      rst  => rst,
+      din  => ci,
+      dout => co);
 
   instcache : zkms_instcache
     port map (
+      clk  => clk,
       din  => co.instcache,
       dout => ci.instcache);
 
@@ -56,6 +64,8 @@ begin
 
   mmu : zkms_mmu
     port map (
+      clk    => clk,
+      rst    => rst,
       zd     => zd,
       zdp    => zdp,
       za     => za,
@@ -72,11 +82,11 @@ begin
       xlbo   => xlbo,
       zza    => zza,
       sin    => si,
-      sout   => so.
+      sout   => so,
       din    => co.mmu,
       dout   => ci.mmu);
 
-  u232c_in : zkms_u232c_in_sim
+  u232c_in : u232c_in_sim
     generic map (
       report_read => false)
     port map (
@@ -84,7 +94,7 @@ begin
       din  => so.sin,
       dout => si.sin);
 
-  u232c_out : zkms_u232c_out_sim
+  u232c_out : u232c_out_sim
     generic map (
       report_write => false)
     port map (

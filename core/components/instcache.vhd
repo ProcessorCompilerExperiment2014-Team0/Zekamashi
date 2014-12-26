@@ -4,6 +4,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 package zkms_instcache_p is
 
@@ -22,7 +23,7 @@ package zkms_instcache_p is
       dout : out zkms_instcache_out_t);
   end component zkms_instcache;
 
-end package zkms_intcache_p;
+end package zkms_instcache_p;
 
 -------------------------------------------------------------------------------
 -- Definition
@@ -51,7 +52,7 @@ end entity zkms_instcache;
 
 architecture behavior of zkms_instcache is
 
-  subtype rom_data_t is unsigned 31 downto 0;
+  subtype rom_data_t is unsigned(31 downto 0);
   type rom_t is array (0 to 1023) of rom_data_t;
 
   impure function init_rom(filename: string)
@@ -63,8 +64,8 @@ architecture behavior of zkms_instcache is
   begin
     for i in rom'range loop
       readline(f, l);
-      hread(l, hoge);
-      rom(i) := unsigned(hoge);
+      hread(l, tmp);
+      rom(i) := unsigned(tmp);
     end loop;
 
     return rom;
@@ -77,7 +78,7 @@ begin
   process (clk) is
   begin
     if rising_edge(clk) then
-      data <= rom(addr);
+      dout.data <= rom(to_integer(din.addr));
     end if;
   end process;
 

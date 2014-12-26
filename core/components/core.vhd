@@ -9,6 +9,7 @@ use ieee.numeric_std.all;
 library work;
 use work.zkms_instcache_p.all;
 use work.zkms_alu_p.all;
+use work.zkms_mmu_p.all;
 
 package zkms_core_p is
 
@@ -30,7 +31,7 @@ package zkms_core_p is
       rst  : in  std_logic;
       din  : in  zkms_core_in_t;
       dout : out zkms_core_out_t);
-  end component zekamashi_core;
+  end component zkms_core;
 
 end package zkms_core_p;
 
@@ -50,6 +51,7 @@ use work.zkms_alu_p.all;
 entity zkms_core is
   port (
     clk  : in  std_logic;
+    rst  : in  std_logic;
     din  : in  zkms_core_in_t;
     dout : out zkms_core_out_t);
 end entity zkms_core;
@@ -60,11 +62,13 @@ architecture behavior of zkms_core is
   subtype reg_index_t is integer range 0 to 31;
   type reg_file_t is array (0 to 30) of unsigned(31 downto 0);
 
-  constant unop : word_t := "010001111111111100000100000011111"
+  constant unop : word_t := "010001111111111100000100000011111";
 
   type opmode_t is (
     OP_LOAD,
     OP_STORE,
+    OP_LDA,
+    OP_LDAH,
     OP_ALU,
     OP_FPU,
     OP_BRA,
@@ -72,7 +76,7 @@ architecture behavior of zkms_core is
 
   type latch_ifid_t is record
     pc   : word_t;
-    inst : word_t
+    inst : word_t;
   end record latch_ifid_t;
 
   type latch_idexe_t is record
@@ -113,28 +117,28 @@ architecture behavior of zkms_core is
   end record latch_t;
 
   constant latch_init_value : latch_t := (  -- fixme
-    pc => 0,
-    ir => (others  => 0),
-    fr => (others  => 0),
-    d  => (pc      => (others => '0'),
-           inst    => unop),
-    e  => (opmode  => OP_ALU,
-           pc      => (others => '0'),
-           inst    => unop,
-           rav     => (others => '0'),
-           rbv     => (others => '0'),
-           ra      => 31,
-           rb      => 31,
-           wb      => 31,
-           alu_inst => ALU_OR),
-    m  => (opmode  => OP_ALU,
-           pc      => (others => '0'),
-           wb      => 31,
-           alu_out => (others => '-'),
-           data    => (others => '-')),
-    w  => (opmode  => OP_ALU,
-           wb      => 31,
-           alu_out => (others => '0'));
+    pc => (others   => '0'),
+    ir => (others   => (others => '0')),
+    fr => (others   => (others => '0')),
+    d  => (pc       => (others => '0'),
+           inst     => unop),
+    e  => (opmode   => OP_ALU,
+           pc       => (others => '0'),
+           inst     => unop,
+           rav      => (others => '0'),
+           rbv      => (others => '0'),
+           ra       => 31,
+           rb       => 31,
+           wb       => 31,
+           alu_inst => ALU_INST_OR),
+    m  => (opmode   => OP_ALU,
+           pc       => (others => '0'),
+           wb       => 31,
+           alu_out  => (others => '-'),
+           data     => (others => '-')),
+    w  => (opmode   => OP_ALU,
+           wb       => 31,
+           alu_out  => (others => '0')));
 
   signal r, rin : latch_t := latch_init_value;
 
@@ -157,7 +161,7 @@ begin
       if n = 31 then
         return to_unsigned(0, 32);
       else
-        return r.rf(n);
+        return r(n);
       end if;
     end function fetch_reg;
 
@@ -174,9 +178,10 @@ begin
     -- variables for instruction decode
     variable opcode : unsigned(5 downto 0);
     variable rc     : reg_index_t;
-    variable opfunc : unsigned(6 downot 0);
+    variable opfunc : unsigned(6 downto 0);
     variable fpfunc : unsigned(10 downto 0);
     variable bdisp  : unsigned(20 downto 0);
+    variable mdisp  : unsigned(15 downto 0);
     variable cond   : word_t;
 
     function decode_alu_inst (
@@ -216,7 +221,7 @@ begin
 
     function branch_success (
       cond   : word_t;
-      opcode : unsgined(5 downto 0))
+      opcode : unsigned(5 downto 0))
       return boolean is
     begin
       case opcode is
@@ -234,7 +239,7 @@ begin
 
     type hazard_t is (
       HZ_FINE, -- there is no hazard
-      HZ_BRA,
+      HZ_ID,
       HZ_EXE, -- there is raw hazard, where op cannot see the result of load
       HZ_WB); -- there is cache miss
 
@@ -242,15 +247,15 @@ begin
       inst : word_t)
       return boolean is
     begin
-      return r.d.inst(31 downto 29) = "111";
-    end function bra_inst;
+      return inst(31 downto 29) = "111";
+    end function brc_inst;
 
     function jmp_inst (
       inst : word_t)
       return boolean is
       variable opcode : unsigned(5 downto 0);
     begin
-      opcode := r.d.inst(31 downto 26);
+      opcode := inst(31 downto 26);
       return opcode = "011010";    -- 1a jmp
     end function jmp_inst;
 
@@ -270,27 +275,33 @@ begin
       else
         return false;
       end if;
-    end function detect_hz_exe;
+    end function detect_hz_id;
 
     function detect_hz_exe (
       r : latch_t)
       return boolean is
     begin
-      return r.m.opmode = OP_LOAD and
-        ((r.e.opmode = OP_ALU or r.e.opmode = OP_STORE) and r.e.ra /= 31 and r.e.ra = r.m.wb) or
-        ((r.e.opmode = OP_LDA or r.e.opmode = OP_LDAH or r.e.opmode = OP_LOAD or
-          r.e.opmode = OP_STORE or (r.e.opmode = OP_ALU and r.e.inst(12) = '0')) and
-         r.e.rb /= 31 and r.e.rb = r.m.wb)
+
+      if r.m.opmode = OP_LOAD then
+        if r.e.opmode = OP_ALU or r.e.opmode = OP_STORE then
+          return r.e.ra /= 31 and r.e.ra = r.m.wb;
+        elsif r.e.opmode = OP_LDA or r.e.opmode = OP_LDAH or r.e.opmode = OP_LOAD or
+              r.e.opmode = OP_STORE or (r.e.opmode = OP_ALU and r.e.inst(12) = '0') then
+          return r.e.rb /= 31 and r.e.rb = r.m.wb;
+        end if;
+      end if;
+      return false;
     end function detect_hz_exe;
 
     function detect_hazard (
-      r : latch_t)
+      r    : latch_t;
+      miss : std_logic)
       return hazard_t is
     begin
 
-      if din.mmu.miss = '1' then
+      if miss = '1' then
         assert r.w.opmode = OP_LOAD report "something is wrong with memory operation" severity error;
-        return HZ_CACHEMISS;
+        return HZ_WB;
       elsif detect_hz_exe(r) then
         return HZ_EXE;
       elsif detect_hz_id(r) then
@@ -306,9 +317,10 @@ begin
     ---------------------------------------------------------------------------
 
     function forward_data_ir_id (
-      r : latch_t;
-      v : word_t;
-      n : reg_idx_t)
+      r   : latch_t;
+      din : zkms_core_in_t;
+      v   : word_t;
+      n   : reg_index_t)
       return word_t is
     begin
       if n = 31 then
@@ -343,8 +355,9 @@ begin
 
     function forward_data_ir_exe (
       r : latch_t;
+		din : zkms_core_in_t;
       v : word_t;
-      n : reg_idx_t)
+      n : reg_index_t)
       return word_t is
     begin
       if n = 31 then
@@ -375,7 +388,7 @@ begin
   begin
     v := r;
 
-    hazard = detect_hazard(r);
+    hazard := detect_hazard(r, din.mmu.miss);
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
@@ -386,7 +399,7 @@ begin
     v.pc     := r.pc + 1;
 
     case hazard is
-      when HZ_ID | HZ_EXE | HZ_CACHEMISS =>
+      when HZ_ID | HZ_EXE | HZ_WB =>
         v.d  := r.d;
         v.pc := r.pc;
       when others => null;
@@ -406,10 +419,10 @@ begin
     rc     := to_integer(r.d.inst(4 downto 0));
     opcode := r.d.inst(31 downto 26);
 
-    case opcode(5 downto 3) is
+    case to_integer(opcode(5 downto 3)) is
       when 2 =>                         -- operation format
         case opcode is
-          when x"10", x"11", x"12" =>   -- integer arithmetic
+          when x"10" | x"11" | x"12" =>   -- integer arithmetic
             v.e.opmode := OP_ALU;
             v.e.wb     := rc;
 
@@ -424,7 +437,7 @@ begin
             assert false report "invalid instruction" severity failure;
         end case;
 
-      when 1, 3, 5 =>                   -- memory format
+      when 1 | 3 | 5 =>                   -- memory format
         v.e.wb := v.e.ra;
         v.e.alu_inst := ALU_INST_ADD;
 
@@ -434,20 +447,20 @@ begin
           when x"28" => v.e.opmode := OP_LOAD;
           when x"2c" => v.e.opmode := OP_STORE;
           when x"1a" => v.e.opmode := OP_JMP;
-                        v.pc := forward_data_ir_id(r, v.e.rbi, v.e.rb);
+                        v.pc := forward_data_ir_id(r, din, v.e.rbv, v.e.rb);
                         flush_pipeline(v);
           when others => assert false report "invalid instruction" severity failure;
         end case;
 
-      when 6, 7 =>                      -- branch format
+      when 6 | 7 =>                      -- branch format
         -- integer conditional branch
         if opcode(5 downto 3) = 7 then
           v.e.wb       := 31;
           v.e.alu_inst := ALU_INST_NOP;
           v.e.opmode   := OP_BRA;
           bdisp        := r.d.inst(20 downto 0);
-          cond         := forward_data_ir_id(r, v.e.rai, v.e.ra);
-          if branch_success_p(cond, opcode) then
+          cond         := forward_data_ir_id(r, din, v.e.rav, v.e.ra);
+          if branch_success(cond, opcode) then
             v.pc := unsigned(signed(v.d.pc) + signed(bdisp));
           end if;
         -- unconditional branch
@@ -475,9 +488,9 @@ begin
                 ra => 31,
                 rb => 31,
                 wb => 31,
-                alu_inst => ALU_ISNT_BIS);
+                alu_inst => ALU_INST_OR);
         v.pc := r.pc;
-      when HZ_EXE | HZ_CACHEMISS =>
+      when HZ_EXE | HZ_WB =>
         v.e  := r.e;
         v.pc := r.pc;
       when others => null;
@@ -492,28 +505,28 @@ begin
 
     case r.e.opmode is
       when OP_ALU =>
-        dout.alu.i1 <= forward_data_ir_exe(r, r.e.rav, r.e.ra);
+        dout.alu.i1 <= forward_data_ir_exe(r, din, r.e.rav, r.e.ra);
         if r.e.inst(12) = '1' then      -- litp
           dout.alu.i2 <= resize(r.e.inst(20 downto 13), 32);
         else
-          dout.alu.i2 <= forward_data_ir_exe(r, r.e.rbv, r.e.rb);
+          dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
         end if;
       when OP_LDA =>
         dout.alu.i1 <= x"0000" & mdisp;
-        dout.alu.i2 <= forward_data_ir_exe(r, r.e.rbv, r.e.rb);
+        dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
       when OP_LDAH =>
         dout.alu.i1 <= mdisp & x"0000";
-        dout.alu.i2 <= forward_data_ir_exe(r, r.e.rbv, r.e.rb);
+        dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
       When OP_LOAD | OP_STORE =>
         dout.alu.i1 <= unsigned(resize(signed(mdisp), 32));
-        dout.alu.i2 <= forward_data_ir_exe(r, r.e.rbv, r.e.rb);
+        dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
       when OP_JMP =>
         dout.alu.i1 <= r.e.pc;
         dout.alu.i2 <= to_unsigned(1, 32);
       when OP_BRA =>
         dout.alu.i1 <= to_unsigned(0, 32);
         dout.alu.i2 <= to_unsigned(0, 32);
-      when OP_FPU =>;
+      when OP_FPU => null;
                      -- fixme
 
       when others => null;
@@ -522,7 +535,7 @@ begin
     v.m.alu_out := din.alu.o;
     v.m.wb      := r.e.wb;
     v.m.opmode  := r.e.opmode;
-    v.m.data    := forward_data_ir_exe(r, r.e.rav, r.e.ra);  -- necessary for
+    v.m.data    := forward_data_ir_exe(r, din, r.e.rav, r.e.ra);  -- necessary for
                                                              -- only store
     case hazard is
       when HZ_EXE =>
@@ -531,7 +544,7 @@ begin
                 wb      => 31,
                 alu_out => (others => '-'),
                 data    => (others => '-'));
-      when HZ_CACHEMISS =>
+      when HZ_WB =>
         v.m := r.m;
       when others => null;
     end case;
@@ -552,7 +565,7 @@ begin
                      en   => '1',
                      we   => '1');
       when others =>
-        dout.mmu <= (addr => (others => '-')
+        dout.mmu <= (addr => (others => '-'),
                      data => (others => '-'),
                      en   => '0',
                      we   => '0');
@@ -563,7 +576,7 @@ begin
     v.w.opmode  := r.m.opmode;
 
     case hazard is
-      when HZ_CACHEMISS =>
+      when HZ_WB =>
         v.w := r.w;
       when others => null;
     end case;
@@ -575,7 +588,7 @@ begin
     case r.w.opmode is
       when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
         store_reg(v.ir, v.w.wb, v.w.alu_out);
-      when OP_FPU => ;                  -- fixme
+      when OP_FPU => null;                  -- fixme
       when OP_LOAD =>
         if din.mmu.miss = '0' then store_reg(v.ir, v.w.wb, din.mmu.data); end if;
       when others => null;

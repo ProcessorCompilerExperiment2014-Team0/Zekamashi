@@ -70,20 +70,20 @@ begin
     i2 := din.i2;
     
     case din.inst is
-      when ALU_INST_NOP => o := 0;
+      when ALU_INST_NOP => o := to_unsigned(0, 32);
       when ALU_INST_ADD => o := i1 + i2;
       when ALU_INST_SUB => o := i1 - i2;
-      when ALU_INST_EQ  => if i1 =  i2 then o := 1 else o := 0 end if;
-      when ALU_INST_LE  => if i1 <  i2 then o := 1 else o := 0 end if;
-      when ALU_INST_LT  => if i1 <= i2 then o := 1 else o := 0 end if;
+      when ALU_INST_EQ  => if i1 =  i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
+      when ALU_INST_LE  => if i1 <  i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
+      when ALU_INST_LT  => if i1 <= i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
       when ALU_INST_AND => o := i1 and i2;
       when ALU_INST_OR  => o := i1 or  i2;
       when ALU_INST_XOR => o := i1 xor i2;
       when ALU_INST_EQV => o := i1 xor not i2;
       when ALU_INST_NOT => o := not i1;
       when ALU_INST_SLL => o := shift_left(i1, to_integer(i2(4 downto 0)));
-      when ALU_INST_SLR => o := shift_right(i1, to_integer(i2(4 downto 0)));
-      when ALU_INST_SLA => o := unsgined(shift_right(signed(i1), to_integer(i2(4 downto 0))));
+      when ALU_INST_SRL => o := shift_right(i1, to_integer(i2(4 downto 0)));
+      when ALU_INST_SRA => o := unsigned(shift_right(signed(i1), to_integer(i2(4 downto 0))));
     end case;
 
     dout.o <= o;

@@ -6,6 +6,11 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
+use work.zkms_u232c_in_p.all;
+use work.zkms_u232c_out_p.all;
+use work.zkms_u232c_sim_p.all;
+
 package zkms_mmu_p is
 
   type zkms_mmu_in_t is record
@@ -21,13 +26,13 @@ package zkms_mmu_p is
   end record zkms_mmu_out_t;
 
   type zkms_mmu_io_in_t is record
-    sin  : zkms_u232c_in_out_t;
-    sout : zkms_u232c_out_out_t;
+    sin  : u232c_in_out_t;
+    sout : u232c_out_out_t;
   end record zkms_mmu_io_in_t;
 
   type zkms_mmu_io_out_t is record
-    sin  : zkms_u232c_in_in_t;
-    sout : zkms_u232c_out_in_t;
+    sin  : u232c_in_in_t;
+    sout : u232c_out_in_t;
   end record zkms_mmu_io_out_t;
 
   component zkms_mmu is
@@ -63,6 +68,16 @@ end package zkms_mmu_p;
 -- Definition
 -------------------------------------------------------------------------------
 
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+library work;
+use work.zkms_u232c_in_p.all;
+use work.zkms_u232c_out_p.all;
+use work.zkms_u232c_sim_p.all;
+use work.zkms_mmu_p.all;
+
 entity zkms_mmu is
   port (
     clk    : in    std_logic;
@@ -95,6 +110,7 @@ architecture behavior of zkms_mmu is
 
   type latch_t is record
     src : src_t;
+	 data : unsigned(7 downto 0);
   end record latch_t;
 
   signal r, rin : latch_t;
@@ -171,10 +187,11 @@ begin
   process (clk, rst) is
   begin
     if rst = '1' then
-      r <= (src <= SRC_NOPE);
+      r <= (src => SRC_NOPE,
+		      data => (others => '-'));
     elsif rising_edge(clk) then
       r <= rin;
     end if;
   end process;
 
-end architecture zkms_mmu;
+end architecture behavior;
