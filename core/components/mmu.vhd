@@ -166,14 +166,14 @@ begin
 
     case r.src is
       when SRC_DATA =>
-        dout.data <= r.data;
-        dout.miss <= '0';
+        dv.data := r.data;
+        dv.miss := '0';
       when SRC_SIN =>
-        dout.data <= sin.sin.data;
-        dout.miss <= '0';
+        dv.data := sin.sin.data;
+        dv.miss := '0';
       when SRC_NOPE =>
-        dout.data <= (others => '-');
-        dout.miss <= '0';
+        dv.data := (others => '-');
+        dv.miss := '0';
       when others => null;
     end case;
 
