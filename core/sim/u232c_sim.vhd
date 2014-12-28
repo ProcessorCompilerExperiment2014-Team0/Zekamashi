@@ -7,16 +7,17 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zkms_u232c_in_p.all;
-use work.zkms_u232c_out_p.all;
+use work.u232c_in_p.all;
+use work.u232c_out_p.all;
 
-package zkms_u232c_sim_p is
+package u232c_sim_p is
 
   component u232c_in_sim is
     generic (
       report_read : boolean := false);
     port (
       clk  : in  std_logic;
+      rst  : in  std_logic;
       din  : in  u232c_in_in_t;
       dout : out u232c_in_out_t);
   end component u232c_in_sim;
@@ -26,19 +27,20 @@ package zkms_u232c_sim_p is
       report_write : boolean := false);
     port (
       clk  : in  std_logic;
+      rst  : in  std_logic;
       din  : in  u232c_out_in_t;
       dout : out u232c_out_out_t);
   end component u232c_out_sim;
 
   function byte_to_string (v : std_logic_vector(7 downto 0)) return string;
 
-end package zkms_u232c_sim_p;
+end package u232c_sim_p;
 
 -------------------------------------------------------------------------------
 -- Definition
 -------------------------------------------------------------------------------
 
-package body zkms_u232c_sim_p is
+package body u232c_sim_p is
 
   function byte_to_string (
     v : std_logic_vector(7 downto 0))
@@ -52,7 +54,7 @@ package body zkms_u232c_sim_p is
     return s;
   end function byte_to_string;
 
-end package body zkms_u232c_sim_p;
+end package body u232c_sim_p;
 
 -------------------------------------------------------------------------------
 -- Input
@@ -67,15 +69,16 @@ use ieee.numeric_std.all;
 use ieee.std_logic_textio.all;
 
 library work;
-use work.zkms_u232c_in_p.all;
-use work.zkms_u232c_out_p.all;
-use work.zkms_u232c_sim_p.all;
+use work.u232c_in_p.all;
+use work.u232c_out_p.all;
+use work.u232c_sim_p.all;
 
 entity u232c_in_sim is
     generic (
       report_read : boolean := false);
     port (
       clk  : in  std_logic;
+      rst  : in  std_logic;
       din  : in  u232c_in_in_t;
       dout : out u232c_in_out_t);
 end entity u232c_in_sim;
@@ -119,15 +122,16 @@ use ieee.numeric_std.all;
 use ieee.std_logic_textio.all;
 
 library work;
-use work.zkms_u232c_in_p.all;
-use work.zkms_u232c_out_p.all;
-use work.zkms_u232c_sim_p.all;
+use work.u232c_in_p.all;
+use work.u232c_out_p.all;
+use work.u232c_sim_p.all;
 
 entity u232c_out_sim is
   generic (
     report_write : boolean := false);
   port (
     clk  : in  std_logic;
+    rst  : in  std_logic;
     din  : in  u232c_out_in_t;
     dout : out u232c_out_out_t);
 end entity u232c_out_sim;

@@ -7,9 +7,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zkms_u232c_in_p.all;
-use work.zkms_u232c_out_p.all;
-use work.zkms_u232c_sim_p.all;
+use work.u232c_in_p.all;
+use work.u232c_out_p.all;
 
 package zkms_mmu_p is
 
@@ -73,9 +72,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zkms_u232c_in_p.all;
-use work.zkms_u232c_out_p.all;
-use work.zkms_u232c_sim_p.all;
+use work.u232c_in_p.all;
+use work.u232c_out_p.all;
 use work.zkms_mmu_p.all;
 
 entity zkms_mmu is
@@ -134,28 +132,30 @@ begin
     if din.en = '1' then
       if din.we = '1' then
         case din.addr is
-          when x"10000" | x"10001" | x"10002"=>
+          when b"1_0000_0000_0000_0000_0000" |
+               b"1_0000_0000_0000_0000_0001" |
+               b"1_0000_0000_0000_0000_0010" =>
             assert false report "cannot write to this address" severity error;
-          when x"10003" =>
-            sv.sout.data := din.data;
+          when b"1_0000_0000_0000_0000_0011" =>
+            sv.sout.data := din.data(7 downto 0);
             sv.sout.go   := '1';
             v.src        := SRC_NOPE;
           when others => null;
         end case;
       else
         case din.addr is
-          when x"10000" =>
+          when b"1_0000_0000_0000_0000_0000" =>
             v.data := (0      => not sin.sin.empty,
                        others => '0');
             v.src := SRC_DATA;
-          when x"10001" =>
+          when b"1_0000_0000_0000_0000_0001" =>
             sv.sin.rden := '1';
             v.src := SRC_SIN;
-          when x"10002" =>
+          when b"1_0000_0000_0000_0000_0010" =>
             v.data := (0      => sin.sout.busy,
                        others => '0');
             v.src := SRC_DATA;
-          when x"10003" =>
+          when b"1_0000_0000_0000_0000_0011" =>
             assert false report "cannot read from this address" severity error;
           when others => null;
         end case;
@@ -166,10 +166,10 @@ begin
 
     case r.src is
       when SRC_DATA =>
-        dv.data := r.data;
+        dv.data := resize(r.data, 32);
         dv.miss := '0';
       when SRC_SIN =>
-        dv.data := sin.sin.data;
+        dv.data := resize(sin.sin.data, 32);
         dv.miss := '0';
       when SRC_NOPE =>
         dv.data := (others => '-');

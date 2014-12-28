@@ -62,7 +62,7 @@ architecture behavior of zkms_core is
   subtype reg_index_t is integer range 0 to 31;
   type reg_file_t is array (0 to 30) of unsigned(31 downto 0);
 
-  constant unop : word_t := "010001111111111100000100000011111";
+  constant unop : word_t := b"010001_11111_11111_000_0_0100000_11111";
 
   type opmode_t is (
     OP_LOAD,
@@ -190,29 +190,34 @@ begin
       return alu_inst_t is
     begin
       case opcode is
-        when x"10" =>
+        when b"01_0000" =>
           case opfunc is
-            when x"00" => return ALU_INST_ADD;
-            when x"09" => return ALU_INST_SUB;
-            when x"2d" => return ALU_INST_EQ;
-            when x"6d" => return ALU_INST_LE;
-            when x"4d" => return ALU_INST_LT;
+            when b"000_0000" => return ALU_INST_ADD;
+            when b"000_1001" => return ALU_INST_SUB;
+            when b"010_1101" => return ALU_INST_EQ;
+            when b"110_1101" => return ALU_INST_LE;
+            when b"100_1101" => return ALU_INST_LT;
+            when others => null;
           end case;
 
-        when x"11" =>
+        when b"01_0001" =>
           case opfunc is
-            when x"00" => return ALU_INST_AND;
-            when x"20" => return ALU_INST_OR;
-            when x"40" => return ALU_INST_XOR;
-            when x"48" => return ALU_INST_EQV;
+            when b"000_0000" => return ALU_INST_AND;
+            when b"010_0000" => return ALU_INST_OR;
+            when b"100_0000" => return ALU_INST_XOR;
+            when b"100_1000" => return ALU_INST_EQV;
+            when others => null;
           end case;
 
-        when x"12" =>
+        when b"01_0010" =>
           case opfunc is
-            when x"39" => return ALU_INST_SLL;
-            when x"34" => return ALU_INST_SRL;
-            when x"3c" => return ALU_INST_SRA;
+            when b"011_1001" => return ALU_INST_SLL;
+            when b"011_0100" => return ALU_INST_SRL;
+            when b"011_1100" => return ALU_INST_SRA;
+            when others => null;
           end case;
+
+        when others => null;
       end case;
 
       assert false report "invalid alu instruction" severity failure;
@@ -225,8 +230,8 @@ begin
       return boolean is
     begin
       case opcode is
-        when x"39"         => return cond = 0;   -- BEQ
-        when x"3d"         => return cond /= 0;  -- BNE
+        when b"11_1001" => return cond = 0;   -- BEQ
+        when b"11_1101" => return cond /= 0;  -- BNE
         when others =>
           assert false report "invalid branch instruction" severity error;
           return false;
@@ -355,7 +360,7 @@ begin
 
     function forward_data_ir_exe (
       r : latch_t;
-		din : zkms_core_in_t;
+      din : zkms_core_in_t;
       v : word_t;
       n : reg_index_t)
       return word_t is
@@ -419,17 +424,17 @@ begin
     rc     := to_integer(r.d.inst(4 downto 0));
     opcode := r.d.inst(31 downto 26);
 
-    case to_integer(opcode(5 downto 3)) is
-      when 2 =>                         -- operation format
+    case opcode(5 downto 3) is
+      when "010" =>                         -- operation format
         case opcode is
-          when x"10" | x"11" | x"12" =>   -- integer arithmetic
+          when b"01_0000" | b"01_0001" | b"01_0010" =>   -- integer arithmetic
             v.e.opmode := OP_ALU;
             v.e.wb     := rc;
 
             opfunc       := r.d.inst(11 downto 5);
             v.e.alu_inst := decode_alu_inst(opcode, opfunc);
 
-          when x"16" =>               -- floating-point arithmetic
+          when b"01_1010" =>               -- floating-point arithmetic
             v.e.opmode := OP_FPU;
             -- fixme!
 
@@ -437,22 +442,23 @@ begin
             assert false report "invalid instruction" severity failure;
         end case;
 
-      when 1 | 3 | 5 =>                   -- memory format
+      when "001" | "011" | "101" =>                   -- memory format
         v.e.wb := v.e.ra;
         v.e.alu_inst := ALU_INST_ADD;
 
         case opcode is
-          when x"08" => v.e.opmode := OP_LDA;
-          when x"09" => v.e.opmode := OP_LDAH;
-          when x"28" => v.e.opmode := OP_LOAD;
-          when x"2c" => v.e.opmode := OP_STORE;
-          when x"1a" => v.e.opmode := OP_JMP;
-                        v.pc := forward_data_ir_id(r, din, v.e.rbv, v.e.rb);
-                        flush_pipeline(v);
+          when b"00_1000" => v.e.opmode := OP_LDA;
+          when b"00_1001" => v.e.opmode := OP_LDAH;
+          when b"10_1000" => v.e.opmode := OP_LOAD;
+          when b"10_1100" => v.e.opmode := OP_STORE;
+          when b"01_1010" =>
+            v.e.opmode := OP_JMP;
+            v.pc := forward_data_ir_id(r, din, v.e.rbv, v.e.rb);
+            flush_pipeline(v);
           when others => assert false report "invalid instruction" severity failure;
         end case;
 
-      when 6 | 7 =>                      -- branch format
+      when "110" | "111" =>                      -- branch format
         -- integer conditional branch
         if opcode(5 downto 3) = 7 then
           v.e.wb       := 31;
@@ -464,7 +470,7 @@ begin
             v.pc := unsigned(signed(v.d.pc) + signed(bdisp));
           end if;
         -- unconditional branch
-        elsif opcode = "110000" or opcode = "110100" then
+        elsif opcode = b"11_0000" or opcode = b"11_0100" then
           v.e.wb       := v.e.ra;
           v.e.alu_inst := ALU_INST_ADD;
           v.e.opmode   := OP_JMP;
@@ -555,12 +561,12 @@ begin
 
     case r.m.opmode is
       when OP_LOAD =>
-        dout.mmu <= (addr => r.m.alu_out(21 downto 0),
+        dout.mmu <= (addr => r.m.alu_out(20 downto 0),
                      data => (others => '0'),
                      en   => '1',
                      we   => '0');
       when OP_STORE =>
-        dout.mmu <= (addr => r.m.alu_out(21 downto 0),
+        dout.mmu <= (addr => r.m.alu_out(20 downto 0),
                      data => r.m.data,
                      en   => '1',
                      we   => '1');
@@ -598,7 +604,7 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    dout.instcache.addr <= v.pc;
+    dout.instcache.addr <= v.pc(16 downto 0);
 
     rin <= v;
   end process;

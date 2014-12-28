@@ -8,9 +8,9 @@ use work.zkms_alu_p.all;
 use work.zkms_core_p.all;
 use work.zkms_instcache_p.all;
 use work.zkms_mmu_p.all;
-use work.zkms_u232c_in_p.all;
-use work.zkms_u232c_out_p.all;
-use work.zkms_u232c_sim_p.all;
+use work.u232c_in_p.all;
+use work.u232c_out_p.all;
+use work.u232c_sim_p.all;
 
 entity coretb is
 end entity coretb;
@@ -91,6 +91,7 @@ begin
       report_read => false)
     port map (
       clk  => clk,
+      rst  => rst,
       din  => so.sin,
       dout => si.sin);
 
@@ -99,6 +100,7 @@ begin
       report_write => false)
     port map (
       clk  => clk,
+      rst  => rst,
       din  => so.sout,
       dout => si.sout);
 

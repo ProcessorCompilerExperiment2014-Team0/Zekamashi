@@ -58,7 +58,7 @@ architecture behavior of zkms_instcache is
   impure function init_rom(filename: string)
     return rom_t is
     file f : text open read_mode is filename;
-    variable tmp : std_logic_vector(35 downto 0);
+    variable tmp : std_logic_vector(31 downto 0);
     variable l : line;
     variable rom : rom_t;
   begin
@@ -71,7 +71,7 @@ architecture behavior of zkms_instcache is
     return rom;
   end function;
 
-  signal rom: rom_t := init_rom("code.dat");
+  signal rom: rom_t := init_rom("components/code.dat");
 
 begin
 
