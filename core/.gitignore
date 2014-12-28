@@ -1,0 +1,8 @@
+*.o
+coretb
+coretb.ghw
+work-obj93.cf
+components/code
+components/code.dat
+misc/tohex
+misc/fromhex
