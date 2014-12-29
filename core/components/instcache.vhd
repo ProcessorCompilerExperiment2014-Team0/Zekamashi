@@ -63,9 +63,11 @@ architecture behavior of zkms_instcache is
     variable rom : rom_t;
   begin
     for i in rom'range loop
-      readline(f, l);
-      hread(l, tmp);
-      rom(i) := unsigned(tmp);
+      if not endfile(f) then
+        readline(f, l);
+        hread(l, tmp);
+        rom(i) := unsigned(tmp);
+      end if;
     end loop;
 
     return rom;
