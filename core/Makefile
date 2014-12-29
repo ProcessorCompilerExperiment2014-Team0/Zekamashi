@@ -5,21 +5,24 @@ GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments
 GHDL_SIM_OPT = --stop-time=100us
 
-.PHONY: clean $(TESTBENCH)
+.PHONY: clean reload $(TESTBENCH)
 all: $(TESTBENCH)
 
-components/code.dat: components/code.s misc/tohex
+../asm/asagumo:
+	cd ../asm; omake
+
+components/code.dat: components/code.s misc/tohex ../asm/asagumo
 	../asm/asagumo components/code.s
 	misc/tohex 4 < components/code > components/code.dat
 
-work-obj93.cf: $(COMPONENTS:%=components/%.vhd) $(SIMS:%=sim/%.vhd)
+work-obj93.cf reload: $(COMPONENTS:%=components/%.vhd) $(SIMS:%=sim/%.vhd)
 	$(GHDLC) -i $(GHDLFLAGS) $^
 
-$(TESTBENCH): work-obj93.cf components/code.dat
+$(TESTBENCH): components/code.dat | work-obj93.cf
 	$(GHDLC) -m $(GHDLFLAGS) $@
 	$(GHDLC) -r $(GHDLFLAGS) $@ $(GHDL_SIM_OPT) --wave=$@.ghw
 
 clean :
 	$(GHDLC) --clean
-	$(RM) *.ghw work-obj93.cf misc/tohex misc/fromhex
+	$(RM) coretb.ghw work-obj93.cf misc/tohex misc/fromhex
 	$(RM) components/code.dat components/code
