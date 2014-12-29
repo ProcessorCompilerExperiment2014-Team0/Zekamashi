@@ -1,16 +1,25 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 char hexchar[] = "0123456789ABCDEF";
 
 int
-main()
+main(int argc, char** argv)
 {
-	char c;
+	int  w;
 
-	while(scanf("%c", &c) != -1)
-	{
-		unsigned u = c;
-		printf("%c%c\n", hexchar[(u>>4)&15], hexchar[u&15]);
+	if (argc == 1) {
+		w = 1;
+	} else {
+		w = atoi(argv[1]);
+	}
+
+	char data[w];
+	while (fread(data, sizeof(char), w, stdin) == (size_t)w) {
+		int i;
+		for (i = w-1; i >= 0; i--)
+			printf("%c%c", hexchar[(data[i]>>4)&15], hexchar[data[i]&15]);
+		printf("\n");
 	}
 
 	return 0;

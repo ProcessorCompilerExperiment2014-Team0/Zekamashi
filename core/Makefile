@@ -10,7 +10,7 @@ all: $(TESTBENCH)
 
 components/code.dat: components/code.s misc/tohex
 	../asm/asagumo components/code.s
-	misc/tohex < components/code > components/code.dat
+	misc/tohex 4 < components/code > components/code.dat
 
 work-obj93.cf: $(COMPONENTS:%=components/%.vhd) $(SIMS:%=sim/%.vhd)
 	$(GHDLC) -i $(GHDLFLAGS) $^
