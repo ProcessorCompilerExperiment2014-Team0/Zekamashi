@@ -3,7 +3,7 @@ COMPONENTS = alu core instcache mmu u232c_in u232c_out
 SIMS = u232c_sim coretb sim_sram
 GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments
-GHDL_SIM_OPT = --stop-time=1ms
+GHDL_SIM_OPT = --stop-time=100us
 
 .PHONY: clean $(TESTBENCH)
 all: $(TESTBENCH)
@@ -21,4 +21,5 @@ $(TESTBENCH): work-obj93.cf components/code.dat
 
 clean :
 	$(GHDLC) --clean
-	$(RM) *.ghw work-obj93.cf
+	$(RM) *.ghw work-obj93.cf misc/tohex misc/fromhex
+	$(RM) components/code.dat components/code
