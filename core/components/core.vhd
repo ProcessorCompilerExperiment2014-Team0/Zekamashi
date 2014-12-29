@@ -117,7 +117,7 @@ architecture behavior of zkms_core is
   end record latch_t;
 
   constant latch_init_value : latch_t := (  -- fixme
-    pc => (others   => '0'),
+    pc => (others   => '1'),
     ir => (others   => (others => '0')),
     fr => (others   => (others => '0')),
     d  => (pc       => (others => '0'),
@@ -146,6 +146,7 @@ begin
 
   comb : process (din, r) is
     variable v : latch_t;
+    variable dv : zkms_core_out_t;
 
     procedure flush_pipeline (
       v : out latch_t) is
@@ -220,7 +221,7 @@ begin
         when others => null;
       end case;
 
-      assert false report "invalid alu instruction" severity failure;
+      assert false report "invalid alu instruction" severity warning;
       return ALU_INST_NOP;
     end function decode_alu_inst;
 
@@ -233,7 +234,7 @@ begin
         when b"11_1001" => return cond = 0;   -- BEQ
         when b"11_1101" => return cond /= 0;  -- BNE
         when others =>
-          assert false report "invalid branch instruction" severity error;
+          assert false report "invalid branch instruction" severity warning;
           return false;
       end case;
     end function branch_success;
@@ -392,6 +393,14 @@ begin
 
   begin
     v := r;
+    dv := (instcache => (addr => (others => '-')),
+           alu       => (inst => ALU_INST_NOP,
+                         i1   => (others => '-'),
+                         i2   => (others => '-')),
+           mmu       => (addr => (others => '-'),
+                         data => (others => '-'),
+                         en   => '0',
+                         we   => '0'));
 
     hazard := detect_hazard(r, din.mmu.miss);
 
@@ -439,7 +448,7 @@ begin
             -- fixme!
 
           when others =>
-            assert false report "invalid instruction" severity failure;
+            assert false report "invalid instruction" severity warning;
         end case;
 
       when "001" | "011" | "101" =>                   -- memory format
@@ -455,7 +464,8 @@ begin
             v.e.opmode := OP_JMP;
             v.pc := forward_data_ir_id(r, din, v.e.rbv, v.e.rb);
             flush_pipeline(v);
-          when others => assert false report "invalid instruction" severity failure;
+
+          when others => assert false report "invalid instruction" severity warning;
         end case;
 
       when "110" | "111" =>                      -- branch format
@@ -465,23 +475,25 @@ begin
           v.e.alu_inst := ALU_INST_NOP;
           v.e.opmode   := OP_BRA;
           bdisp        := r.d.inst(20 downto 0);
-          cond         := forward_data_ir_id(r, din, v.e.rav, v.e.ra);
+          cond         := forward_data_ir_id(r, din, r.e.rav, r.e.ra);
           if branch_success(cond, opcode) then
-            v.pc := unsigned(signed(v.d.pc) + signed(bdisp));
+            v.pc := unsigned(signed(r.d.pc) + signed(bdisp));
+            flush_pipeline(v);
           end if;
         -- unconditional branch
         elsif opcode = b"11_0000" or opcode = b"11_0100" then
-          v.e.wb       := v.e.ra;
+          v.e.wb       := r.e.ra;
           v.e.alu_inst := ALU_INST_ADD;
           v.e.opmode   := OP_JMP;
           bdisp        := r.d.inst(20 downto 0);
-          v.pc         := unsigned(signed(v.d.pc) + signed(bdisp));
+          v.pc         := unsigned(signed(r.d.pc) + signed(bdisp));
+          flush_pipeline(v);
         else
-          assert false report "invalid branch instruction" severity error;
+          assert false report "invalid branch instruction" severity warning;
         end if;
 
       when others =>
-        assert false report "invalid instruction" severity failure;
+        assert false report "invalid instruction" severity warning;
     end case;
 
     case hazard is
@@ -506,32 +518,32 @@ begin
     -- Execute
     -------------------------------------------------------------------------
 
-    dout.alu.inst <= r.e.alu_inst;
+    dv.alu.inst :=  r.e.alu_inst;
     mdisp := r.e.inst(15 downto 0);
 
     case r.e.opmode is
       when OP_ALU =>
-        dout.alu.i1 <= forward_data_ir_exe(r, din, r.e.rav, r.e.ra);
+        dv.alu.i1 := forward_data_ir_exe(r, din, r.e.rav, r.e.ra);
         if r.e.inst(12) = '1' then      -- litp
-          dout.alu.i2 <= resize(r.e.inst(20 downto 13), 32);
+          dv.alu.i2 := resize(r.e.inst(20 downto 13), 32);
         else
-          dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
+          dv.alu.i2 := forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
         end if;
       when OP_LDA =>
-        dout.alu.i1 <= x"0000" & mdisp;
-        dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
+        dv.alu.i1 := unsigned(resize(signed(mdisp), 32));
+        dv.alu.i2 := forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
       when OP_LDAH =>
-        dout.alu.i1 <= mdisp & x"0000";
-        dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
+        dv.alu.i1 := mdisp & x"0000";
+        dv.alu.i2 := forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
       When OP_LOAD | OP_STORE =>
-        dout.alu.i1 <= unsigned(resize(signed(mdisp), 32));
-        dout.alu.i2 <= forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
+        dv.alu.i1 := unsigned(resize(signed(mdisp), 32));
+        dv.alu.i2 := forward_data_ir_exe(r, din, r.e.rbv, r.e.rb);
       when OP_JMP =>
-        dout.alu.i1 <= r.e.pc;
-        dout.alu.i2 <= to_unsigned(1, 32);
+        dv.alu.i1 := r.e.pc;
+        dv.alu.i2 := to_unsigned(1, 32);
       when OP_BRA =>
-        dout.alu.i1 <= to_unsigned(0, 32);
-        dout.alu.i2 <= to_unsigned(0, 32);
+        dv.alu.i1 := to_unsigned(0, 32);
+        dv.alu.i2 := to_unsigned(0, 32);
       when OP_FPU => null;
                      -- fixme
 
@@ -561,20 +573,20 @@ begin
 
     case r.m.opmode is
       when OP_LOAD =>
-        dout.mmu <= (addr => r.m.alu_out(20 downto 0),
-                     data => (others => '0'),
-                     en   => '1',
-                     we   => '0');
+        dv.mmu := (addr => r.m.alu_out(20 downto 0),
+                   data => (others => '0'),
+                   en   => '1',
+                   we   => '0');
       when OP_STORE =>
-        dout.mmu <= (addr => r.m.alu_out(20 downto 0),
-                     data => r.m.data,
-                     en   => '1',
-                     we   => '1');
+        dv.mmu := (addr => r.m.alu_out(20 downto 0),
+                   data => r.m.data,
+                   en   => '1',
+                   we   => '1');
       when others =>
-        dout.mmu <= (addr => (others => '-'),
-                     data => (others => '-'),
-                     en   => '0',
-                     we   => '0');
+        dv.mmu := (addr => (others => '-'),
+                   data => (others => '-'),
+                   en   => '0',
+                   we   => '0');
     end case;
 
     v.w.wb      := r.m.wb;
@@ -604,9 +616,10 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    dout.instcache.addr <= v.pc(16 downto 0);
+    dv.instcache.addr := v.pc(16 downto 0);
 
-    rin <= v;
+    dout <= dv;
+    rin  <= v;
   end process;
 
   seq : process (clk, rst) is
