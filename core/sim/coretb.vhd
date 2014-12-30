@@ -66,6 +66,15 @@ begin
     port map (
       clk    => clk,
       rst    => rst,
+      sin    => si,
+      sout   => so,
+      din    => co.mmu,
+      dout   => ci.mmu);
+
+  datacache : zkms_datacache
+    port map (
+      clk    => clk,
+      rst    => rst,
       zd     => zd,
       zdp    => zdp,
       za     => za,
@@ -81,10 +90,8 @@ begin
       xft    => xft,
       xlbo   => xlbo,
       zza    => zza,
-      sin    => si,
-      sout   => so,
-      din    => co.mmu,
-      dout   => ci.mmu);
+      din    => so.cache,
+      dout   => si.cache)
 
   u232c_in : u232c_in_sim
     generic map (
