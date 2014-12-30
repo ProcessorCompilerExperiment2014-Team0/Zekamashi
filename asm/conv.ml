@@ -208,7 +208,7 @@ let encode tbl (lbl,place,mn,args) =
   | e -> raise e
 
 let show ot tbl (lbl,place,mn,args) =
-  fprintf ot "%08X:     %04X = %s %s%s\n" (place*4)
+  fprintf ot "%08X:     %04X = %s %s%s\n" place
     (encode tbl (lbl,place,mn,args))
     (string_of_mn mn) (string_of_args tbl args)
     (string_of_label lbl)
