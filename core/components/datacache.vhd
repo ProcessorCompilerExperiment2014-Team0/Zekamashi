@@ -51,7 +51,7 @@ package zkms_datacache_p is
 
       din    : in    zkms_datacache_in_t;
       dout   : out   zkms_datacache_out_t);
-  end component zkms_dataccache;
+  end component zkms_datacache;
 
 end package zkms_datacache_p;
 
@@ -62,18 +62,25 @@ use ieee.numeric_std.all;
 
 package zkms_datacache_internal_p is
 
-  subtype word_t is unsigned(32 downto 0);
+  subtype word_t is unsigned(31 downto 0);
 
   type cachetable_in_t is record
     we   : std_logic;
     en   : std_logic;
-    addr : std_logic_vector(6 donwto 0);
+    addr : unsigned(6 downto 0);
     data : word_t;
   end record cachetable_in_t;
 
-  type tagtable_in_t is record
+  type cachetable_out_t is record
     data : word_t;
-  end record tagtable_in_t;
+  end record cachetable_out_t;
+
+  component cachetable is
+    port (
+      clk  : in  std_logic;
+      din  : in  cachetable_in_t;
+      dout : out cachetable_out_t);
+  end component cachetable;
 
 end package zkms_datacache_internal_p;
 
@@ -153,16 +160,15 @@ entity zkms_datacache is
 
     din    : in    zkms_datacache_in_t;
     dout   : out   zkms_datacache_out_t);
-end entity zkms_dataccache;
+end entity zkms_datacache;
 
 architecture behavior of zkms_datacache is
 
   subtype tag_t is unsigned(9 downto 0);
   type tagarray_t is array (0 to 127) of tag_t;
-  signal tagarray : tagarray_t := (othsers => (othser => '0'));
-
-  signal cache_in : zkms_cachetable_in_t;
-  signal cache_out : zkms_cachetable_out_t;
+  signal tagarray : tagarray_t := (others => (others => '0'));
+  signal cache_in : cachetable_in_t;
+  signal cache_out : cachetable_out_t;
 
   type latch_t is record
     miss : std_logic;
@@ -174,13 +180,14 @@ begin
 
   cache : cachetable
     port map (
+      clk  => clk,
       din  => cache_in,
       dout => cache_out);
 
-  process (din, ein, r) is
+  process (din, r) is
     variable v  : latch_t;
     variable dv : zkms_datacache_out_t;
-    variable cv : zkms_cachetable_in_t;
+    variable cv : cachetable_in_t;
 
   begin
 

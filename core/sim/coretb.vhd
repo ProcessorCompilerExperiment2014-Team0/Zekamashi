@@ -7,6 +7,7 @@ use work.sramsim.all;
 use work.zkms_alu_p.all;
 use work.zkms_core_p.all;
 use work.zkms_instcache_p.all;
+use work.zkms_datacache_p.all;
 use work.zkms_mmu_p.all;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
@@ -91,7 +92,7 @@ begin
       xlbo   => xlbo,
       zza    => zza,
       din    => so.cache,
-      dout   => si.cache)
+      dout   => si.cache);
 
   u232c_in : u232c_in_sim
     generic map (

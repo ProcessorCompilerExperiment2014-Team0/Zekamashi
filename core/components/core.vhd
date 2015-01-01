@@ -250,7 +250,8 @@ architecture behavior of zkms_core is
     return opcode = "011010";    -- 1a jmp
   end function jmp_inst;
 
-  impure function detect_hz_id ()
+  function detect_hz_id (
+    r : latch_t)
     return boolean is
     variable ri : reg_index_t;
   begin
@@ -267,7 +268,8 @@ architecture behavior of zkms_core is
     end if;
   end function detect_hz_id;
 
-  impure function detect_hz_exe ()
+  function detect_hz_exe (
+    r : latch_t)
     return boolean is
   begin
 
@@ -282,7 +284,8 @@ architecture behavior of zkms_core is
     return false;
   end function detect_hz_exe;
 
-  impure function detect_hazard ()
+  impure function detect_hazard (
+    r : latch_t)
     return hazard_t is
   begin
     if din.mmu.miss = '1' then
@@ -392,7 +395,7 @@ begin
                          en   => '0',
                          we   => '0'));
 
-    hazard := detect_hazard(r, din.mmu.miss);
+    hazard := detect_hazard(r);
 
     -------------------------------------------------------------------------
     -- Instruction Fetch

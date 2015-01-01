@@ -1,5 +1,5 @@
 TESTBENCH = coretb
-COMPONENTS = alu core instcache mmu u232c_in u232c_out
+COMPONENTS = alu core instcache mmu datacache u232c_in u232c_out
 SIMS = u232c_sim coretb sim_sram
 GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments

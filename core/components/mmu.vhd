@@ -124,10 +124,10 @@ begin
                 sv.sout.data := din.data(7 downto 0);
                 sv.sout.go   := '1';
                 v.src        := SRC_NOPE;
-              when others => null
+              when others => null;
             end case;
           else
-            case din.addr is
+            case din.addr(19 downto 0) is
               when x"00000" =>
                 v.data := (0      => not sin.sin.empty,
                            others => '0');
@@ -153,8 +153,8 @@ begin
 
     case r.src is
       when SRC_SRAM =>
-        dv.data := din.cache.data;
-        dv.miss := din.cache.miss;
+        dv.data := sin.cache.data;
+        dv.miss := sin.cache.miss;
       when SRC_DATA =>
         dv.data := resize(r.data, 32);
         dv.miss := '0';
