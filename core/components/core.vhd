@@ -354,9 +354,9 @@ architecture behavior of zkms_core is
           return (others => '-');
       end case;
     elsif n = r.w.wb then
-      case r.m.opmode is
+      case r.w.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return r.m.alu_out;
+          return r.w.alu_out;
         when OP_LOAD =>
           return din.mmu.data;
         when others =>
@@ -366,6 +366,8 @@ architecture behavior of zkms_core is
       return v;
     end if;
   end function forward_data_ir_exe;
+
+  signal hz : hazard_t;                 -- for debug
 
 begin
 
@@ -396,6 +398,7 @@ begin
                          we   => '0'));
 
     hazard := detect_hazard(r);
+    hz <= hazard;
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
@@ -413,14 +416,28 @@ begin
     end case;
 
     -------------------------------------------------------------------------
+    -- Write Back
+    --   write here in order to ID can see the result of write back
+    -------------------------------------------------------------------------
+
+    case r.w.opmode is
+      when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
+        store_reg(v.ir, r.w.wb, r.w.alu_out);
+      when OP_FPU => null;                  -- fixme
+      when OP_LOAD =>
+        if din.mmu.miss = '0' then store_reg(v.ir, r.w.wb, din.mmu.data); end if;
+      when others => null;
+    end case;
+
+    -------------------------------------------------------------------------
     -- Instruction Decode
     -------------------------------------------------------------------------
 
     v.e.pc   := r.d.pc;
     v.e.ra   := to_integer(r.d.inst(25 downto 21));
     v.e.rb   := to_integer(r.d.inst(20 downto 16));
-    v.e.rav  := fetch_reg(v.ir, v.e.ra);
-    v.e.rbv  := fetch_reg(v.ir, v.e.rb);
+    v.e.rav  := fetch_reg(v.ir, v.e.ra);  -- refer v
+    v.e.rbv  := fetch_reg(v.ir, v.e.rb);  -- refer v
     v.e.inst := r.d.inst;
 
     rc     := to_integer(r.d.inst(4 downto 0));
@@ -453,9 +470,10 @@ begin
           when b"00_1001" => v.e.opmode := OP_LDAH;
           when b"10_1000" => v.e.opmode := OP_LOAD;
           when b"10_1100" => v.e.opmode := OP_STORE;
+                             v.e.wb     := 31;
           when b"01_1010" =>
             v.e.opmode := OP_JMP;
-            v.pc := forward_data_ir_id(v.e.rbv, v.e.rb);
+            v.pc       := forward_data_ir_id(v.e.rbv, v.e.rb);
             flush_pipeline(v);
 
           when others => assert false report "invalid instruction" severity warning;
@@ -475,7 +493,7 @@ begin
           end if;
         -- unconditional branch
         elsif opcode = b"11_0000" or opcode = b"11_0100" then
-          v.e.wb       := r.e.ra;
+          v.e.wb       := v.e.ra;       -- refer v
           v.e.alu_inst := ALU_INST_ADD;
           v.e.opmode   := OP_JMP;
           bdisp        := r.d.inst(20 downto 0);
@@ -528,7 +546,7 @@ begin
       when OP_LDAH =>
         dv.alu.i1 := mdisp & x"0000";
         dv.alu.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
-      When OP_LOAD | OP_STORE =>
+      when OP_LOAD | OP_STORE =>
         dv.alu.i1 := unsigned(resize(signed(mdisp), 32));
         dv.alu.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
       when OP_JMP =>
@@ -567,7 +585,7 @@ begin
     case r.m.opmode is
       when OP_LOAD =>
         dv.mmu := (addr => r.m.alu_out(20 downto 0),
-                   data => (others => '0'),
+                   data => (others => '-'),
                    en   => '1',
                    we   => '0');
       when OP_STORE =>
@@ -591,19 +609,6 @@ begin
         v.w := r.w;
       when others => null;
     end case;
-
-    -------------------------------------------------------------------------
-    -- Write Back
-    -------------------------------------------------------------------------
-
-    case r.w.opmode is
-      when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-        store_reg(v.ir, v.w.wb, v.w.alu_out);
-      when OP_FPU => null;                  -- fixme
-      when OP_LOAD =>
-        if din.mmu.miss = '0' then store_reg(v.ir, v.w.wb, din.mmu.data); end if;
-      when others => null;
-    end case;    
 
     -------------------------------------------------------------------------
     -- Instruction Fetch

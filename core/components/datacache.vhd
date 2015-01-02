@@ -67,7 +67,7 @@ package zkms_datacache_internal_p is
   type cachetable_in_t is record
     we   : std_logic;
     en   : std_logic;
-    addr : unsigned(6 downto 0);
+    addr : unsigned(9 downto 0);
     data : word_t;
   end record cachetable_in_t;
 
@@ -126,7 +126,7 @@ begin
 end architecture behavior;
 
 -------------------------------------------------------------------------------
--- Implementation
+-- implementation
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -200,11 +200,11 @@ begin
     if din.en = '1' then
       case din.we is
         when '0' =>
-          if tagarray(to_integer(din.addr(19 downto 13))) = din.addr(19 downto 10) then
-            cv := (we => '1',
+          if tagarray(to_integer(din.addr(9 downto 3))) = din.addr(19 downto 10) then
+            cv := (we => '0',
                    en => '1',
-                   addr => din.addr(19 downto 13) & din.addr(2 downto 0),
-                   data => din.data);
+                   addr => din.addr(9 downto 0),
+                   data => (others => '-'));
             v.miss := '0';
           else
             assert false report "cache miss! hahaha!" severity error;
@@ -212,11 +212,11 @@ begin
           end if;
           --fixme
         when '1' =>
-          if tagarray(to_integer(din.addr(19 downto 13))) = din.addr(19 downto 10) then
-            cv := (we   => '0',
+          if tagarray(to_integer(din.addr(9 downto 3))) = din.addr(19 downto 10) then
+            cv := (we   => '1',
                    en   => '1',
-                   addr => din.addr(19 downto 13) & din.addr(2 downto 0),
-                   data => (others => '-'));
+                   addr => din.addr(9 downto 0),
+                   data => din.data);
             v.miss := '0';
           else
             assert false report "cache miss! hahaha!" severity error;
