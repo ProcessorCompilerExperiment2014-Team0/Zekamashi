@@ -1,21 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.3.62 (w)1999-2014 BSI
-[*] Thu Jan  1 17:02:00 2015
+[*] Fri Jan  2 06:53:22 2015
 [*]
 [dumpfile] "/home/zeptometer/podgorica/Zekamashi/core/coretb.ghw"
-[dumpfile_mtime] "Thu Jan  1 16:51:39 2015"
-[dumpfile_size] 671485
+[dumpfile_mtime] "Fri Jan  2 06:39:59 2015"
+[dumpfile_size] 2879026
 [savefile] "/home/zeptometer/podgorica/Zekamashi/core/coretb.gtkw"
-[timestart] 0
-[size] 1920 1017
+[timestart] 446170000
+[size] 1578 1017
 [pos] -1 -1
-*-24.000000 75000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-24.000000 505000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.coretb.
 [treeopen] top.coretb.alu.din.
 [treeopen] top.coretb.alu.dout.
-[treeopen] top.coretb.core.
-[treeopen] top.coretb.core.r.
 [treeopen] top.coretb.core.r.d.
 [treeopen] top.coretb.core.r.e.
 [treeopen] top.coretb.core.r.ir.
@@ -24,6 +22,10 @@
 [treeopen] top.coretb.datacache.cache.din.
 [treeopen] top.coretb.datacache.din.
 [treeopen] top.coretb.datacache.dout.
+[treeopen] top.coretb.mmu.
+[treeopen] top.coretb.mmu.dout.
+[treeopen] top.coretb.mmu.sin.
+[treeopen] top.coretb.mmu.sin.cache.
 [treeopen] top.coretb.mmu.sout.cache.
 [sst_width] 232
 [signals_width] 134
@@ -31,13 +33,18 @@
 [sst_vpaned_height] 297
 @28
 top.coretb.core.hz
-@23
+@22
 #{top.coretb.core.r.pc[31:0]} top.coretb.core.r.pc[31] top.coretb.core.r.pc[30] top.coretb.core.r.pc[29] top.coretb.core.r.pc[28] top.coretb.core.r.pc[27] top.coretb.core.r.pc[26] top.coretb.core.r.pc[25] top.coretb.core.r.pc[24] top.coretb.core.r.pc[23] top.coretb.core.r.pc[22] top.coretb.core.r.pc[21] top.coretb.core.r.pc[20] top.coretb.core.r.pc[19] top.coretb.core.r.pc[18] top.coretb.core.r.pc[17] top.coretb.core.r.pc[16] top.coretb.core.r.pc[15] top.coretb.core.r.pc[14] top.coretb.core.r.pc[13] top.coretb.core.r.pc[12] top.coretb.core.r.pc[11] top.coretb.core.r.pc[10] top.coretb.core.r.pc[9] top.coretb.core.r.pc[8] top.coretb.core.r.pc[7] top.coretb.core.r.pc[6] top.coretb.core.r.pc[5] top.coretb.core.r.pc[4] top.coretb.core.r.pc[3] top.coretb.core.r.pc[2] top.coretb.core.r.pc[1] top.coretb.core.r.pc[0]
 @24
 #{top.coretb.core.r.ir[0][31:0]} top.coretb.core.r.ir[0][31] top.coretb.core.r.ir[0][30] top.coretb.core.r.ir[0][29] top.coretb.core.r.ir[0][28] top.coretb.core.r.ir[0][27] top.coretb.core.r.ir[0][26] top.coretb.core.r.ir[0][25] top.coretb.core.r.ir[0][24] top.coretb.core.r.ir[0][23] top.coretb.core.r.ir[0][22] top.coretb.core.r.ir[0][21] top.coretb.core.r.ir[0][20] top.coretb.core.r.ir[0][19] top.coretb.core.r.ir[0][18] top.coretb.core.r.ir[0][17] top.coretb.core.r.ir[0][16] top.coretb.core.r.ir[0][15] top.coretb.core.r.ir[0][14] top.coretb.core.r.ir[0][13] top.coretb.core.r.ir[0][12] top.coretb.core.r.ir[0][11] top.coretb.core.r.ir[0][10] top.coretb.core.r.ir[0][9] top.coretb.core.r.ir[0][8] top.coretb.core.r.ir[0][7] top.coretb.core.r.ir[0][6] top.coretb.core.r.ir[0][5] top.coretb.core.r.ir[0][4] top.coretb.core.r.ir[0][3] top.coretb.core.r.ir[0][2] top.coretb.core.r.ir[0][1] top.coretb.core.r.ir[0][0]
 @22
+#{top.coretb.core.r.ir[1][31:0]} top.coretb.core.r.ir[1][31] top.coretb.core.r.ir[1][30] top.coretb.core.r.ir[1][29] top.coretb.core.r.ir[1][28] top.coretb.core.r.ir[1][27] top.coretb.core.r.ir[1][26] top.coretb.core.r.ir[1][25] top.coretb.core.r.ir[1][24] top.coretb.core.r.ir[1][23] top.coretb.core.r.ir[1][22] top.coretb.core.r.ir[1][21] top.coretb.core.r.ir[1][20] top.coretb.core.r.ir[1][19] top.coretb.core.r.ir[1][18] top.coretb.core.r.ir[1][17] top.coretb.core.r.ir[1][16] top.coretb.core.r.ir[1][15] top.coretb.core.r.ir[1][14] top.coretb.core.r.ir[1][13] top.coretb.core.r.ir[1][12] top.coretb.core.r.ir[1][11] top.coretb.core.r.ir[1][10] top.coretb.core.r.ir[1][9] top.coretb.core.r.ir[1][8] top.coretb.core.r.ir[1][7] top.coretb.core.r.ir[1][6] top.coretb.core.r.ir[1][5] top.coretb.core.r.ir[1][4] top.coretb.core.r.ir[1][3] top.coretb.core.r.ir[1][2] top.coretb.core.r.ir[1][1] top.coretb.core.r.ir[1][0]
+@24
 #{top.coretb.core.r.ir[2][31:0]} top.coretb.core.r.ir[2][31] top.coretb.core.r.ir[2][30] top.coretb.core.r.ir[2][29] top.coretb.core.r.ir[2][28] top.coretb.core.r.ir[2][27] top.coretb.core.r.ir[2][26] top.coretb.core.r.ir[2][25] top.coretb.core.r.ir[2][24] top.coretb.core.r.ir[2][23] top.coretb.core.r.ir[2][22] top.coretb.core.r.ir[2][21] top.coretb.core.r.ir[2][20] top.coretb.core.r.ir[2][19] top.coretb.core.r.ir[2][18] top.coretb.core.r.ir[2][17] top.coretb.core.r.ir[2][16] top.coretb.core.r.ir[2][15] top.coretb.core.r.ir[2][14] top.coretb.core.r.ir[2][13] top.coretb.core.r.ir[2][12] top.coretb.core.r.ir[2][11] top.coretb.core.r.ir[2][10] top.coretb.core.r.ir[2][9] top.coretb.core.r.ir[2][8] top.coretb.core.r.ir[2][7] top.coretb.core.r.ir[2][6] top.coretb.core.r.ir[2][5] top.coretb.core.r.ir[2][4] top.coretb.core.r.ir[2][3] top.coretb.core.r.ir[2][2] top.coretb.core.r.ir[2][1] top.coretb.core.r.ir[2][0]
+@22
 #{top.coretb.core.r.ir[3][31:0]} top.coretb.core.r.ir[3][31] top.coretb.core.r.ir[3][30] top.coretb.core.r.ir[3][29] top.coretb.core.r.ir[3][28] top.coretb.core.r.ir[3][27] top.coretb.core.r.ir[3][26] top.coretb.core.r.ir[3][25] top.coretb.core.r.ir[3][24] top.coretb.core.r.ir[3][23] top.coretb.core.r.ir[3][22] top.coretb.core.r.ir[3][21] top.coretb.core.r.ir[3][20] top.coretb.core.r.ir[3][19] top.coretb.core.r.ir[3][18] top.coretb.core.r.ir[3][17] top.coretb.core.r.ir[3][16] top.coretb.core.r.ir[3][15] top.coretb.core.r.ir[3][14] top.coretb.core.r.ir[3][13] top.coretb.core.r.ir[3][12] top.coretb.core.r.ir[3][11] top.coretb.core.r.ir[3][10] top.coretb.core.r.ir[3][9] top.coretb.core.r.ir[3][8] top.coretb.core.r.ir[3][7] top.coretb.core.r.ir[3][6] top.coretb.core.r.ir[3][5] top.coretb.core.r.ir[3][4] top.coretb.core.r.ir[3][3] top.coretb.core.r.ir[3][2] top.coretb.core.r.ir[3][1] top.coretb.core.r.ir[3][0]
+#{top.coretb.core.r.ir[4][31:0]} top.coretb.core.r.ir[4][31] top.coretb.core.r.ir[4][30] top.coretb.core.r.ir[4][29] top.coretb.core.r.ir[4][28] top.coretb.core.r.ir[4][27] top.coretb.core.r.ir[4][26] top.coretb.core.r.ir[4][25] top.coretb.core.r.ir[4][24] top.coretb.core.r.ir[4][23] top.coretb.core.r.ir[4][22] top.coretb.core.r.ir[4][21] top.coretb.core.r.ir[4][20] top.coretb.core.r.ir[4][19] top.coretb.core.r.ir[4][18] top.coretb.core.r.ir[4][17] top.coretb.core.r.ir[4][16] top.coretb.core.r.ir[4][15] top.coretb.core.r.ir[4][14] top.coretb.core.r.ir[4][13] top.coretb.core.r.ir[4][12] top.coretb.core.r.ir[4][11] top.coretb.core.r.ir[4][10] top.coretb.core.r.ir[4][9] top.coretb.core.r.ir[4][8] top.coretb.core.r.ir[4][7] top.coretb.core.r.ir[4][6] top.coretb.core.r.ir[4][5] top.coretb.core.r.ir[4][4] top.coretb.core.r.ir[4][3] top.coretb.core.r.ir[4][2] top.coretb.core.r.ir[4][1] top.coretb.core.r.ir[4][0]
+#{top.coretb.core.r.ir[5][31:0]} top.coretb.core.r.ir[5][31] top.coretb.core.r.ir[5][30] top.coretb.core.r.ir[5][29] top.coretb.core.r.ir[5][28] top.coretb.core.r.ir[5][27] top.coretb.core.r.ir[5][26] top.coretb.core.r.ir[5][25] top.coretb.core.r.ir[5][24] top.coretb.core.r.ir[5][23] top.coretb.core.r.ir[5][22] top.coretb.core.r.ir[5][21] top.coretb.core.r.ir[5][20] top.coretb.core.r.ir[5][19] top.coretb.core.r.ir[5][18] top.coretb.core.r.ir[5][17] top.coretb.core.r.ir[5][16] top.coretb.core.r.ir[5][15] top.coretb.core.r.ir[5][14] top.coretb.core.r.ir[5][13] top.coretb.core.r.ir[5][12] top.coretb.core.r.ir[5][11] top.coretb.core.r.ir[5][10] top.coretb.core.r.ir[5][9] top.coretb.core.r.ir[5][8] top.coretb.core.r.ir[5][7] top.coretb.core.r.ir[5][6] top.coretb.core.r.ir[5][5] top.coretb.core.r.ir[5][4] top.coretb.core.r.ir[5][3] top.coretb.core.r.ir[5][2] top.coretb.core.r.ir[5][1] top.coretb.core.r.ir[5][0]
 @200
 -decode
 @22
@@ -100,6 +107,8 @@ top.coretb.mmu.din.en
 top.coretb.mmu.dout.miss
 @22
 #{top.coretb.mmu.dout.data[31:0]} top.coretb.mmu.dout.data[31] top.coretb.mmu.dout.data[30] top.coretb.mmu.dout.data[29] top.coretb.mmu.dout.data[28] top.coretb.mmu.dout.data[27] top.coretb.mmu.dout.data[26] top.coretb.mmu.dout.data[25] top.coretb.mmu.dout.data[24] top.coretb.mmu.dout.data[23] top.coretb.mmu.dout.data[22] top.coretb.mmu.dout.data[21] top.coretb.mmu.dout.data[20] top.coretb.mmu.dout.data[19] top.coretb.mmu.dout.data[18] top.coretb.mmu.dout.data[17] top.coretb.mmu.dout.data[16] top.coretb.mmu.dout.data[15] top.coretb.mmu.dout.data[14] top.coretb.mmu.dout.data[13] top.coretb.mmu.dout.data[12] top.coretb.mmu.dout.data[11] top.coretb.mmu.dout.data[10] top.coretb.mmu.dout.data[9] top.coretb.mmu.dout.data[8] top.coretb.mmu.dout.data[7] top.coretb.mmu.dout.data[6] top.coretb.mmu.dout.data[5] top.coretb.mmu.dout.data[4] top.coretb.mmu.dout.data[3] top.coretb.mmu.dout.data[2] top.coretb.mmu.dout.data[1] top.coretb.mmu.dout.data[0]
+@200
+-dcache
 @28
 top.coretb.datacache.din.we
 top.coretb.datacache.din.en

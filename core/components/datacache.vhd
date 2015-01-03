@@ -184,7 +184,7 @@ begin
       din  => cache_in,
       dout => cache_out);
 
-  process (din, r) is
+  process (din, cache_in, r) is
     variable v  : latch_t;
     variable dv : zkms_datacache_out_t;
     variable cv : cachetable_in_t;

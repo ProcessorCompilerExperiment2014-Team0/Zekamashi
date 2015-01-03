@@ -275,8 +275,12 @@ architecture behavior of zkms_core is
 
     if r.m.opmode = OP_LOAD then
       if r.e.opmode = OP_ALU or r.e.opmode = OP_STORE then
-        return r.e.ra /= 31 and r.e.ra = r.m.wb;
-      elsif r.e.opmode = OP_LDA or r.e.opmode = OP_LDAH or r.e.opmode = OP_LOAD or
+        if r.e.ra /= 31 and r.e.ra = r.m.wb then
+          return true;
+        end if;
+      end if;
+
+      if r.e.opmode = OP_LDA or r.e.opmode = OP_LDAH or r.e.opmode = OP_LOAD or
         r.e.opmode = OP_STORE or (r.e.opmode = OP_ALU and r.e.inst(12) = '0') then
         return r.e.rb /= 31 and r.e.rb = r.m.wb;
       end if;
@@ -312,7 +316,7 @@ architecture behavior of zkms_core is
     if n = 31 then
       return to_unsigned(0, 32);
     elsif n = r.e.wb then
-      case r.m.opmode is
+      case r.e.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
           return din.alu.o;
         when others =>
@@ -322,15 +326,6 @@ architecture behavior of zkms_core is
       case r.m.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
           return r.m.alu_out;
-        when others =>
-          return (others => '-');
-      end case;
-    elsif n = r.w.wb then
-      case r.m.opmode is
-        when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return r.m.alu_out;
-        when OP_LOAD =>
-          return din.mmu.data;
         when others =>
           return (others => '-');
       end case;
@@ -433,80 +428,6 @@ begin
     -- Instruction Decode
     -------------------------------------------------------------------------
 
-    v.e.pc   := r.d.pc;
-    v.e.ra   := to_integer(r.d.inst(25 downto 21));
-    v.e.rb   := to_integer(r.d.inst(20 downto 16));
-    v.e.rav  := fetch_reg(v.ir, v.e.ra);  -- refer v
-    v.e.rbv  := fetch_reg(v.ir, v.e.rb);  -- refer v
-    v.e.inst := r.d.inst;
-
-    rc     := to_integer(r.d.inst(4 downto 0));
-    opcode := r.d.inst(31 downto 26);
-
-    case opcode(5 downto 3) is
-      when "010" =>                         -- operation format
-        case opcode is
-          when b"01_0000" | b"01_0001" | b"01_0010" =>   -- integer arithmetic
-            v.e.opmode := OP_ALU;
-            v.e.wb     := rc;
-
-            opfunc       := r.d.inst(11 downto 5);
-            v.e.alu_inst := decode_alu_inst(opcode, opfunc);
-
-          when b"01_1010" =>               -- floating-point arithmetic
-            v.e.opmode := OP_FPU;
-            -- fixme!
-
-          when others =>
-            assert false report "invalid instruction" severity warning;
-        end case;
-
-      when "001" | "011" | "101" =>                   -- memory format
-        v.e.wb := v.e.ra;
-        v.e.alu_inst := ALU_INST_ADD;
-
-        case opcode is
-          when b"00_1000" => v.e.opmode := OP_LDA;
-          when b"00_1001" => v.e.opmode := OP_LDAH;
-          when b"10_1000" => v.e.opmode := OP_LOAD;
-          when b"10_1100" => v.e.opmode := OP_STORE;
-                             v.e.wb     := 31;
-          when b"01_1010" =>
-            v.e.opmode := OP_JMP;
-            v.pc       := forward_data_ir_id(v.e.rbv, v.e.rb);
-            flush_pipeline(v);
-
-          when others => assert false report "invalid instruction" severity warning;
-        end case;
-
-      when "110" | "111" =>                      -- branch format
-        -- integer conditional branch
-        if opcode(5 downto 3) = 7 then
-          v.e.wb       := 31;
-          v.e.alu_inst := ALU_INST_NOP;
-          v.e.opmode   := OP_BRA;
-          bdisp        := r.d.inst(20 downto 0);
-          cond         := forward_data_ir_id(r.e.rav, r.e.ra);
-          if branch_success(cond, opcode) then
-            v.pc := unsigned(signed(r.d.pc) + signed(bdisp));
-            flush_pipeline(v);
-          end if;
-        -- unconditional branch
-        elsif opcode = b"11_0000" or opcode = b"11_0100" then
-          v.e.wb       := v.e.ra;       -- refer v
-          v.e.alu_inst := ALU_INST_ADD;
-          v.e.opmode   := OP_JMP;
-          bdisp        := r.d.inst(20 downto 0);
-          v.pc         := unsigned(signed(r.d.pc) + signed(bdisp));
-          flush_pipeline(v);
-        else
-          assert false report "invalid branch instruction" severity warning;
-        end if;
-
-      when others =>
-        assert false report "invalid instruction" severity warning;
-    end case;
-
     case hazard is
       when HZ_ID =>
         v.e := (opmode => OP_ALU,
@@ -522,7 +443,81 @@ begin
       when HZ_EXE | HZ_WB =>
         v.e  := r.e;
         v.pc := r.pc;
-      when others => null;
+
+      when HZ_FINE  =>
+        v.e.pc   := r.d.pc;
+        v.e.ra   := to_integer(r.d.inst(25 downto 21));
+        v.e.rb   := to_integer(r.d.inst(20 downto 16));
+        v.e.rav  := fetch_reg(v.ir, v.e.ra);  -- refer v
+        v.e.rbv  := fetch_reg(v.ir, v.e.rb);  -- refer v
+        v.e.inst := r.d.inst;
+
+        rc     := to_integer(r.d.inst(4 downto 0));
+        opcode := r.d.inst(31 downto 26);
+
+        case opcode(5 downto 3) is
+          when "010" =>                         -- operation format
+            case opcode is
+              when b"01_0000" | b"01_0001" | b"01_0010" =>   -- integer arithmetic
+                v.e.opmode := OP_ALU;
+                v.e.wb     := rc;
+
+                opfunc       := r.d.inst(11 downto 5);
+                v.e.alu_inst := decode_alu_inst(opcode, opfunc);
+
+              when b"01_1010" =>               -- floating-point arithmetic
+                v.e.opmode := OP_FPU;
+                -- fixme!
+
+              when others =>
+                assert false report "invalid instruction" severity warning;
+            end case;
+
+          when "001" | "011" | "101" =>                   -- memory format
+            v.e.wb := v.e.ra;
+            v.e.alu_inst := ALU_INST_ADD;
+
+            case opcode is
+              when b"00_1000" => v.e.opmode := OP_LDA;
+              when b"00_1001" => v.e.opmode := OP_LDAH;
+              when b"10_1000" => v.e.opmode := OP_LOAD;
+              when b"10_1100" => v.e.opmode := OP_STORE;
+                                 v.e.wb     := 31;
+              when b"01_1010" =>
+                v.e.opmode := OP_JMP;
+                v.pc       := forward_data_ir_id(v.e.rbv, v.e.rb);
+                flush_pipeline(v);
+
+              when others => assert false report "invalid instruction" severity warning;
+            end case;
+
+          when "110" | "111" =>                      -- branch format
+            -- integer conditional branch
+            if opcode(5 downto 3) = 7 then
+              v.e.wb       := 31;
+              v.e.alu_inst := ALU_INST_NOP;
+              v.e.opmode   := OP_BRA;
+              bdisp        := r.d.inst(20 downto 0);
+              cond         := forward_data_ir_id(v.e.rav, v.e.ra);  -- refer v
+              if branch_success(cond, opcode) then
+                v.pc := unsigned(signed(r.d.pc) + signed(bdisp));
+                flush_pipeline(v);
+              end if;
+            -- unconditional branch
+            elsif opcode = b"11_0000" or opcode = b"11_0100" then
+              v.e.wb       := v.e.ra;       -- refer v
+              v.e.alu_inst := ALU_INST_ADD;
+              v.e.opmode   := OP_JMP;
+              bdisp        := r.d.inst(20 downto 0);
+              v.pc         := unsigned(signed(r.d.pc) + signed(bdisp));
+              flush_pipeline(v);
+            else
+              assert false report "invalid branch instruction" severity warning;
+            end if;
+
+          when others =>
+            assert false report "invalid instruction" severity warning;
+        end case;
     end case;
 
     -------------------------------------------------------------------------
@@ -615,8 +610,9 @@ begin
     -------------------------------------------------------------------------
 
     dv.instcache.addr := v.pc(16 downto 0);
-
-    dout <= dv;
+    if hazard = HZ_FINE or hazard = HZ_ID then
+      dout <= dv;
+    end if;
     rin  <= v;
   end process;
 

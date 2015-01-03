@@ -87,7 +87,7 @@ architecture behavior of zkms_mmu is
 
 begin
 
-  process (din, r) is
+  process (din, sin, r) is
     variable v  : latch_t;
     variable dv : zkms_mmu_out_t;
     variable sv : zkms_mmu_io_out_t;
