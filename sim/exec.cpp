@@ -437,7 +437,7 @@ void core::run() {
       }
     } catch (uint32_t i) {
       cerr << "Unknown instruction: "
-           << hex << setfill('0') << setw(8) << uppercase << i;
+           << hex << setfill('0') << setw(8) << uppercase << i << endl;
       return;
     }
     ir[NUM_OF_R - 1].i = 0;

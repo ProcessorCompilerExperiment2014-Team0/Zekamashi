@@ -7,13 +7,17 @@ void print_options() {
   cerr <<
     "Usage: amatsukaze code [testfile] [options]\n"
     "Options:\n"
-    "  --help    Display this information\n"
-    "  -d        Show PCs and codes in every execution\n"
-    "  -r        Show contents of all the registers in every execution\n"
-    "  -m        Show addresses and values in every memory access\n"
-    "  -n <inst> Use native operations in floating-point instructions\n"
-    "  -l <n>    Stop execution in at most n instructions\n"
-    "  -s <file> Output \"bsr\" statistics to <file> (default: code.log)\n";
+    "  --help     Display this information\n"
+    "  -d         Show PCs and codes in every execution\n"
+    "  -r         Show contents of all the registers in every execution\n"
+    "  -m         Show addresses and values in every memory access\n"
+    "  -n <inst>  Use native operations in floating-point instructions\n"
+    "  -l <n>     Stop execution in at most n instructions\n"
+    "  -s <file>  Output \"bsr\" statistics to <file> (default: code.log)\n"
+    "  -ir <file> Output contents of integer registers to <file> "
+    "(default: code.ilog)\n"
+    "  -fr <file> Output contents of floating-point registers to <file> "
+    "(default: code.flog)\n";
 }
 
 int main(int argc, char **argv) {
