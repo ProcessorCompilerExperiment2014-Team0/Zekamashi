@@ -1,13 +1,13 @@
 -------------------------------------------------------------------------------
+-- Declaration
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
 -- Cache Memory
 -- * 128 Line
 -- * 8 word(32 byte) per line
 -- * total 32KiB
 -- * direct mapped
--------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------
--- Declaration
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -55,78 +55,8 @@ package zkms_datacache_p is
 
 end package zkms_datacache_p;
 
-
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-
-package zkms_datacache_internal_p is
-
-  subtype word_t is unsigned(31 downto 0);
-
-  type cachetable_in_t is record
-    we   : std_logic;
-    en   : std_logic;
-    addr : unsigned(9 downto 0);
-    data : word_t;
-  end record cachetable_in_t;
-
-  type cachetable_out_t is record
-    data : word_t;
-  end record cachetable_out_t;
-
-  component cachetable is
-    port (
-      clk  : in  std_logic;
-      din  : in  cachetable_in_t;
-      dout : out cachetable_out_t);
-  end component cachetable;
-
-end package zkms_datacache_internal_p;
-
 -------------------------------------------------------------------------------
--- Cache table
--------------------------------------------------------------------------------
-
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-
-library work;
-use work.zkms_datacache_internal_p.all;
-
-entity cachetable is
-
-  port (
-    clk  : in  std_logic;
-    din  : in  cachetable_in_t;
-    dout : out cachetable_out_t);
-
-end entity cachetable;
-
-architecture behavior of cachetable is
-
-  type ram_t is array (0 to 1023) of word_t;
-  signal ram : ram_t := (others => (others => '0'));
-
-begin
-
-  process (clk) is
-  begin
-    if rising_edge(clk) then
-      if din.en = '1' then
-        if din.we = '1' then
-          ram(to_integer(din.addr)) <= din.data;
-        end if;
-        dout.data <= ram(to_integer(din.addr));
-      end if;
-    end if;
-  end process;
-
-end architecture behavior;
-
--------------------------------------------------------------------------------
--- implementation
+-- Definition
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -135,7 +65,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.zkms_datacache_p.all;
-use work.zkms_datacache_internal_p.all;
+use work.zkms_datacache_ram_p.all;
 
 entity zkms_datacache is
   port (
