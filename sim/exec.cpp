@@ -53,6 +53,7 @@ const char *INST_NAME[] = {
 };
 
 core::core(int argc, char **argv) {
+  char buf[100];
   mem = new uint32_t[SIZE_OF_MEM];
   ifstream input(argv[1], ios::binary);
   if(!input) {
@@ -72,6 +73,7 @@ core::core(int argc, char **argv) {
   }
   opt = 0u;
   i_limit = -1LL;
+  ilog = flog = NULL;
   for(int i=0; i<I_SENTINEL; i++) {
     i_stat[i] = 0LL;
   }
@@ -131,6 +133,22 @@ core::core(int argc, char **argv) {
         } else {
           strcpy(stat_file, argv[++i]);
         }
+      } else if(!strcmp(argv[i], "-ir")) {
+        if(i+1 >= argc || argv[i+1][0] == '-') {
+          strcpy(buf, argv[1]);
+          strcat(buf, ".ilog");
+        } else {
+          strcpy(buf, argv[++i]);
+        }
+        ilog = new ofstream(buf);
+      } else if(!strcmp(argv[i], "-fr")) {
+        if(i+1 >= argc || argv[i+1][0] == '-') {
+          strcpy(buf, argv[1]);
+          strcat(buf, ".flog");
+        } else {
+          strcpy(buf, argv[++i]);
+        }
+        flog = new ofstream(buf);
       } else if(!strcmp(argv[i], "-l")) {
         i++;
         if(i >= argc) {
@@ -149,6 +167,8 @@ core::core(int argc, char **argv) {
 
 core::~core() {
   delete [] mem;
+  if(ilog) delete ilog;
+  if(flog) delete flog;
 }
 
 void core::set_test(const char *test_file_path) {
@@ -179,6 +199,14 @@ void core::run() {
     if(opt >> OPTION_R & 1) {
       show(cerr);
       cerr << '\n';
+    }
+    if(ilog) {
+      show_ir(*ilog);
+      *ilog << '\n';
+    }
+    if(flog) {
+      show_fr(*flog);
+      *flog << '\n';
     }
     if(opt >> OPTION_D & 1) {
       cerr << "PC: " << dmanip << pc << ", "
@@ -826,7 +854,23 @@ void core::show(ostream &os) {
   }
   
   os.flags(initflag);
-}  
+}
+
+void core::show_ir(ostream &os) {
+  os << "PC : " << dmanip << pc << '\n';
+  for(int i=0; i<NUM_OF_R; i++) {
+    os << "$" << dec << setfill(' ') << setw(2) << left << i << " : "
+       << dmanip << ir[i].u << '\n';
+  }
+}
+
+void core::show_fr(ostream &os) {
+  os << "PC : " << dmanip << pc << '\n';
+  for(int i=0; i<NUM_OF_R; i++) {
+    os << "$f" << dec << setfill(' ') << setw(2) << left << i << " : "
+       << dmanip << fr[i].u << '\n';
+  }
+}
 
 ostream &operator<<(ostream &os, const core &c) {
   ios_base::fmtflags initflag = os.flags();
