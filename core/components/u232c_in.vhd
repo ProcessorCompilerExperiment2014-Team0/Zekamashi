@@ -13,8 +13,9 @@ package u232c_in_p is
   end record;
 
   type u232c_in_out_t is record
-    empty : std_logic;
-    data : unsigned(7 downto 0);
+    empty    : std_logic;
+    overflow : std_logic;
+    data     : unsigned(7 downto 0);
   end record;
 
   component u232c_in is
@@ -23,6 +24,7 @@ package u232c_in_p is
       wtime : unsigned(15 downto 0) := x"1adb");
     port (
       clk  : in  std_logic;
+      rst  : in  std_logic;
       rx   : in  std_logic;
       din  : in  u232c_in_in_t;
       dout : out u232c_in_out_t);
@@ -58,33 +60,118 @@ end entity u232c_in;
 
 architecture behavior of u232c_in is
 
+  signal ibufi : inputbuf_in_t;
+  signal ibufo : inputbuf_out_t;  
+
   type latch_t is record
     recvbuf : unsigned(7 downto 0);
-    idx     : integer range 0 to 9;
+    idx     : integer range -1 to 8;
+    cnt     : unsigned(15 downto 0);
+    head    : unsigned(9 downto 0);
+    tail    : unsigned(9 downto 0);
   end record latch_t;
 
-  signal r, rin : latch_t;
+  constant latch_init_value : latch_t := (recvbuf => (others => '0'),
+                                          idx     => -1,
+                                          cnt     => (others => '0'),
+                                          head    => (others => '0'),
+                                          tail    => (others => '0'));
+
+  signal r, rin : latch_t := latch_init_value;
 
 begin
 
+  buf : inputbuf
+    port map (
+      clk  => clk,
+      din  => ibufi,
+      dout => ibufo);
+
   process (r, rx, din) is
-    variable v : latch_t;
+    variable v     : latch_t;
+    variable dv    : u232c_in_out_t;
+    variable ibufv : inputbuf_in_t;
   begin
 
-    v := rin;
+    v     := r;
+    ibufv := (we   => '-',
+              en   => '0',
+              addr1 => (others => '-'),
+              addr2 => (others => '-'),
+              data1 => (others => '-'));
+    dv    := (empty => '-',
+              overflow => '0',
+              data  => (others => '-'));
 
-    -- fixme!!
+    -- output
+    if r.head = r.tail then
+      dv.empty := '1';
+    else
+      dv.empty := '0';
+    end if;
+
+    dv.data := ibufo.data2;
+
+    if din.rden = '1' then
+      assert r.head /= r.tail report "u232c_in: read from empty buffer" severity error;
+
+      ibufv.en    := '1';
+      ibufv.we    := '0';
+      ibufv.addr2 := r.head;
+      v.head      := r.head + 1;
+    end if;
+
+    -- receiver
+    case r.idx is
+      when -1 =>
+        if rx = '0' then
+          v.cnt := wtime + shift_right(wtime, 1);
+          v.idx := 0;
+        end if;
+
+      when 8 =>
+        if v.cnt = 0 then
+          if r.tail + 1 /= r.head then
+            ibufv.en    := '1';
+            ibufv.we    := '1';
+            ibufv.addr1 := r.tail;
+            ibufv.data1 := r.recvbuf;
+
+            v.tail := r.tail + 1;
+          else
+            assert false report "u232c_in: input buffer overflow" severity warning;
+            dv.overflow := '1';
+          end if;
+
+          v.idx  := -1;
+        else
+          v.cnt := r.cnt - 1;
+        end if;
+
+      when others =>
+        if v.cnt = 0 then
+          v.recvbuf(r.idx) := rx;
+          v.cnt            := wtime;
+          v.idx            := r.idx + 1;
+        else
+          v.cnt := r.cnt - 1;
+        end if;
+        
+    end case;
+
+    rin   <= v;
+    dout  <= dv;
+    ibufi <= ibufv;
 
   end process;
 
   process (clk, rst) is
   begin
     if rst = '1' then
-      null;
+      r <= latch_init_value;
     elsif rising_edge(clk) then
       r <= rin;
     end if;
   end process;
-
 
 end architecture behavior;
