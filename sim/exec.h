@@ -2,6 +2,7 @@
 #define EXEC_H
 
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <cstdint>
 using namespace std;
@@ -48,6 +49,8 @@ private:
   long long i_limit;
   long long i_stat[I_SENTINEL];
   char stat_file[256];
+  ofstream *ilog;
+  ofstream *flog;
   unsigned opt; 
   map<int, uint32_t> test_map;
   map<unsigned, long long> br_map;
@@ -57,6 +60,8 @@ public:
   int verify();
   void run();
   void show(ostream &os);
+  void show_ir(ostream &os);
+  void show_fr(ostream &os);
   void write_br_stat();
   friend ostream &operator<<(ostream &os, const core &c);
 private:
