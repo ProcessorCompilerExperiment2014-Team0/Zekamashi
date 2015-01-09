@@ -8,10 +8,10 @@ package loopback_p is
     generic (
       wtime : unsigned(15 downto 0));
     port (
-      clk : in  std_logic;
-      rst : in  std_logic;
-      rx  : in  std_logic;
-      tx  : out std_logic);
+      clk  : in  std_logic;
+      xrst : in  std_logic;
+      rx   : in  std_logic;
+      tx   : out std_logic);
   end component loopback;
 
 end package loopback_p;
@@ -29,10 +29,10 @@ entity loopback is
   generic (
     wtime : unsigned(15 downto 0));
   port (
-    clk : in  std_logic;
-    rst : in  std_logic;
-    rx  : in  std_logic;
-    tx  : out std_logic);
+    clk  : in  std_logic;
+    xrst : in  std_logic;
+    rx   : in  std_logic;
+    tx   : out std_logic);
 
 end entity loopback;
 
@@ -44,8 +44,11 @@ architecture behavior of loopback is
   signal uoi : u232c_out_in_t;
   signal uoo : u232c_out_out_t;
 
-  signal rd  : std_logic := '0';
-  signal buf : unsigned(7 downto 0);
+  type latch_t is record
+    rd  : std_logic;
+  end record latch_t;
+
+  signal r, rin : latch_t := (rd => '0');
 
 begin
 
@@ -54,7 +57,7 @@ begin
       wtime => wtime)
     port map (
       clk  => clk,
-      rst  => rst,
+      xrst => xrst,
       rx   => rx,
       din  => uii,
       dout => uio);
@@ -64,31 +67,42 @@ begin
       wtime => wtime)
     port map (
       clk  => clk,
-      rst  => rst,
+      xrst => xrst,
       tx   => tx,
       din  => uoi,
       dout => uoo);
 
-  process (clk, rst) is
+  process (r, rx, uio, uoo) is
+    variable v : latch_t;
   begin
-    if rising_edge(clk) then
-      -- input
-      if uio.empty = '0' then
-        rd       <= '1';
-        uii.rden <= '1';
-      else
-        rd       <= '0';
-        uii.rden <= '0';
-      end if;
+    v := r;
 
-      -- output
-      if rd = '1' then
-        assert uoo.busy = '1' report "poyo" severity error;
-        uoi.go   <= '1';
-        uoi.data <= uio.data;
-      else
-        uoi.go <= '0';
-      end if;
+    -- input
+    if uio.empty = '0' and uoo.busy = '0' then
+      v.rd     := '1';
+      uii.rden <= '1';
+    else
+      v.rd     := '0';
+      uii.rden <= '0';
+    end if;
+
+    -- output
+    if r.rd = '1' then
+      uoi.go   <= '1';
+      uoi.data <= uio.data;
+    else
+      uoi.go <= '0';
+    end if;
+
+    rin <= v;
+  end process;
+
+  process (clk, xrst) is
+  begin
+    if xrst = '0' then
+      r <= (rd => '0');
+    elsif rising_edge(clk) then
+      r <= rin;
     end if;
   end process;
 

@@ -24,7 +24,7 @@ package u232c_in_p is
       wtime : unsigned(15 downto 0) := x"1adb");
     port (
       clk  : in  std_logic;
-      rst  : in  std_logic;
+      xrst : in  std_logic;
       rx   : in  std_logic;
       din  : in  u232c_in_in_t;
       dout : out u232c_in_out_t);
@@ -51,7 +51,7 @@ entity u232c_in is
       wtime : unsigned(15 downto 0) := x"1adb");
     port (
       clk  : in  std_logic;
-      rst  : in  std_logic;
+      xrst : in  std_logic;
       rx   : in  std_logic;
       din  : in  u232c_in_in_t;
       dout : out u232c_in_out_t);
@@ -96,30 +96,12 @@ begin
     v     := r;
     ibufv := (we   => '-',
               en   => '0',
-              addr1 => (others => '-'),
-              addr2 => (others => '-'),
-              data1 => (others => '-'));
+              addr1 => (others => '0'),
+              addr2 => (others => '0'),
+              data1 => (others => '0'));
     dv    := (empty => '-',
               overflow => '0',
-              data  => (others => '-'));
-
-    -- output
-    if r.head = r.tail then
-      dv.empty := '1';
-    else
-      dv.empty := '0';
-    end if;
-
-    dv.data := ibufo.data2;
-
-    if din.rden = '1' then
-      assert r.head /= r.tail report "u232c_in: read from empty buffer" severity error;
-
-      ibufv.en    := '1';
-      ibufv.we    := '0';
-      ibufv.addr2 := r.head;
-      v.head      := r.head + 1;
-    end if;
+              data  => (others => '0'));
 
     -- receiver
     case r.idx is
@@ -156,8 +138,24 @@ begin
         else
           v.cnt := r.cnt - 1;
         end if;
-        
+
     end case;
+
+    -- output
+    dv.data := ibufo.data2;
+
+    if din.rden = '1' then
+      ibufv.en    := '1';
+      ibufv.we    := '0';
+      ibufv.addr2 := r.head;
+      v.head      := r.head + 1;
+    end if;
+
+    if r.head = r.tail then
+      dv.empty := '1';
+    else
+      dv.empty := '0';
+    end if;
 
     rin   <= v;
     dout  <= dv;
@@ -165,11 +163,13 @@ begin
 
   end process;
 
-  process (clk, rst) is
+  process (clk, xrst) is
   begin
-    if rst = '1' then
+    if xrst = '0' then
       r <= latch_init_value;
     elsif rising_edge(clk) then
+      assert not (r.head = r.tail and rin.head = r.head + 1)
+        report "read from empty buffer" severity error;
       r <= rin;
     end if;
   end process;

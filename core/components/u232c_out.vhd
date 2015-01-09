@@ -23,7 +23,7 @@ package u232c_out_p is
       wtime : unsigned(15 downto 0));
     port (
       clk  : in  std_logic;
-      rst  : in  std_logic;
+      xrst : in  std_logic;
       tx   : out std_logic;
 
       din  : in  u232c_out_in_t;
@@ -48,9 +48,9 @@ entity u232c_out is
     report_write : boolean;
     wtime        : unsigned(15 downto 0) := x"1ADB");
   port (
-    clk : in  std_logic;
-    rst : in  std_logic;
-    tx  : out std_logic;
+    clk  : in  std_logic;
+    xrst : in  std_logic;
+    tx   : out std_logic;
 
     din  : in  u232c_out_in_t;
     dout : out u232c_out_out_t);
@@ -117,10 +117,10 @@ begin
     dout <= (busy => v.busy);
   end process;
 
-  process(clk, rst)
+  process(clk, xrst)
     variable v : latch_t;
   begin
-    if rst = '1' then
+    if xrst = '0' then
       r <= latch_init;
     elsif rising_edge(clk) then
       r <= rin;

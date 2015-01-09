@@ -108,7 +108,7 @@ architecture behavior of zkms_datacache is
 
 begin
 
-  cache : cachetable
+  cache : datacache_ram
     port map (
       clk  => clk,
       din  => cache_in,

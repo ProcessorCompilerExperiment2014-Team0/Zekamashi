@@ -10,29 +10,58 @@ library work;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.loopback_p.all;
+use work.fileio_p.all;
 
 entity loopbacktb is
 end entity loopbacktb;
 
-architecture testbench of loopbacktb is
+architecture behavior of loopbacktb is
 
-  constant wtime : unsigned(15 downto 0) := x"1c06";
+  constant wtime_a : unsigned(15 downto 0) := x"1c06";
+  constant wtime_b : unsigned(15 downto 0) := x"1adb";
   signal clk     : std_logic;
-  signal rst : std_logic := '0';
-  signal rx, tx  : std_logic;
-  signal cnt     : unsigned(15 downto 0) := (others => '0');
+  signal rst     : std_logic;
   signal uii     : u232c_in_in_t;
   signal uio     : u232c_in_out_t;
   signal uoi     : u232c_out_in_t;
   signal uoo     : u232c_out_out_t;
+  signal rx      : std_logic;
+  signal tx      : std_logic;
 
-  signal rd : std_logic;
+  type latch_t is record
+    rd       : boolean;
+    wr       : boolean;
+    readcnt  : integer;
+    writecnt : integer;
+  end record latch_t;
+
+  signal r, rin : latch_t := (rd       => false,
+                              wr       => false,
+                              readcnt  => 0,
+                              writecnt => 0);
+
+  file infile  : text open read_mode is "input.dat";
+  file outfile : text open write_mode is "output.dat";
+
+  signal fi : fileio_in_t := (wren => '0',
+                              rden => '0',
+                              data => (others => '0'));
+  signal fo : fileio_out_t;
 
 begin
 
+  io : fileio
+    generic map (
+      i => "input.dat",
+      o => "output.dat")
+    port map (
+      clk  => clk,
+      din  => fi,
+      dout => fo);
+
   makerx : u232c_out
     generic map (
-      wtime => wtime)
+      wtime => wtime_a)
     port map (
       clk  => clk,
       rst  => rst,
@@ -42,7 +71,7 @@ begin
 
   readtx : u232c_in
     generic map (
-      wtime => wtime)
+      wtime => wtime_a)
     port map (
       clk  => clk,
       rst  => rst,
@@ -52,51 +81,67 @@ begin
 
   doloopback: loopback
     generic map (
-      wtime => x"1adb")
+      wtime => wtime_b)
     port map(
       clk => clk,
       rst => rst,
       rx  => rx,
       tx  => tx);
 
-  process (clk) is
+  process (r, uoo, uio, fo) is
+    variable v    : latch_t;
     variable l    : line;
     variable data : std_logic_vector(7 downto 0);
   begin
+    v := r;
+
+    -- input
+    if uoo.busy = '0' and fo.eof = '0' then
+      fi.rden   <= '1';
+      v.readcnt := r.readcnt + 1;
+      v.rd      := true;
+    else
+      fi.rden <= '0';
+      v.rd    := false;
+    end if;
+
+    if r.rd then
+      uoi.data <= fo.data;
+      uoi.go   <= '1';
+    else
+      uoi.go <= '0';
+    end if;
+
+    -- output
+    if uio.empty = '0' then
+      v.wr     := true;
+      uii.rden <= '1';
+    else
+      v.wr     := false;
+      uii.rden <= '0';
+    end if;
+
+    if r.wr then
+      fi.data    <= uio.data;
+      fi.wren    <= '1';
+      v.writecnt := r.writecnt + 1;
+    else
+      fi.wren <= '0';
+    end if;
+
+    rin <= v;
+  end process;
+
+  process (clk) is
+  begin
     if rising_edge(clk) then
-      -- input
-      if cnt = 0 then
-        assert uoo.busy = '0' report "makerx is busy" severity error;
-        readline(input, l);
-        hread(l, data);
-
-        uoi.data <= unsigned(data);
-        uoi.go   <= '1';
-        cnt      <= wtime;
-      else
-        uoi.go <= '0';
-        cnt    <= cnt - 1;
-      end if;
-
-      -- output
-      if uio.empty = '0' then
-        rd       <= '1';
-        uii.rden <= '1';
-      else
-        rd       <= '0';
-        uii.rden <= '0';
-      end if;
-
-      if rd = '1' then
-        hwrite(l, std_logic_vector(uio.data));
-        writeline(output, l);
-      end if;
+      r <= rin;
     end if;
   end process;
 
   clockgen: process
   begin
-    if endfile(input) then
+    if fo.eof = '1' and r.readcnt = r.writecnt then
       wait;
     else
       clk <= '0';
@@ -106,4 +151,4 @@ begin
     end if;
   end process;
 
-end architecture testbench;
+end architecture behavior;

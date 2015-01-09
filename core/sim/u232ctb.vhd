@@ -9,7 +9,7 @@ use ieee.std_logic_textio.all;
 library work;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
-use work.loopback_p.all;
+use work.fileio_p.all;
 
 entity u232ctb is
 end entity u232ctb;
@@ -25,13 +25,36 @@ architecture behavior of u232ctb is
   signal uoo     : u232c_out_out_t;
   signal tako    : std_logic;
 
-  signal rd       : std_logic;
-  signal rd1      : std_logic;
-  signal fin      : boolean := false;
-  signal readcnt  : integer := 0;
-  signal writecnt : integer := 0;
+  type latch_t is record
+    rd       : boolean;
+    wr       : boolean;
+    readcnt  : integer;
+    writecnt : integer;
+  end record latch_t;
+
+  signal r, rin : latch_t := (rd       => false,
+                              wr       => false,
+                              readcnt  => 0,
+                              writecnt => 0);
+
+  file infile  : text open read_mode is "input.dat";
+  file outfile : text open write_mode is "output.dat";
+
+  signal fi : fileio_in_t := (wren => '0',
+                              rden => '0',
+                              data => (others => '0'));
+  signal fo : fileio_out_t;
 
 begin
+
+  io : fileio
+    generic map (
+      i => "input.dat",
+      o => "output.dat")
+    port map (
+      clk  => clk,
+      din  => fi,
+      dout => fo);
 
   makerx : u232c_out
     generic map (
@@ -53,45 +76,60 @@ begin
       din  => uii,
       dout => uio);
 
-  process (clk) is
+  process (r, uoo, uio, fo) is
+    variable v    : latch_t;
     variable l    : line;
     variable data : std_logic_vector(7 downto 0);
   begin
+    v := r;
+
+    -- input
+    if uoo.busy = '0' and fo.eof = '0' then
+      fi.rden   <= '1';
+      v.readcnt := r.readcnt + 1;
+      v.rd      := true;
+    else
+      fi.rden <= '0';
+      v.rd    := false;
+    end if;
+
+    if r.rd then
+      uoi.data <= fo.data;
+      uoi.go   <= '1';
+    else
+      uoi.go <= '0';
+    end if;
+
+    -- output
+    if uio.empty = '0' then
+      v.wr     := true;
+      uii.rden <= '1';
+    else
+      v.wr     := false;
+      uii.rden <= '0';
+    end if;
+
+    if r.wr then
+      fi.data    <= uio.data;
+      fi.wren    <= '1';
+      v.writecnt := r.writecnt + 1;
+    else
+      fi.wren <= '0';
+    end if;
+
+    rin <= v;
+  end process;
+
+  process (clk) is
+  begin
     if rising_edge(clk) then
-      -- input
-      if uoo.busy = '0' and not endfile(input) then
-        readline(input, l);
-        hread(l, data);
-        readcnt <= readcnt + 1;
-
-        uoi.data <= unsigned(data);
-        uoi.go   <= '1';
-      else
-        uoi.go <= '0';
-      end if;
-
-      -- output
-      if uio.empty = '0' then
-        rd       <= '1';
-        uii.rden <= '1';
-      else
-        rd       <= '0';
-        uii.rden <= '0';
-      end if;
-
-      rd1 <= rd;
-
-      if rd1 = '1' then
-        hwrite(l, std_logic_vector(uio.data));
-        writeline(output, l);
-        writecnt <= writecnt + 1;
-      end if;
+      r <= rin;
     end if;
   end process;
 
   clockgen: process
   begin
-    if endfile(input) and (readcnt = writecnt) then
+    if fo.eof = '1' and r.readcnt = r.writecnt then
       wait;
     else
       clk <= '0';
