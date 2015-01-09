@@ -1,4 +1,4 @@
-TESTBENCH = coretb loopbacktb
+TESTBENCH = coretb loopbacktb u232ctb
 SIMS = u232c_sim coretb sim_sram
 GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments
@@ -8,6 +8,9 @@ CORETB_DEPS = alu.vhd core.vhd instcache.vhd mmu.vhd datacache.vhd u232c_in.vhd 
 CORETB_SIM = coretb.vhd u232c_sim.vhd sim_stam.vhd
 LOOPBACKTB_DEPS = loopback.vhd  u232c_in.vhd inputbuf.vhd u232c_out.vhd
 LOOPBACKTB_SIM = loopbacktb.vhd
+U232CTB_DEPS = u232c_in.vhd inputbuf.vhd u232c_out.vhd
+U232CTB_SIM = u232ctb.vhd
+
 
 .PHONY: clean reload $(TESTBENCH)
 all: $(TESTBENCH)
@@ -20,8 +23,8 @@ components/code.dat: components/code.s misc/tohex ../asm/asagumo
 	misc/tohex 4 < components/code > components/code.dat
 
 coretb: $(CORETB_DEPS:%=components/%) $(CORETB_SIM:%=sim/%)
-
 loopbacktb: $(LOOPBACKTB_DEPS:%=components/%) $(LOOPBACKTB_SIM:%=sim/%)
+u232ctb: $(U232CTB_DEPS:%=components/%) $(U232CTB_SIM:%=sim/%)
 
 $(TESTBENCH):
 	$(GHDLC) -i $(GHDLFLAGS) $^
