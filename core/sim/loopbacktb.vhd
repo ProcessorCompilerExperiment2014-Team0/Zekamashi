@@ -19,14 +19,14 @@ architecture behavior of loopbacktb is
 
   constant wtime_a : unsigned(15 downto 0) := x"1c06";
   constant wtime_b : unsigned(15 downto 0) := x"1adb";
-  signal clk     : std_logic;
-  signal rst     : std_logic;
-  signal uii     : u232c_in_in_t;
-  signal uio     : u232c_in_out_t;
-  signal uoi     : u232c_out_in_t;
-  signal uoo     : u232c_out_out_t;
-  signal rx      : std_logic;
-  signal tx      : std_logic;
+  signal clk       : std_logic;
+  signal xrst      : std_logic;
+  signal uii       : u232c_in_in_t;
+  signal uio       : u232c_in_out_t;
+  signal uoi       : u232c_out_in_t;
+  signal uoo       : u232c_out_out_t;
+  signal rx        : std_logic;
+  signal tx        : std_logic;
 
   type latch_t is record
     rd       : boolean;
@@ -64,29 +64,29 @@ begin
       wtime => wtime_a)
     port map (
       clk  => clk,
-      rst  => rst,
+      xrst => xrst,
       tx   => rx,
       din  => uoi,
       dout => uoo);
 
   readtx : u232c_in
     generic map (
-      wtime => wtime_a)
+      wtime => wtime_b)
     port map (
       clk  => clk,
-      rst  => rst,
+      xrst => xrst,
       rx   => tx,
       din  => uii,
       dout => uio);
 
-  doloopback: loopback
+  doloopback : loopback
     generic map (
       wtime => wtime_b)
     port map(
-      clk => clk,
-      rst => rst,
-      rx  => rx,
-      tx  => tx);
+      clk  => clk,
+      xrst => xrst,
+      rx   => rx,
+      tx   => tx);
 
   process (r, uoo, uio, fo) is
     variable v    : latch_t;
