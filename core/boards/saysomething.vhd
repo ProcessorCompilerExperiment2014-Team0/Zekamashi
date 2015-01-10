@@ -6,7 +6,7 @@ library unisim;
 use unisim.vcomponents.all;
 
 library work;
-use work.loopback_p.all;
+use work.u232c_out_p.all;
 
 entity saysomething is
 
@@ -21,9 +21,11 @@ end entity saysomething;
 architecture behavior of saysomething is
 
   constant wtime : unsigned(15 downto 0) := x"1adb";
-  constant str : array (0 to 19) of unsigned (7 downto 0) := (
+  type hgoe is array (0 to 19) of unsigned(7 downto 0);
+  constant str : hgoe := (
     x"67", x"6F", x"6F", x"64", x"20", x"6D", x"6F", x"72", x"6E", x"69", x"6E", x"67", x"2C", x"20", x"67", x"75", x"79", x"73", x"21", x"20");
-  signal idx : integer range 0 to 20 := 0;  
+  signal idx : integer range 0 to 19 := 0;
+  signal cnt : integer range 0 to 127 := 127;
 
   signal clk, iclk, dclk, iclkfd, clkfd: std_logic;
   signal rst: std_logic := '0';
@@ -77,14 +79,20 @@ begin
   process (clk, xrst) is
   begin
     if xrst = '0' then
+      cnt <= 127;
       idx <= 0;
     elsif rising_edge(clk) then
-      if uo.busy = '0' then
-        if idx /= 20 then
-          ui.data <= str(idx);
-          ui.go   <= '1';
-          idx     <= idx + 1;
+      if uo.busy = '0' and cnt /= 0 then
+        ui.data <= str(idx);
+        ui.go   <= '1';
+        if idx = 19 then
+          idx <= 0;
+          cnt <= cnt - 1;
+        else
+          idx <= idx + 1;
         end if;
+      else
+        ui.go <= '0';
       end if;
     end if;
   end process;

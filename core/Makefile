@@ -2,7 +2,7 @@ TESTBENCH = coretb loopbacktb u232ctb
 SIMS = u232c_sim coretb sim_sram
 GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments
-GHDL_SIM_OPT = --stop-time=10ms
+GHDL_SIM_OPT = --stop-time=2ms
 
 CORETB_DEPS = alu.vhd core.vhd instcache.vhd mmu.vhd datacache.vhd u232c_in.vhd inputbuf.vhd u232c_out.vhd
 CORETB_SIM = coretb.vhd u232c_sim.vhd sim_stam.vhd

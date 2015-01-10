@@ -18,7 +18,7 @@ architecture behavior of u232ctb is
 
   constant wtime : unsigned(15 downto 0) := x"000f";
   signal clk     : std_logic;
-  signal rst     : std_logic;
+  signal xrst    : std_logic := '1';
   signal uii     : u232c_in_in_t;
   signal uio     : u232c_in_out_t;
   signal uoi     : u232c_out_in_t;
@@ -61,7 +61,7 @@ begin
       wtime => wtime)
     port map (
       clk  => clk,
-      rst  => rst,
+      xrst => xrst,
       tx   => tako,
       din  => uoi,
       dout => uoo);
@@ -71,7 +71,7 @@ begin
       wtime => wtime)
     port map (
       clk  => clk,
-      rst  => rst,
+      xrst => xrst,
       rx   => tako,
       din  => uii,
       dout => uio);

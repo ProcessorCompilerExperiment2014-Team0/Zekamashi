@@ -38,17 +38,20 @@ end entity loopback;
 
 architecture behavior of loopback is
 
-  signal idata, odata : unsigned(31 downto 0);
   signal uii : u232c_in_in_t;
   signal uio : u232c_in_out_t;
   signal uoi : u232c_out_in_t;
   signal uoo : u232c_out_out_t;
 
   type latch_t is record
-    rd  : std_logic;
+    rd   : std_logic;
+    wr   : std_logic;
+    data : unsigned(7 downto 0);
   end record latch_t;
 
-  signal r, rin : latch_t := (rd => '0');
+  signal r, rin : latch_t := (rd   => '0',
+                              wr   => '0',
+                              data => (others => '-'));
 
 begin
 
@@ -86,10 +89,17 @@ begin
       uii.rden <= '0';
     end if;
 
-    -- output
     if r.rd = '1' then
+      v.data := uio.data;
+      v.wr   := '1';
+    else
+      v.wr := '0';
+    end if;
+
+    -- output
+    if r.wr = '1' then
       uoi.go   <= '1';
-      uoi.data <= uio.data;
+      uoi.data <= r.data;
     else
       uoi.go <= '0';
     end if;
@@ -100,7 +110,9 @@ begin
   process (clk, xrst) is
   begin
     if xrst = '0' then
-      r <= (rd => '0');
+      r <= (rd => '0',
+            wr => '0',
+            data => (others => '-'));
     elsif rising_edge(clk) then
       r <= rin;
     end if;

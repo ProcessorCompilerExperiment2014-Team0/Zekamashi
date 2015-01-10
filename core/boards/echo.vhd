@@ -20,7 +20,7 @@ end entity echo;
 
 architecture rtl of echo is
 
-  constant wtime : unsigned(15 downto 0) := x"1adb";
+  constant wtime : unsigned(15 downto 0) := x"023D";
 
   signal clk, iclk, dclk, iclkfd, clkfd: std_logic;
   signal rst: std_logic := '0';

@@ -107,18 +107,23 @@ begin
     case r.idx is
       when -1 =>
         if rx = '0' then
-          v.cnt := wtime + shift_right(wtime, 1);
-          v.idx := 0;
+          if r.cnt = 0 then
+            v.cnt := wtime;
+            v.idx := 0;
+          else
+            v.cnt := r.cnt - 1;
+          end if;
         end if;
 
       when 8 =>
-        if v.cnt = 0 then
+        if r.cnt = 0 then
           if r.tail + 1 /= r.head then
             ibufv.en    := '1';
             ibufv.we    := '1';
             ibufv.addr1 := r.tail;
             ibufv.data1 := r.recvbuf;
 
+            v.cnt  := shift_right(wtime, 1);
             v.tail := r.tail + 1;
           else
             assert false report "u232c_in: input buffer overflow" severity warning;
@@ -131,7 +136,7 @@ begin
         end if;
 
       when others =>
-        if v.cnt = 0 then
+        if r.cnt = 0 then
           v.recvbuf(r.idx) := rx;
           v.cnt            := wtime;
           v.idx            := r.idx + 1;
