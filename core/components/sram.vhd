@@ -91,11 +91,11 @@ architecture behavior of sram is
   type latch_t is record
     we0   : std_logic;
     addr0 : std_logic_vector(19 downto 0);
-    data0 : std_logic_vector(35 downto 0);
+    data0 : std_logic_vector(31 downto 0);
     we1   : std_logic;
-    data1 : std_logic_vector(35 downto 0);
+    data1 : std_logic_vector(31 downto 0);
     we2   : std_logic;
-    data2 : std_logic_vector(35 downto 0);
+    data2 : std_logic_vector(31 downto 0);
     odata : std_logic_vector(31 downto 0);
   end record latch_t;
 
@@ -116,7 +116,7 @@ begin  -- architecture behavior
   xe1   <= '0';
   e2a   <= '1';
   xe3   <= '0';
-  xzbe   <= (others => '0');
+  xzbe  <= (others => '0');
   xga   <= '0';
   xzcke <= '0';
   zclkma(0) <= clk;
@@ -145,7 +145,7 @@ begin  -- architecture behavior
     -- stage 0
     v.we0   := din.we;
     v.addr0 := std_logic_vector(din.addr);
-    v.data0 := "0000" & std_logic_vector(din.data);
+    v.data0 := std_logic_vector(din.data);
 
     -- stage 1
     zav     := r.addr0;
@@ -171,7 +171,7 @@ begin  -- architecture behavior
     -- stage 4
     dv.data := unsigned(r.odata);
 
-    r    <= rin;
+    rin  <= v;
     dout <= dv;
     za   <= zav;
     zd   <= zdv;
@@ -182,7 +182,7 @@ begin  -- architecture behavior
 
   process (clk, xrst) is
   begin
-    if xrst = '1' then
+    if xrst = '0' then
       r <= latch_init;
     elsif rising_edge(clk) then
       r <= rin;

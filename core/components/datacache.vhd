@@ -36,8 +36,8 @@ package datacache_p is
       clk  : in std_logic;
       xrst : in std_logic;
 
-      srami : in  sram_in_t;
-      sramo : out sram_out_t;
+      srami : out sram_in_t;
+      sramo : in  sram_out_t;
 
       din  : in  datacache_in_t;
       dout : out datacache_out_t);
@@ -63,8 +63,8 @@ entity datacache is
     clk : in std_logic;
     xrst : in std_logic;
 
-    srami : in  sram_in_t;
-    sramo : out sram_out_t;
+    srami : out  sram_in_t;
+    sramo : in sram_out_t;
 
     din  : in  datacache_in_t;
     dout : out datacache_out_t);
