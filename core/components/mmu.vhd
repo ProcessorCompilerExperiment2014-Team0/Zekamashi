@@ -9,48 +9,41 @@ use ieee.numeric_std.all;
 library work;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
-use work.zkms_datacache_p.all;
+use work.datacache_p.all;
 
-package zkms_mmu_p is
+package mmu_p is
 
-  type zkms_mmu_in_t is record
+  type mmu_in_t is record
     addr : unsigned(20 downto 0);
     data : unsigned(31 downto 0);
     en   : std_logic;
     we   : std_logic;
-  end record zkms_mmu_in_t;
+  end record mmu_in_t;
 
-  type zkms_mmu_out_t is record
+  type mmu_out_t is record
     data : unsigned(31 downto 0);
     miss : std_logic;
-  end record zkms_mmu_out_t;
+  end record mmu_out_t;
 
-  type zkms_mmu_io_in_t is record
-    sin   : u232c_in_out_t;
-    sout  : u232c_out_out_t;
-    cache : zkms_datacache_out_t;
-  end record zkms_mmu_io_in_t;
-
-  type zkms_mmu_io_out_t is record
-    sin   : u232c_in_in_t;
-    sout  : u232c_out_in_t;
-    cache : zkms_datacache_in_t;
-  end record zkms_mmu_io_out_t;
-
-  component zkms_mmu is
+  component mmu is
     port (
-      clk  : in  std_logic;
-      rst  : in  std_logic;
-      sin  : in  zkms_mmu_io_in_t;
-      sout : out zkms_mmu_io_out_t;
-      din  : in  zkms_mmu_in_t;
-      dout : out zkms_mmu_out_t);
-  end component zkms_mmu;
+      clk  : in std_logic;
+      xrst : in std_logic;
 
-end package zkms_mmu_p;
+      uii    : out u232c_in_in_t;
+      uio    : in  u232c_in_out_t;
+      uoi    : out u232c_out_in_t;
+      uoo    : in  u232c_out_out_t;
+      cachei : out datacache_in_t;
+      cacheo : in  datacache_out_t;
+
+      din  : in  mmu_in_t;
+      dout : out mmu_out_t);
+  end component mmu;
+
+end package mmu_p;
 
 -------------------------------------------------------------------------------
-
 -- Definition
 -------------------------------------------------------------------------------
 
@@ -61,22 +54,28 @@ use ieee.numeric_std.all;
 library work;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
-use work.zkms_datacache_p.all;
-use work.zkms_mmu_p.all;
+use work.datacache_p.all;
+use work.mmu_p.all;
 
-entity zkms_mmu is
+entity mmu is
   port (
-    clk  : in  std_logic;
-    rst  : in  std_logic;
-    sin  : in  zkms_mmu_io_in_t;
-    sout : out zkms_mmu_io_out_t;
-    din  : in  zkms_mmu_in_t;
-    dout : out zkms_mmu_out_t);
-end entity zkms_mmu;
+    clk  : in std_logic;
+    xrst : in std_logic;
 
-architecture behavior of zkms_mmu is
+    uii    : out u232c_in_in_t;
+    uio    : in  u232c_in_out_t;
+    uoi    : out u232c_out_in_t;
+    uoo    : in  u232c_out_out_t;
+    cachei : out datacache_in_t;
+    cacheo : in  datacache_out_t;
 
-  type src_t is (SRC_SRAM, SRC_DATA, SRC_SIN, SRC_NOPE);
+    din  : in  mmu_in_t;
+    dout : out mmu_out_t);
+end entity mmu;
+
+architecture behavior of mmu is
+
+  type src_t is (SRC_SRAM, SRC_DATA, SRC_U232C, SRC_NOPE);
 
   type latch_t is record
     src  : src_t;
@@ -87,32 +86,34 @@ architecture behavior of zkms_mmu is
 
 begin
 
-  process (din, sin, r) is
-    variable v  : latch_t;
-    variable dv : zkms_mmu_out_t;
-    variable sv : zkms_mmu_io_out_t;
+  process (r, uio, uoo, cacheo, din) is
+    variable v      : latch_t;
+    variable dv     : mmu_out_t;
+    variable uiv    : u232c_in_in_t;
+    variable uov    : u232c_out_in_t;
+    variable cachev : datacache_in_t;
   begin
     v := r;
     dv := (data => (others => '-'),
            miss => '0');
-    sv := (sin   => (rden => '0'),
-           sout  => (data => (others => '-'),
-                     go   => '0'),
-           cache => (addr => (others => '-'),
-                     data => (others => '-'),
-                     en   => '0',
-                     we   => '1'));
+    uiv := (rden => '0');
+    uov := (data => (others => '-'),
+            go   => '0');
+    cachev := (addr => (others => '-'),
+               data => (others => '-'),
+               en   => '0',
+               we   => '1');
 
     ---------------------------------------------------------------------------
 
 
     case din.addr(20) is
       when '0' =>
-        sv.cache := (addr => din.addr(19 downto 0),
-                     data => din.data,
-                     en   => din.en,
-                     we   => din.we);
-        v.src    := SRC_SRAM;
+        cachev := (addr => din.addr(19 downto 0),
+                   data => din.data,
+                   en   => din.en,
+                   we   => din.we);
+        v.src := SRC_SRAM;
 
       when '1' =>
         if din.en = '1' then
@@ -121,22 +122,22 @@ begin
               when x"00000" | x"00001" | x"00002" =>
                 assert false report "cannot write to this address" severity error;
               when x"00003" =>
-                sv.sout.data := din.data(7 downto 0);
-                sv.sout.go   := '1';
+                uov.data := din.data(7 downto 0);
+                uov.go   := '1';
                 v.src        := SRC_NOPE;
               when others => null;
             end case;
           else
             case din.addr(19 downto 0) is
               when x"00000" =>
-                v.data := (0      => not sin.sin.empty,
+                v.data := (0      => not uio.empty,
                            others => '0');
                 v.src := SRC_DATA;
               when x"00001" =>
-                sv.sin.rden := '1';
-                v.src := SRC_SIN;
+                uiv.rden := '1';
+                v.src := SRC_U232C;
               when x"00002" =>
-                v.data := (0      => sin.sout.busy,
+                v.data := (0      => uoo.busy,
                            others => '0');
                 v.src := SRC_DATA;
               when x"00003" =>
@@ -153,13 +154,13 @@ begin
 
     case r.src is
       when SRC_SRAM =>
-        dv.data := sin.cache.data;
-        dv.miss := sin.cache.miss;
+        dv.data := cacheo.data;
+        dv.miss := cacheo.miss;
       when SRC_DATA =>
         dv.data := resize(r.data, 32);
         dv.miss := '0';
-      when SRC_SIN =>
-        dv.data := resize(sin.sin.data, 32);
+      when SRC_U232C =>
+        dv.data := resize(uio.data, 32);
         dv.miss := '0';
       when SRC_NOPE =>
         dv.data := (others => '-');
@@ -169,14 +170,16 @@ begin
 
     ---------------------------------------------------------------------------
 
-    rin  <= v;
-    dout <= dv;
-    sout <= sv;
+    rin    <= v;
+    uii    <= uiv;
+    uoi    <= uov;
+    cachei <= cachev;
+    dout   <= dv;
   end process;
 
-  process (clk, rst) is
+  process (clk, xrst) is
   begin
-    if rst = '1' then
+    if xrst = '0' then
       r <= (src  => SRC_NOPE,
             data => (others => '-'));
     elsif rising_edge(clk) then

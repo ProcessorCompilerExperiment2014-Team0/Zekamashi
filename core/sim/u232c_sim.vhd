@@ -17,7 +17,6 @@ package u232c_sim_p is
       report_read : boolean := false);
     port (
       clk  : in  std_logic;
-      rst  : in  std_logic;
       din  : in  u232c_in_in_t;
       dout : out u232c_in_out_t);
   end component u232c_in_sim;
@@ -27,7 +26,6 @@ package u232c_sim_p is
       report_write : boolean := false);
     port (
       clk  : in  std_logic;
-      rst  : in  std_logic;
       din  : in  u232c_out_in_t;
       dout : out u232c_out_out_t);
   end component u232c_out_sim;
@@ -78,7 +76,6 @@ entity u232c_in_sim is
       report_read : boolean := false);
     port (
       clk  : in  std_logic;
-      rst  : in  std_logic;
       din  : in  u232c_in_in_t;
       dout : out u232c_in_out_t);
 end entity u232c_in_sim;
@@ -131,7 +128,6 @@ entity u232c_out_sim is
     report_write : boolean := false);
   port (
     clk  : in  std_logic;
-    rst  : in  std_logic;
     din  : in  u232c_out_in_t;
     dout : out u232c_out_out_t);
 end entity u232c_out_sim;

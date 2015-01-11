@@ -4,11 +4,12 @@ use ieee.numeric_std.all;
 
 library work;
 use work.sramsim.all;
-use work.zkms_alu_p.all;
-use work.zkms_core_p.all;
-use work.zkms_instcache_p.all;
-use work.zkms_datacache_p.all;
-use work.zkms_mmu_p.all;
+use work.alu_p.all;
+use work.core_p.all;
+use work.instcache_p.all;
+use work.datacache_p.all;
+use work.mmu_p.all;
+use work.sram_p.all;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.u232c_sim_p.all;
@@ -18,12 +19,23 @@ end entity coretb;
 
 architecture testbench of coretb is
 
-  signal clk : std_logic;
-  signal rst : std_logic;
-  signal ci : zkms_core_in_t;
-  signal co : zkms_core_out_t;
-  signal si : zkms_mmu_io_in_t;
-  signal so : zkms_mmu_io_out_t;
+  signal clk  : std_logic;
+  signal xrst : std_logic;
+
+  signal alui    : alu_in_t;
+  signal aluo    : alu_out_t;
+  signal dcachei : datacache_in_t;
+  signal dcacheo : datacache_out_t;
+  signal icachei : instcache_in_t;
+  signal icacheo : instcache_out_t;
+  signal mmui    : mmu_in_t;
+  signal mmuo    : mmu_out_t;
+  signal srami   : sram_in_t;
+  signal sramo   : sram_out_t;
+  signal uii     : u232c_in_in_t;
+  signal uio     : u232c_in_out_t;
+  signal uoi     : u232c_out_in_t;
+  signal uoo     : u232c_out_out_t;
 
   signal zd    : std_logic_vector(31 downto 0);
   signal zdp   : std_logic_vector(3  downto 0);
@@ -43,39 +55,56 @@ architecture testbench of coretb is
 
 begin
 
-  rst <= '0';
+  xrst <= '1';
 
-  core : zkms_core
+  corec : core
+    port map (
+      clk     => clk,
+      xrst    => xrst,
+      icachei => icachei,
+      icacheo => icacheo,
+      alui    => alui,
+      aluo    => aluo,
+      mmui    => mmui,
+      mmuo    => mmuo);
+
+  instcachec : instcache
     port map (
       clk  => clk,
-      rst  => rst,
-      din  => ci,
-      dout => co);
+      din  => icachei,
+      dout => icacheo);
 
-  instcache : zkms_instcache
+  aluc : alu
     port map (
-      clk  => clk,
-      din  => co.instcache,
-      dout => ci.instcache);
+      din  => alui,
+      dout => aluo);
 
-  alu : zkms_alu
-    port map (
-      din  => co.alu,
-      dout => ci.alu);
-
-  mmu : zkms_mmu
+  mmuc : mmu
     port map (
       clk    => clk,
-      rst    => rst,
-      sin    => si,
-      sout   => so,
-      din    => co.mmu,
-      dout   => ci.mmu);
+      xrst   => xrst,
+      uii    => uii,
+      uio    => uio,
+      uoi    => uoi,
+      uoo    => uoo,
+      cachei => dcachei,
+      cacheo => dcacheo,
+      din    => mmui,
+      dout   => mmuo);
 
-  datacache : zkms_datacache
+  datacachec : datacache
+    port map (
+      clk   => clk,
+      xrst  => xrst,
+      srami => srami,
+      sramo => sramo,
+      din   => dcachei,
+      dout  => dcacheo);
+
+  sramc : sram
     port map (
       clk    => clk,
-      rst    => rst,
+      xrst   => xrst,
       zd     => zd,
       zdp    => zdp,
       za     => za,
@@ -91,26 +120,24 @@ begin
       xft    => xft,
       xlbo   => xlbo,
       zza    => zza,
-      din    => so.cache,
-      dout   => si.cache);
+      din    => srami,
+      dout   => sramo);
 
-  u232c_in : u232c_in_sim
+  u232c_inc : u232c_in_sim
     generic map (
       report_read => false)
     port map (
       clk  => clk,
-      rst  => rst,
-      din  => so.sin,
-      dout => si.sin);
+      din  => uii,
+      dout => uio);
 
-  u232c_out : u232c_out_sim
+  u232c_outc : u232c_out_sim
     generic map (
       report_write => false)
     port map (
       clk  => clk,
-      rst  => rst,
-      din  => so.sout,
-      dout => si.sout);
+      din  => uoi,
+      dout => uoo);
 
   sram_unit0 : GS8160Z18
     generic map (

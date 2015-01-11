@@ -28,7 +28,7 @@ package datacache_ram_p is
       dout : out datacache_ram_out_t);
   end component datacache_ram;
 
-end package dtacache_ram_p;
+end package datacache_ram_p;
 
 -------------------------------------------------------------------------------
 -- Definition

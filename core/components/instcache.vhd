@@ -6,24 +6,24 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-package zkms_instcache_p is
+package instcache_p is
 
-  type zkms_instcache_in_t is record
+  type instcache_in_t is record
     addr : unsigned(16 downto 0);
-  end record zkms_instcache_in_t;
+  end record instcache_in_t;
 
-  type zkms_instcache_out_t is record
+  type instcache_out_t is record
     data : unsigned(31 downto 0);
-  end record zkms_instcache_out_t;
+  end record instcache_out_t;
 
-  component zkms_instcache is
+  component instcache is
     port (
       clk  : in  std_logic;
-      din  : in  zkms_instcache_in_t;
-      dout : out zkms_instcache_out_t);
-  end component zkms_instcache;
+      din  : in  instcache_in_t;
+      dout : out instcache_out_t);
+  end component instcache;
 
-end package zkms_instcache_p;
+end package instcache_p;
 
 -------------------------------------------------------------------------------
 -- Definition
@@ -38,19 +38,19 @@ library std;
 use std.textio.all;
 
 library work;
-use work.zkms_instcache_p.all;
+use work.instcache_p.all;
 
 
-entity zkms_instcache is
+entity instcache is
   
   port (
     clk  : in  std_logic;
-    din  : in  zkms_instcache_in_t;
-    dout : out zkms_instcache_out_t);
+    din  : in  instcache_in_t;
+    dout : out instcache_out_t);
 
-end entity zkms_instcache;
+end entity instcache;
 
-architecture behavior of zkms_instcache is
+architecture behavior of instcache is
 
   subtype rom_data_t is unsigned(31 downto 0);
   type rom_t is array (0 to 1023) of rom_data_t;

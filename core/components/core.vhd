@@ -7,33 +7,26 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zkms_instcache_p.all;
-use work.zkms_alu_p.all;
-use work.zkms_mmu_p.all;
+use work.instcache_p.all;
+use work.alu_p.all;
+use work.mmu_p.all;
 
-package zkms_core_p is
+package core_p is
 
-  type zkms_core_in_t is record
-    instcache : zkms_instcache_out_t;
-    alu       : zkms_alu_out_t;
-    mmu       : zkms_mmu_out_t;
-  end record zkms_core_in_t;
-
-  type zkms_core_out_t is record
-    instcache : zkms_instcache_in_t;
-    alu       : zkms_alu_in_t;
-    mmu       : zkms_mmu_in_t;
-  end record zkms_core_out_t;
-
-  component zkms_core is
+  component core is
     port (
-      clk  : in  std_logic;
-      rst  : in  std_logic;
-      din  : in  zkms_core_in_t;
-      dout : out zkms_core_out_t);
-  end component zkms_core;
+      clk  : in std_logic;
+      xrst : in std_logic;
 
-end package zkms_core_p;
+      icachei : out instcache_in_t;
+      icacheo : in  instcache_out_t;
+      alui    : out alu_in_t;
+      aluo    : in  alu_out_t;
+      mmui    : out mmu_in_t;
+      mmuo    : in  mmu_out_t);
+  end component core;
+
+end package core_p;
 
 -------------------------------------------------------------------------------
 -- Definition
@@ -44,19 +37,25 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zkms_core_p.all;
-use work.zkms_instcache_p.all;
-use work.zkms_alu_p.all;
+use work.core_p.all;
+use work.instcache_p.all;
+use work.alu_p.all;
+use work.mmu_p.all;
 
-entity zkms_core is
+entity core is
   port (
-    clk  : in  std_logic;
-    rst  : in  std_logic;
-    din  : in  zkms_core_in_t;
-    dout : out zkms_core_out_t);
-end entity zkms_core;
+    clk  : in std_logic;
+    xrst : in std_logic;
 
-architecture behavior of zkms_core is
+    icachei : out instcache_in_t;
+    icacheo : in  instcache_out_t;
+    alui    : out alu_in_t;
+    aluo    : in  alu_out_t;
+    mmui    : out mmu_in_t;
+    mmuo    : in  mmu_out_t);
+end entity core;
+
+architecture behavior of core is
 
   subtype word_t is unsigned(31 downto 0);
   subtype reg_index_t is integer range 0 to 31;
@@ -292,7 +291,7 @@ architecture behavior of zkms_core is
     r : latch_t)
     return hazard_t is
   begin
-    if din.mmu.miss = '1' then
+    if mmuo.miss = '1' then
       assert r.w.opmode = OP_LOAD report "something is wrong with memory operation" severity error;
       return HZ_WB;
     elsif detect_hz_exe(r) then
@@ -318,7 +317,7 @@ architecture behavior of zkms_core is
     elsif n = r.e.wb then
       case r.e.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return din.alu.o;
+          return aluo.o;
         when others =>
           return (others => '-');
       end case;
@@ -353,7 +352,7 @@ architecture behavior of zkms_core is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
           return r.w.alu_out;
         when OP_LOAD =>
-          return din.mmu.data;
+          return mmuo.data;
         when others =>
           return (others => '-');
       end case;
@@ -366,9 +365,11 @@ architecture behavior of zkms_core is
 
 begin
 
-  comb : process (din, r) is
-    variable v : latch_t;
-    variable dv : zkms_core_out_t;
+  comb : process (r, icacheo, aluo, mmuo) is
+    variable v       : latch_t;
+    variable icachev : instcache_in_t;
+    variable aluv    : alu_in_t;
+    variable mmuv    : mmu_in_t;
 
     -- variables for instruction decode
     variable opcode : unsigned(5 downto 0);
@@ -382,15 +383,15 @@ begin
     variable hazard : hazard_t;
 
   begin
-    v := r;
-    dv := (instcache => (addr => (others => '-')),
-           alu       => (inst => ALU_INST_NOP,
-                         i1   => (others => '-'),
-                         i2   => (others => '-')),
-           mmu       => (addr => (others => '-'),
-                         data => (others => '-'),
-                         en   => '0',
-                         we   => '0'));
+    v       := r;
+    icachev := (addr => (others => '-'));
+    aluv    := (inst => ALU_INST_NOP,
+                i1   => (others => '-'),
+                i2   => (others => '-'));
+    mmuv := (addr => (others => '0'),
+             data => (others => '0'),
+             en   => '0',
+             we   => '0');
 
     hazard := detect_hazard(r);
     hz <= hazard;
@@ -399,7 +400,7 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    v.d.inst := din.instcache.data;
+    v.d.inst := icacheo.data;
     v.d.pc   := r.pc;
     v.pc     := r.pc + 1;
 
@@ -420,7 +421,7 @@ begin
         store_reg(v.ir, r.w.wb, r.w.alu_out);
       when OP_FPU => null;                  -- fixme
       when OP_LOAD =>
-        if din.mmu.miss = '0' then store_reg(v.ir, r.w.wb, din.mmu.data); end if;
+        if mmuo.miss = '0' then store_reg(v.ir, r.w.wb, mmuo.data); end if;
       when others => null;
     end case;
 
@@ -524,39 +525,39 @@ begin
     -- Execute
     -------------------------------------------------------------------------
 
-    dv.alu.inst :=  r.e.alu_inst;
+    aluv.inst :=  r.e.alu_inst;
     mdisp := r.e.inst(15 downto 0);
 
     case r.e.opmode is
       when OP_ALU =>
-        dv.alu.i1 := forward_data_ir_exe(r.e.rav, r.e.ra);
+        aluv.i1 := forward_data_ir_exe(r.e.rav, r.e.ra);
         if r.e.inst(12) = '1' then      -- litp
-          dv.alu.i2 := resize(r.e.inst(20 downto 13), 32);
+          aluv.i2 := resize(r.e.inst(20 downto 13), 32);
         else
-          dv.alu.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
+          aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
         end if;
       when OP_LDA =>
-        dv.alu.i1 := unsigned(resize(signed(mdisp), 32));
-        dv.alu.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
+        aluv.i1 := unsigned(resize(signed(mdisp), 32));
+        aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
       when OP_LDAH =>
-        dv.alu.i1 := mdisp & x"0000";
-        dv.alu.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
+        aluv.i1 := mdisp & x"0000";
+        aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
       when OP_LOAD | OP_STORE =>
-        dv.alu.i1 := unsigned(resize(signed(mdisp), 32));
-        dv.alu.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
+        aluv.i1 := unsigned(resize(signed(mdisp), 32));
+        aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
       when OP_JMP =>
-        dv.alu.i1 := r.e.pc;
-        dv.alu.i2 := to_unsigned(1, 32);
+        aluv.i1 := r.e.pc;
+        aluv.i2 := to_unsigned(1, 32);
       when OP_BRA =>
-        dv.alu.i1 := to_unsigned(0, 32);
-        dv.alu.i2 := to_unsigned(0, 32);
+        aluv.i1 := to_unsigned(0, 32);
+        aluv.i2 := to_unsigned(0, 32);
       when OP_FPU => null;
                      -- fixme
 
       when others => null;
     end case;
     
-    v.m.alu_out := din.alu.o;
+    v.m.alu_out := aluo.o;
     v.m.wb      := r.e.wb;
     v.m.opmode  := r.e.opmode;
     v.m.data    := forward_data_ir_exe(r.e.rav, r.e.ra);  -- necessary for only store
@@ -579,20 +580,20 @@ begin
 
     case r.m.opmode is
       when OP_LOAD =>
-        dv.mmu := (addr => r.m.alu_out(20 downto 0),
-                   data => (others => '-'),
-                   en   => '1',
-                   we   => '0');
+        mmuv := (addr => r.m.alu_out(20 downto 0),
+                 data => (others => '0'),
+                 en   => '1',
+                 we   => '0');
       when OP_STORE =>
-        dv.mmu := (addr => r.m.alu_out(20 downto 0),
-                   data => r.m.data,
-                   en   => '1',
-                   we   => '1');
+        mmuv := (addr => r.m.alu_out(20 downto 0),
+                 data => r.m.data,
+                 en   => '1',
+                 we   => '1');
       when others =>
-        dv.mmu := (addr => (others => '-'),
-                   data => (others => '-'),
-                   en   => '0',
-                   we   => '0');
+        mmuv := (addr => (others => '0'),
+                 data => (others => '0'),
+                 en   => '0',
+                 we   => '0');
     end case;
 
     v.w.wb      := r.m.wb;
@@ -609,16 +610,18 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    dv.instcache.addr := v.pc(16 downto 0);
+    icachev.addr := v.pc(16 downto 0);
     if hazard = HZ_FINE or hazard = HZ_ID then
-      dout <= dv;
+      icachei <= icachev;
+      alui    <= aluv;
+      mmui    <= mmuv;
     end if;
-    rin  <= v;
+    rin <= v;
   end process;
 
-  seq : process (clk, rst) is
+  seq : process (clk, xrst) is
   begin
-    if rst = '1' then
+    if xrst = '0' then
       r <= latch_init_value;
     elsif rising_edge(clk) then
       r <= rin;

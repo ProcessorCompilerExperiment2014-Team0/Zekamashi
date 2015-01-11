@@ -6,7 +6,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-package zkms_alu_p is
+package alu_p is
 
   type alu_inst_t is (
     ALU_INST_NOP,
@@ -24,23 +24,23 @@ package zkms_alu_p is
     ALU_INST_SRL,
     ALU_INST_SRA);
 
-  type zkms_alu_in_t is record
+  type alu_in_t is record
     inst : alu_inst_t;
     i1   : unsigned(31 downto 0);
     i2   : unsigned(31 downto 0);
   end record;
 
-  type zkms_alu_out_t is record
+  type alu_out_t is record
     o : unsigned(31 downto 0);
   end record;
 
-  component zkms_alu
+  component alu
     port (
-      din  : in  zkms_alu_in_t;
-      dout : out zkms_alu_out_t);
+      din  : in  alu_in_t;
+      dout : out alu_out_t);
   end component;
 
-end zkms_alu_p;
+end alu_p;
 
 -------------------------------------------------------------------------------
 -- Definition
@@ -51,15 +51,15 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.zkms_alu_p.all;
+use work.alu_p.all;
 
-entity zkms_alu is
+entity alu is
   port (
-    din  : in  zkms_alu_in_t;
-    dout : out zkms_alu_out_t);
-end entity zkms_alu;
+    din  : in  alu_in_t;
+    dout : out alu_out_t);
+end entity alu;
 
-architecture behavior of zkms_alu is
+architecture behavior of alu is
 begin
 
   process (din) is

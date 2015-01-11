@@ -14,7 +14,7 @@ use ieee.numeric_std.all;
 package sram_p is
 
   type sram_in_t is record
-    addr : unsigned(20 downto 0);
+    addr : unsigned(19 downto 0);
     data : unsigned(31 downto 0);
     we   : std_logic;
   end record sram_in_t;
@@ -91,11 +91,11 @@ architecture behavior of sram is
   type latch_t is record
     we0   : std_logic;
     addr0 : std_logic_vector(19 downto 0);
-    data0 : std_logic_vector(31 downto 0);
+    data0 : std_logic_vector(35 downto 0);
     we1   : std_logic;
-    data1 : std_logic_vector(31 downto 0);
+    data1 : std_logic_vector(35 downto 0);
     we2   : std_logic;
-    data2 : std_logic_vector(31 downto 0);
+    data2 : std_logic_vector(35 downto 0);
     odata : std_logic_vector(31 downto 0);
   end record latch_t;
 
@@ -104,9 +104,10 @@ architecture behavior of sram is
     addr0 => (others => '0'),
     data0 => (others => '0'),
     we1   => '0',
-    addr1 => (others => '0'),
+    data1 => (others => '0'),
     we2   => '0',
-    addr2 => (others => '0'));
+    data2 => (others => '0'),
+    odata => (others => '0'));
 
   signal r, rin : latch_t := latch_init;
 
@@ -135,29 +136,29 @@ begin  -- architecture behavior
   begin
 
     v    := rin;
-    dv   := (others => '-');
+    dv   := (data => (others => '-'));
     zav  := (others => '0');
     zdv  := (others => '0');
     zdpv := (others => '0');
     xwav := '1';
 
     -- stage 0
-    v.we0   <= din.we;
-    v.addr0 <= std_logic_vector(din.addr);
-    v.data0 <= "0000" & std_logic_vector(din.data);
+    v.we0   := din.we;
+    v.addr0 := std_logic_vector(din.addr);
+    v.data0 := "0000" & std_logic_vector(din.data);
 
     -- stage 1
     zav     := r.addr0;
-    xwav    := not r.wa0;
-    v.we1   := r.wa0;
+    xwav    := not r.we0;
+    v.we1   := r.we0;
     v.data1 := v.data0;
 
     -- stage 2
-    v.wa2   := r.wa1;
+    v.we2   := r.we1;
     v.data2 := r.data1;
 
     -- stage 3
-    if r.wa2 = '1' then
+    if r.we2 = '1' then
       zdv     := v.data2;
       zdpv    := "0000";
       v.odata := (others => '-');
