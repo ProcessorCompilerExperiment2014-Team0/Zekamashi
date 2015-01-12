@@ -1,36 +1,40 @@
+LIBDIR	= mylib
+
+MKLIB	= vlib
+MAP	= vmap
+SIM	= vsim
+SIMFLAGS	= -c -lib mylib -do "run 20ms; quit"
 TESTBENCH = coretb loopbacktb u232ctb
-SIMS = u232c_sim coretb sramsim
-GHDLC = ghdl
-GHDLFLAGS  = -g --ieee=synopsys --mb-comments
-GHDL_SIM_OPT = --stop-time=2ms
 
-CORETB_DEPS = alu.vhd core.vhd datacache.vhd datacache_ram.vhd inputbuf.vhd instcache.vhd mmu.vhd sram.vhd  u232c_in.vhd u232c_out.vhd
-CORETB_SIM = coretb.vhd u232c_sim.vhd sramsim.vhd
-LOOPBACKTB_DEPS = loopback.vhd  u232c_in.vhd inputbuf.vhd u232c_out.vhd
-LOOPBACKTB_SIM = loopbacktb.vhd fileio.vhd
-U232CTB_DEPS = u232c_in.vhd inputbuf.vhd u232c_out.vhd
-U232CTB_SIM = u232ctb.vhd fileio.vhd
+.PHONY: clean .simtag .componentstag
 
-.PHONY: clean reload $(TESTBENCH)
 all: $(TESTBENCH)
 
 ../asm/asagumo:
 	cd ../asm; omake
 
+components/code.s:
 components/code.dat: components/code.s misc/tohex ../asm/asagumo
 	../asm/asagumo components/code.s
 	misc/tohex 4 < components/code > components/code.dat
 
-coretb: components/code.dat $(CORETB_DEPS:%=components/%) $(CORETB_SIM:%=sim/%)
-loopbacktb: $(LOOPBACKTB_DEPS:%=components/%) $(LOOPBACKTB_SIM:%=sim/%)
-u232ctb: $(U232CTB_DEPS:%=components/%) $(U232CTB_SIM:%=sim/%)
+.componentstag: .mylibtag
+	cd components; make
 
-$(TESTBENCH):
-	$(GHDLC) -i $(GHDLFLAGS) $(filter %.vhd,f $^)
-	$(GHDLC) -m $(GHDLFLAGS) $@
-	$(GHDLC) -r $(GHDLFLAGS) $@ $(GHDL_SIM_OPT) --wave=$@.ghw
+.simtag: .mylibtag .componentstag
+	cd sim; make
 
-clean :
-	$(GHDLC) --clean
-	$(RM) coretb.ghw work-obj93.cf misc/tohex misc/fromhex
-	$(RM) components/code.dat components/code
+coretb: components/code.dat
+$(TESTBENCH): .mylibtag .simtag .componentstag
+	$(SIM) $(SIMFLAGS) $@
+
+.mylibtag:
+	$(MKLIB) $(LIBDIR)
+	$(MAP) work $(LIBDIR)
+	touch $@
+
+## Cleaning target.
+clean:
+	cd sim; make clean
+	cd components; make clean
+	rm -rf transcript modelsim.ini .simtag .componentstag .mylibtag mylib
