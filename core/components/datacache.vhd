@@ -96,14 +96,17 @@ begin
     variable v  : latch_t;
     variable dv : datacache_out_t;
     variable cv : datacache_ram_in_t;
-
+    variable sramv : sram_in_t;
   begin
 
-    v  := r;
-    cv := (we => '-',
-           en => '0',
+    v := r;
+    cv := (we   => '-',
+           en   => '0',
            addr => (others => '-'),
            data => (others => '-'));
+    sramv := (addr => (others => '0'),
+              data => (others => '-'),
+              we   => '0');
 
     if din.en = '1' then
       case din.we is
@@ -141,6 +144,7 @@ begin
 
     ---------------------------------------------------------------------------
 
+    srami    <= sramv;
     cache_in <= cv;
     dout     <= dv;
     rin      <= v;
