@@ -43,7 +43,10 @@
     ("CVTSL/C", CVTSL_C);
     ("CVTLS", CVTLS);
     ("FTOIS", FTOIS);
-    ("ITOFS", ITOFS)]
+    ("ITOFS", ITOFS);
+    ("MOV", MOV);
+    ("NOP", NOP);
+    ("HALT", HALT)]
   let kw_tbl = Hashtbl.create (List.length kw_list)
   let _ =
     List.iter (fun (k, t) -> Hashtbl.add kw_tbl k t) kw_list

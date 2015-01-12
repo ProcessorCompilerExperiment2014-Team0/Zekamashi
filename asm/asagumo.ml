@@ -49,7 +49,7 @@ let main () =
       let output = open_out_bin opt.ofile in
       let tbl = Hashtbl.create (List.length asm) in
       try
-        let asm' = List.rev (align [] tbl 0 asm) in
+        let asm' = expand [] tbl (align [] tbl 0 asm) in
         write output tbl asm';
         List.iter (show stdout tbl) asm'
       with
