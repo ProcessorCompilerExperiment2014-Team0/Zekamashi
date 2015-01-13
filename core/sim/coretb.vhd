@@ -1,6 +1,10 @@
+library std;
+use std.textio.all;
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.std_logic_textio.all;
 
 library work;
 use work.sramsim.all;
@@ -9,15 +13,18 @@ use work.core_p.all;
 use work.instcache_p.all;
 use work.datacache_p.all;
 use work.mmu_p.all;
+use work.rxtx_p.all;
 use work.sram_p.all;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
-use work.u232c_sim_p.all;
 
 entity coretb is
 end entity coretb;
 
 architecture testbench of coretb is
+
+  constant wtime_a : unsigned(15 downto 0) := x"0255";
+  constant wtime_b : unsigned(15 downto 0) := x"023d";
 
   signal clk  : std_logic;
   signal xrst : std_logic;
@@ -37,6 +44,8 @@ architecture testbench of coretb is
   signal uoi     : u232c_out_in_t;
   signal uoo     : u232c_out_out_t;
 
+  signal rx    : std_logic;
+  signal tx    : std_logic;
   signal zd    : std_logic_vector(31 downto 0);
   signal zdp   : std_logic_vector(3  downto 0);
   signal za    : std_logic_vector(19 downto 0);
@@ -56,6 +65,18 @@ architecture testbench of coretb is
 begin
 
   xrst <= '1';
+
+  simulateio : rxtx
+    generic map (
+      send_wtime => wtime_a,
+      recv_wtime => wtime_b,
+      i          => "input.dat",
+      o          => "output.dat")
+    port map (
+      clk => clk,
+      rx  => rx,
+      tx  => tx,
+      eof => open);
 
   corec : core
     port map (
@@ -123,19 +144,23 @@ begin
       din    => srami,
       dout   => sramo);
 
-  u232c_inc : u232c_in_sim
+  u232c_inc : u232c_in
     generic map (
-      report_read => false)
+      wtime => wtime_b)
     port map (
       clk  => clk,
+      xrst => xrst,
+      rx   => rx,
       din  => uii,
       dout => uio);
 
-  u232c_outc : u232c_out_sim
+  u232c_outc : u232c_out
     generic map (
-      report_write => false)
+      wtime => wtime_b)
     port map (
       clk  => clk,
+      xrst => xrst,
+      tx   => tx,
       din  => uoi,
       dout => uoo);
 

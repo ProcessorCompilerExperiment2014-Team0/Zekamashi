@@ -6,10 +6,10 @@ library work;
 use work.loopback_p.all;
 use work.rxtx_p.all;
 
-entity loopbacktb is
-end entity loopbacktb;
+entity rxtxtb is
+end entity rxtxtb;
 
-architecture behavior of loopbacktb is
+architecture behavior of rxtxtb is
 
   constant wtime_a : unsigned(15 downto 0) := x"1c06";
   constant wtime_b : unsigned(15 downto 0) := x"1adb";
@@ -19,6 +19,8 @@ architecture behavior of loopbacktb is
   signal tx        : std_logic;
 
 begin
+
+  tx <= rx;
 
   simulateio : rxtx
     generic map (
@@ -31,15 +33,6 @@ begin
       rx  => rx,
       tx  => tx,
       eof => open);
-
-  doloopback : loopback
-    generic map (
-      wtime => wtime_b)
-    port map(
-      clk  => clk,
-      xrst => xrst,
-      rx   => rx,
-      tx   => tx);
 
   clockgen: process
   begin
