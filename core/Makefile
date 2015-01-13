@@ -3,7 +3,7 @@ LIBDIR	= mylib
 MKLIB	= vlib
 MAP	= vmap
 SIM	= vsim
-SIMFLAGS = -lib mylib
+SIMFLAGS =
 TESTBENCH = coretb loopbacktb u232ctb rxtxtb
 
 .PHONY: clean .simtag .componentstag $(TESTBENCH) $(TESTBENCH:%=%wave)
@@ -26,9 +26,11 @@ components/code.dat: components/code.s misc/tohex ../asm/asagumo
 
 .componentstag: .mylibtag
 	cd components; make
+	touch .componentstag
 
 .simtag: .mylibtag .componentstag
 	cd sim; make
+	touch .simtag
 
 coretbwave: components/code.dat
 $(TESTBENCH:%=%wave): SIMFLAGS += -do "add wave -r *; run 20ms"
@@ -42,5 +44,5 @@ $(TESTBENCH): .mylibtag .simtag .componentstag
 
 clean:
 	cd components; make clean
-	cd sims; make clean
+	cd sim; make clean
 	$(RM) -rf .mylibtag .componentstag .simtag mylib

@@ -10,7 +10,7 @@ TAGS = $(patsubst %.vhd,.%.tag,$(SRCS))
 all: $(TAGS)
 	touch ../.simtag
 
-.core.tag: .alu.tag .mmu.tag
+.core.tag: .instcache.tag .alu.tag .mmu.tag
 .mmu.tag: .datacache.tag .u232c_in.tag .u232c_out.tag
 .u232c_in.tag: .inputbuf.tag
 .datacache.tag: .datacache_ram.tag .sram.tag
