@@ -92,6 +92,8 @@ begin
     variable uiv    : u232c_in_in_t;
     variable uov    : u232c_out_in_t;
     variable cachev : datacache_in_t;
+
+    variable addr19 : unsigned(19 downto 0);
   begin
     v := r;
     dv := (data => (others => '-'),
@@ -117,8 +119,10 @@ begin
 
       when '1' =>
         if din.en = '1' then
+          addr19 := din.addr(19 downto 0);
+
           if din.we = '1' then
-            case din.addr(19 downto 0) is
+            case addr19 is
               when x"00000" | x"00001" | x"00002" =>
                 assert false report "cannot write to this address" severity error;
               when x"00003" =>
@@ -128,7 +132,7 @@ begin
               when others => null;
             end case;
           else
-            case din.addr(19 downto 0) is
+            case addr19 is
               when x"00000" =>
                 v.data := (0      => not uio.empty,
                            others => '0');
