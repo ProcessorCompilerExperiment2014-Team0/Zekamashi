@@ -14,7 +14,6 @@ all: $(TESTBENCH)
 	cd ../asm; omake
 
 components/code.s:
-
 components/code.dat: components/code.s misc/tohex ../asm/asagumo
 	../asm/asagumo components/code.s
 	misc/tohex 4 < components/code > components/code.dat

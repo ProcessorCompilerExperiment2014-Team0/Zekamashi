@@ -2,7 +2,7 @@ LIBDIR = ../mylib
 
 COM = vcom
 COMFLAGS = -work $(LIBDIR)
-SRCS = coretb.vhd  fileio.vhd loopbacktb.vhd sramsim.vhd u232c_sim.vhd u232ctb.vhd rxtx.vhd rxtxtb.vhd
+SRCS = coretb.vhd  fileio.vhd loopbacktb.vhd sramsim.vhd rxtx.vhd rxtxtb.vhd
 TAGS = $(patsubst %.vhd,.%.tag,$(SRCS))
 
 .PHONY: clean
@@ -10,10 +10,9 @@ TAGS = $(patsubst %.vhd,.%.tag,$(SRCS))
 all: $(TAGS)
 	touch ../.simtag
 
-.coretb.tag: .sramsim.tag .u232c_sim.tag
+.coretb.tag: .sramsim.tag .rxtx.tag
 .loopbacktb.tag: .rxtx.tag
 .rxtxtb.tag: .rxtx.tag
-.u232ctb.tag: .fileio.tag
 
 .%.tag: %.vhd ../.mylibtag ../.componentstag
 	$(COM) $(COMFLAGS) $<
