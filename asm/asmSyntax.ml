@@ -50,5 +50,8 @@ type mnemonic =
 | M_CVTLS
 | M_FTOIS
 | M_ITOFS
+| M_MOV
+| M_NOP
+| M_HALT
 
 type inst = string list * mnemonic * arg list

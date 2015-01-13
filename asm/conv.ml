@@ -55,6 +55,9 @@ let string_of_mn = function
   | M_CVTLS -> "CVTLS"
   | M_FTOIS -> "FTOIS"
   | M_ITOFS -> "ITOFS"
+  | M_MOV -> "MOV"
+  | M_NOP -> "NOP"
+  | M_HALT -> "HALT"
 
 let string_of_immd = function
   | I_Dec i -> string_of_int i
@@ -93,11 +96,40 @@ let check_immd len sign = function
 let rec align res tbl n = function
   | [] -> res
   | (lbl,m,args)::is ->
-    List.iter
-      (fun l -> if Hashtbl.mem tbl l
-        then raise (Duplicative_label ([l],n,m,args))
-        else Hashtbl.add tbl l n) lbl;
-    align ((lbl,n,m,args)::res) tbl (n+1) is
+      List.iter
+        (fun l -> if Hashtbl.mem tbl l
+          then raise (Duplicative_label ([l],n,m,args))
+          else Hashtbl.add tbl l n) lbl;
+    (match m with
+    | M_MOV -> align ((lbl,n,m,args)::res) tbl (n+2) is
+    | _ -> align ((lbl,n,m,args)::res) tbl (n+1) is)
+
+let separate_immd x =
+  if (x land 0xFFFF) < 0x8000
+  then (I_Hex ((x lsr 16) land 0xFFFF), I_Hex (x land 0xFFFF))
+  else (I_Hex (((x lsr 16) land 0xFFFF) + 1), I_Hex (x land 0xFFFF))
+
+let rec expand res tbl = function
+  | [] -> res
+  | (lbl,n,m,args)::is ->
+    (match (m,args) with
+    | (M_MOV, [A_R a; A_Label l]) ->
+      let (hw,lw) = separate_immd (Hashtbl.find tbl l) in
+      expand ((lbl,n,M_LDA,[A_R a; A_Disp (31, lw)])::
+                 ([],n+1,M_LDAH,[A_R a; A_Disp (a, hw)])::res) tbl is
+    | (M_MOV, [A_R a; A_Immd (I_Dec d)]) ->
+      let (hw,lw) = separate_immd d in
+      expand ((lbl,n,M_LDA,[A_R a; A_Disp (31, lw)])::
+                 ([],n+1,M_LDAH,[A_R a; A_Disp (a, hw)])::res) tbl is
+    | (M_MOV, [A_R a; A_Immd (I_Hex d)]) ->
+      let (hw,lw) = separate_immd d in
+      expand ((lbl,n,M_LDA,[A_R a; A_Disp (31, lw)])::
+                 ([],n+1,M_LDAH,[A_R a; A_Disp (a, hw)])::res) tbl is
+    | (M_NOP, _) ->
+      expand ((lbl,n,M_BIS,[A_R 31; A_R 31; A_R 31])::res) tbl is
+    | (M_HALT, _) ->
+      expand ((lbl,n,M_BR,[A_R 31; A_Immd (I_Hex 0x0)])::res) tbl is
+    | _ -> expand ((lbl,n,m,args)::res) tbl is)
 
 let get_disp tbl src lbl =
   let dst = Hashtbl.find tbl lbl in
