@@ -2,7 +2,7 @@ LIBDIR = ../mylib
 
 COM = vcom
 COMFLAGS = -work $(LIBDIR)
-SRCS = coretb.vhd  fileio.vhd loopbacktb.vhd sramsim.vhd rxtx.vhd rxtxtb.vhd
+SRCS = coretb.vhd loopbacktb.vhd sramsim.vhd rxtx.vhd rxtxtb.vhd
 TAGS = $(patsubst %.vhd,.%.tag,$(SRCS))
 
 .PHONY: clean
