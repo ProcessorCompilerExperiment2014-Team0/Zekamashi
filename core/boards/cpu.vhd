@@ -165,7 +165,7 @@ begin
 
   u232c_in : u232c_in
     generic map (
-      wtime => x"023D")
+      wtime => wtime)
     port map (
       clk  => clk,
       xrst => xrst,
@@ -175,7 +175,7 @@ begin
 
   u232c_out : u232c_out
     generic map (
-      wtime => x"023D")
+      wtime => wtime)
     port map (
       clk  => clk,
       xrst => xrst,
