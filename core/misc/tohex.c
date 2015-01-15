@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 char hexchar[] = "0123456789ABCDEF";
 
@@ -15,11 +16,11 @@ main(int argc, char** argv)
 	}
 
 	char data[w];
+	bool first_time = true;
 	while (fread(data, sizeof(char), w, stdin) == (size_t)w) {
-		int i;
-		for (i = w-1; i >= 0; i--)
-			printf("%c%c", hexchar[(data[i]>>4)&15], hexchar[data[i]&15]);
-		printf("\n");
+		if (!first_time) printf("\n"); else first_time = false;
+		for (int i = w-1; i >= 0; i--)
+			printf("%c%c", hexchar[(data[i]>>4)&15], hexchar[data[i]&15]);	
 	}
 
 	return 0;

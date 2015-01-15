@@ -394,7 +394,7 @@ begin
              we   => '0');
 
     hazard := detect_hazard(r);
-    hz <= hazard;
+    hz     <= hazard;
 
     -------------------------------------------------------------------------
     -- Instruction Fetch

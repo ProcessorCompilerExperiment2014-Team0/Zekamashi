@@ -82,7 +82,9 @@ architecture behavior of mmu is
     data : unsigned(7 downto 0);
   end record latch_t;
 
-  signal r, rin : latch_t;
+  constant latch_init : latch_t := (src => SRC_NOPE,
+                                    data => (others => '0'));
+  signal r, rin : latch_t := latch_init;
 
 begin
 

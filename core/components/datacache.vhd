@@ -82,7 +82,9 @@ architecture behavior of datacache is
     miss : std_logic;
   end record latch_t;
 
-  signal r, rin : latch_t := (miss => '0');
+  constant latch_init : latch_t := (miss => '0');
+
+  signal r, rin : latch_t := latch_init;
 
 begin
 
@@ -153,7 +155,9 @@ begin
 
   process (clk) is
   begin
-    if rising_edge(clk) then
+    if xrst = '0' then
+      r <= latch_init;
+    elsif rising_edge(clk) then
       r <= rin;
     end if;
   end process;

@@ -80,7 +80,7 @@ begin
   process (clk) is
   begin
     if rising_edge(clk) then
-      dout.data <= rom(to_integer(din.addr));
+      dout.data <= rom(to_integer(din.addr(9 downto 0)));
     end if;
   end process;
 

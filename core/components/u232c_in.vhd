@@ -21,8 +21,7 @@ package u232c_in_p is
   component u232c_in is
 
     generic (
-      wtime : unsigned(15 downto 0) := x"1adb";
-      report_read : boolean := false);
+      wtime : unsigned(15 downto 0) := x"1adb");
     port (
       clk  : in  std_logic;
       xrst : in  std_logic;
@@ -49,8 +48,7 @@ use work.u232c_in_p.all;
 entity u232c_in is
 
   generic (
-      wtime : unsigned(15 downto 0);
-      report_read : boolean);
+      wtime : unsigned(15 downto 0));
     port (
       clk  : in  std_logic;
       xrst : in  std_logic;
@@ -120,8 +118,6 @@ begin
       when 8 =>
         if r.cnt = 0 then
           if r.tail + 1 /= r.head then
---            assert not report_read report "" severity note;
-            
             ibufv.en    := '1';
             ibufv.we    := '1';
             ibufv.addr1 := r.tail;
