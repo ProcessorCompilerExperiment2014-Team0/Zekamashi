@@ -108,17 +108,16 @@ begin
 
     ---------------------------------------------------------------------------
 
+    if din.en = '1' then
+      case din.addr(20) is
+        when '0' =>
+          cachev := (addr => din.addr(19 downto 0),
+                     data => din.data,
+                     en   => din.en,
+                     we   => din.we);
+          v.src := SRC_SRAM;
 
-    case din.addr(20) is
-      when '0' =>
-        cachev := (addr => din.addr(19 downto 0),
-                   data => din.data,
-                   en   => din.en,
-                   we   => din.we);
-        v.src := SRC_SRAM;
-
-      when '1' =>
-        if din.en = '1' then
+        when '1' =>
           addr19 := din.addr(19 downto 0);
 
           if din.we = '1' then
@@ -141,7 +140,7 @@ begin
                 uiv.rden := '1';
                 v.src := SRC_U232C;
               when x"00002" =>
-                v.data := (0      => uoo.busy,
+                v.data := (0      => not uoo.busy,
                            others => '0');
                 v.src := SRC_DATA;
               when x"00003" =>
@@ -149,10 +148,13 @@ begin
               when others => null;
             end case;
           end if;
-        end if;
 
-      when others => null;
-    end case;
+        when others => null;
+      end case;
+    else
+      v.src := SRC_NOPE;
+    end if;
+
 
     ---------------------------------------------------------------------------
 
@@ -167,7 +169,7 @@ begin
         dv.data := resize(uio.data, 32);
         dv.miss := '0';
       when SRC_NOPE =>
-        dv.data := (others => '-');
+        dv.data := (others => '0');
         dv.miss := '0';
       when others => null;
     end case;
