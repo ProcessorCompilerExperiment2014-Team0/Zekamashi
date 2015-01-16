@@ -67,9 +67,9 @@ architecture testbench of coretb is
   signal xlbo  : std_logic;
   signal zza   : std_logic;
 
-begin
+  signal cnt : integer := 10;
 
-  xrst <= '1';
+begin
 
   simulateio : rxtx
     generic map (
@@ -242,5 +242,17 @@ begin
     clk <= '1';
     wait for 5 ns;
   end process;
+
+  xrstgen : process (clk) is
+  begin
+    if rising_edge(clk) then
+      if cnt = 0 then
+        xrst <= '1';
+      else
+        xrst <= '0';
+        cnt  <= cnt - 1;
+      end if;
+    end if;
+  end process xrstgen;
 
 end architecture testbench;

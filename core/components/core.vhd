@@ -112,6 +112,33 @@ architecture behavior of core is
     alu_out : word_t;
   end record latch_memwb_t;
 
+  constant d_bubble : latch_ifid_t := (
+    pc       => (others => '1'),
+    inst     => unop);
+
+  constant e_bubble : latch_idexe_t := (
+    opmode   => OP_ALU,
+    pc       => (others => '1'),
+    inst     => unop,
+    rav      => (others => '0'),
+    rbv      => (others => '0'),
+    ra       => 31,
+    rb       => 31,
+    wb       => 31,
+    alu_inst => ALU_INST_OR);
+
+  constant m_bubble : latch_exemem_t := (
+    opmode   => OP_ALU,
+    pc       => (others => '0'),
+    wb       => 31,
+    alu_out  => (others => '-'),
+    data     => (others => '-'));
+
+  constant w_bubble : latch_memwb_t := (
+    opmode   => OP_ALU,
+    wb       => 31,
+    alu_out  => (others => '0'));
+
   type latch_t is record
     pc : word_t;      -- program counter
     -- latches
@@ -122,26 +149,11 @@ architecture behavior of core is
   end record latch_t;
 
   constant latch_init_value : latch_t := (  -- fixme
-    pc => (others   => '1'),
-    d  => (pc       => (others => '0'),
-           inst     => unop),
-    e  => (opmode   => OP_ALU,
-           pc       => (others => '0'),
-           inst     => unop,
-           rav      => (others => '0'),
-           rbv      => (others => '0'),
-           ra       => 31,
-           rb       => 31,
-           wb       => 31,
-           alu_inst => ALU_INST_OR),
-    m  => (opmode   => OP_ALU,
-           pc       => (others => '0'),
-           wb       => 31,
-           alu_out  => (others => '-'),
-           data     => (others => '-')),
-    w  => (opmode   => OP_ALU,
-           wb       => 31,
-           alu_out  => (others => '0')));
+    pc => (others   => '0'),
+    d  => d_bubble,
+    e  => e_bubble,
+    m  => m_bubble,
+    w  => w_bubble);
 
   signal r, rin : latch_t := latch_init_value;
 
@@ -191,6 +203,18 @@ architecture behavior of core is
     return ALU_INST_NOP;
   end function decode_alu_inst;
 
+  function is_metavalue (
+    v : unsigned)
+    return boolean is
+  begin
+    for i in v'range loop
+      if v(i) /= '0' and v(i) = '1' then
+        return true;
+      end if;
+    end loop;
+    return false;
+  end function;
+
   function branch_success (
     cond   : word_t;
     opcode : unsigned(5 downto 0))
@@ -198,7 +222,11 @@ architecture behavior of core is
   begin
     case opcode is
       when b"11_1001" =>
-        return cond = 0;   -- BEQ
+        if is_metavalue(cond) then
+          return false;
+        else
+          return cond = 0;   -- BEQ
+        end if;
       when b"11_1101" => return cond /= 0;  -- BNE
       when others =>
         assert false report "invalid branch instruction" severity warning;
@@ -357,7 +385,7 @@ architecture behavior of core is
 
 begin
 
-  comb : process (r, icacheo, aluo, mmuo, iro, fro) is
+  comb : process (xrst, r, icacheo, aluo, mmuo, iro, fro) is
     variable v       : latch_t;
     variable icachev : instcache_in_t;
     variable aluv    : alu_in_t;
@@ -573,25 +601,13 @@ begin
       when HZ_ID =>
         v.pc := r.pc;
         v.d  := r.d;
-        v.e  := (opmode   => OP_ALU,
-                 pc       => r.d.pc,
-                 inst     => unop,
-                 rav      => (others => '0'),
-                 rbv      => (others => '0'),
-                 ra       => 31,
-                 rb       => 31,
-                 wb       => 31,
-                 alu_inst => ALU_INST_OR);
+        v.e  := e_bubble;
 
       when HZ_EXE =>
         v.pc := r.pc;
         v.d  := r.d;
         v.e  := r.e;
-        v.m  := (opmode  => OP_ALU,
-                 pc      => r.e.pc,
-                 wb      => 31,
-                 alu_out => (others => '-'),
-                 data    => (others => '-'));
+        v.m  := m_bubble;
 
       when HZ_WB =>
         v.pc := r.pc;
@@ -608,6 +624,12 @@ begin
     -------------------------------------------------------------------------
 
     icachev.addr := v.pc(16 downto 0);
+
+    if xrst = '0' then
+      v            := latch_init_value;
+      icachev.addr := (others => '0');
+    end if;
+ 
     if hazard = HZ_FINE or hazard = HZ_ID then
       icachei <= icachev;
       alui    <= aluv;
@@ -617,11 +639,9 @@ begin
     rin <= v;
   end process;
 
-  seq : process (clk, xrst) is
+  seq : process (clk) is
   begin
-    if xrst = '0' then
-      r <= latch_init_value;
-    elsif rising_edge(clk) then
+    if rising_edge(clk) then
       r <= rin;
     end if;
   end process;
