@@ -649,20 +649,23 @@ void core::i_fbne(int fa, int disp) {
 }
 
 void core::i_jmp(int ra, int rb, int func) {
+  int temp = ir[rb].i;
   ir[ra].i = pc + 1;
-  pc = ir[rb].i;
+  pc = temp;
   i_stat[I_JMP]++;
 }
 
 void core::i_jsr(int ra, int rb, int func) {
+  int temp = ir[rb].i;
   ir[ra].i = pc + 1;
-  pc = ir[rb].i;
+  pc = temp;
   i_stat[I_JSR]++;
 }
 
 void core::i_ret(int ra, int rb, int func) {
+  int temp = ir[rb].i;
   ir[ra].i = pc + 1;
-  pc = ir[rb].i;
+  pc = temp;
   i_stat[I_RET]++;
 }
 
