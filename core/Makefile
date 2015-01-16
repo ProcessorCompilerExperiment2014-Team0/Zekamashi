@@ -1,3 +1,7 @@
+CC = gcc
+CFLAGS = -std=c99
+
+
 LIBDIR	= mylib
 
 MKLIB	= vlib
@@ -37,7 +41,7 @@ $(TESTBENCH:%=%wave): .mylibtag .simtag .componentstag
 	$(SIM) $(SIMFLAGS) $(@F:%wave=%)
 
 coretb: components/code.dat
-$(TESTBENCH): SIMFLAGS += -c -do "run 20ms; quit"
+$(TESTBENCH): SIMFLAGS += -c -do "run 5ms; quit"
 $(TESTBENCH): .mylibtag .simtag .componentstag
 	$(SIM) $(SIMFLAGS) $@
 

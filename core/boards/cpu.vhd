@@ -11,6 +11,7 @@ use work.core_p.all;
 use work.instcache_p.all;
 use work.datacache_p.all;
 use work.mmu_p.all;
+use work.regfile_p.all;
 use work.sram_p.all;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
@@ -49,6 +50,10 @@ architecture rtl of cpu is
 
   signal clk, iclk, dclk, iclkfd, clkfd: std_logic;
 
+  signal iri     : regfile_in_t;
+  signal iro     : regfile_out_t;
+  signal fri     : regfile_in_t;
+  signal fro     : regfile_out_t;
   signal alui    : alu_in_t;
   signal aluo    : alu_out_t;
   signal dcachei : datacache_in_t;
@@ -97,8 +102,12 @@ begin
     i => iclkfd,
     o => clk);
 
-    corec : core
+  corec : core
     port map (
+      iri     => iri,
+      iro     => iro,
+      fri     => fri,
+      fro     => fro,
       clk     => clk,
       xrst    => xrst,
       icachei => icachei,
@@ -107,6 +116,20 @@ begin
       aluo    => aluo,
       mmui    => mmui,
       mmuo    => mmuo);
+
+  irc : regfile
+    port map (
+      clk  => clk,
+      xrst => xrst,
+      din  => iri,
+      dout => iro);
+
+  frc : regfile
+    port map (
+      clk  => clk,
+      xrst => xrst,
+      din  => fri,
+      dout => fro);
 
   instcachec : instcache
     port map (
