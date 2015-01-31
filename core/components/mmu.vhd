@@ -111,52 +111,47 @@ begin
     ---------------------------------------------------------------------------
 
     if din.en = '1' then
-      case din.addr(20) is
-        when '0' =>
-          cachev := (addr => din.addr(19 downto 0),
-                     data => din.data,
-                     en   => din.en,
-                     we   => din.we);
-          v.src := SRC_SRAM;
+      if din.addr(20) = '1' then
+        addr19 := din.addr(19 downto 0);
 
-        when '1' =>
-          addr19 := din.addr(19 downto 0);
-
-          if din.we = '1' then
-            case addr19 is
-              when x"00000" | x"00001" | x"00002" =>
-                assert false report "cannot write to this address" severity error;
-              when x"00003" =>
-                uov.data := din.data(7 downto 0);
-                uov.go   := '1';
-                v.src        := SRC_NOPE;
-              when others => null;
-            end case;
-          else
-            case addr19 is
-              when x"00000" =>
-                v.data := (0      => not uio.empty,
-                           others => '0');
-                v.src := SRC_DATA;
-              when x"00001" =>
-                uiv.rden := '1';
-                v.src := SRC_U232C;
-              when x"00002" =>
-                v.data := (0      => not uoo.busy,
-                           others => '0');
-                v.src := SRC_DATA;
-              when x"00003" =>
-                assert false report "cannot read from this address" severity error;
-              when others => null;
-            end case;
-          end if;
-
-        when others => null;
-      end case;
+        if din.we = '1' then
+          case addr19 is
+            when x"00000" | x"00001" | x"00002" =>
+              assert false report "cannot write to this address" severity error;
+            when x"00003" =>
+              uov.data := din.data(7 downto 0);
+              uov.go   := '1';
+              v.src        := SRC_NOPE;
+            when others => null;
+          end case;
+        else
+          case addr19 is
+            when x"00000" =>
+              v.data := (0      => not uio.empty,
+                         others => '0');
+              v.src := SRC_DATA;
+            when x"00001" =>
+              uiv.rden := '1';
+              v.src := SRC_U232C;
+            when x"00002" =>
+              v.data := (0      => not uoo.busy,
+                         others => '0');
+              v.src := SRC_DATA;
+            when x"00003" =>
+              assert false report "cannot read from this address" severity error;
+            when others => null;
+          end case;
+        end if;
+      else
+        cachev := (addr => din.addr(19 downto 0),
+                   data => din.data,
+                   en   => din.en,
+                   we   => din.we);
+        v.src := SRC_SRAM;
+      end if;
     else
       v.src := SRC_NOPE;
     end if;
-
 
     ---------------------------------------------------------------------------
 
@@ -173,7 +168,6 @@ begin
       when SRC_NOPE =>
         dv.data := (others => '0');
         dv.miss := '0';
-      when others => null;
     end case;
 
     ---------------------------------------------------------------------------
