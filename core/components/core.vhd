@@ -47,6 +47,7 @@ use work.instcache_p.all;
 use work.alu_p.all;
 use work.mmu_p.all;
 use work.regfile_p.all;
+use work.util_p.all;
 
 entity core is
   port (
@@ -140,7 +141,8 @@ architecture behavior of core is
     alu_out  => (others => '0'));
 
   type latch_t is record
-    pc : word_t;      -- program counter
+    rs : std_logic;                     -- reset signal
+    pc : word_t;                        -- program counter
     -- latches
     d  : latch_ifid_t;
     e  : latch_idexe_t;
@@ -148,14 +150,15 @@ architecture behavior of core is
     w  : latch_memwb_t;
   end record latch_t;
 
-  constant latch_init_value : latch_t := (  -- fixme
+  constant latch_init : latch_t := (  -- fixme
+    rs => '1',
     pc => (others   => '0'),
     d  => d_bubble,
     e  => e_bubble,
     m  => m_bubble,
     w  => w_bubble);
 
-  signal r, rin : latch_t := latch_init_value;
+  signal r, rin : latch_t := latch_init;
 
   procedure flush_pipeline (
     v : out latch_t) is
@@ -203,18 +206,6 @@ architecture behavior of core is
     return ALU_INST_NOP;
   end function decode_alu_inst;
 
-  function is_metavalue (
-    v : unsigned)
-    return boolean is
-  begin
-    for i in v'range loop
-      if v(i) /= '0' and v(i) = '1' then
-        return true;
-      end if;
-    end loop;
-    return false;
-  end function;
-
   function branch_success (
     cond   : word_t;
     opcode : unsigned(5 downto 0))
@@ -222,11 +213,7 @@ architecture behavior of core is
   begin
     case opcode is
       when b"11_1001" =>
-        if is_metavalue(cond) then
-          return false;
-        else
-          return cond = 0;   -- BEQ
-        end if;
+        return not is_metavalue(cond) and cond = 0;  -- to suppress warning
       when b"11_1101" => return cond /= 0;  -- BNE
       when others =>
         assert false report "invalid branch instruction" severity warning;
@@ -385,7 +372,7 @@ architecture behavior of core is
 
 begin
 
-  comb : process (xrst, r, icacheo, aluo, mmuo, iro, fro) is
+  comb : process (r, icacheo, aluo, mmuo, iro, fro) is
     variable v       : latch_t;
     variable icachev : instcache_in_t;
     variable aluv    : alu_in_t;
@@ -404,14 +391,15 @@ begin
 
   begin
     v       := r;
+    v.rs    := '0';
     icachev := (addr => (others => '-'));
     aluv    := (inst => ALU_INST_NOP,
                 i1   => (others => '-'),
                 i2   => (others => '-'));
-    mmuv := (addr => (others => '0'),
-             data => (others => '0'),
-             en   => '0',
-             we   => '0');
+    mmuv    := (addr => (others => '0'),
+                data => (others => '0'),
+                en   => '0',
+                we   => '0');
 
     hazard := detect_hazard(r);
     hz     <= hazard;
@@ -420,9 +408,15 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    v.d.inst := icacheo.data;
-    v.d.pc   := r.pc;
-    v.pc     := r.pc + 1;
+    if r.rs = '0' then
+      v.d.inst := icacheo.data;
+      v.d.pc   := r.pc;
+      v.pc     := r.pc + 1;
+    else
+      v.d.inst := unop;
+      v.d.pc   := r.pc;
+      v.pc     := (others => '0');
+    end if;
 
     -------------------------------------------------------------------------
     -- Instruction Decode
@@ -625,11 +619,6 @@ begin
 
     icachev.addr := v.pc(16 downto 0);
 
-    if xrst = '0' then
-      v            := latch_init_value;
-      icachev.addr := (others => '0');
-    end if;
- 
     if hazard = HZ_FINE or hazard = HZ_ID then
       icachei <= icachev;
       alui    <= aluv;
@@ -639,9 +628,11 @@ begin
     rin <= v;
   end process;
 
-  seq : process (clk) is
+  seq : process (clk, xrst) is
   begin
-    if rising_edge(clk) then
+    if xrst = '0' then
+      r <= latch_init;
+    elsif rising_edge(clk) then
       r <= rin;
     end if;
   end process;

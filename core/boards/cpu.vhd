@@ -48,7 +48,7 @@ architecture rtl of cpu is
 
   constant wtime : unsigned(15 downto 0) := x"023D";
 
-  signal clk, iclk, dclk, iclkfd, clkfd: std_logic;
+  signal clk, clk1, iclk, dclk, iclkfd, clkfd: std_logic;
 
   signal iri     : regfile_in_t;
   signal iro     : regfile_out_t;
@@ -77,9 +77,6 @@ begin
       o => iclk);
 
   dcm : dcm_base
-    generic map (
-      clk_feedback          => "1X",
-      duty_cycle_correction => true)
     port map (
       rst      => not xrst,
       clkin    => iclk,
@@ -94,13 +91,12 @@ begin
       clkfx    => open,
       clkfx180 => open);
 
-  bg: bufg port map (
-    i => iclkfd,
-    o => clkfd);
-
   ss: bufg port map (
     i => iclkfd,
-    o => clk);
+    o => clk1);
+
+  clkfd <= clk1;
+  clk   <= clk1;
 
   corec : core
     port map (
