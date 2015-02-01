@@ -38,8 +38,8 @@ library std;
 use std.textio.all;
 
 library work;
+use work.meminit_p.all;
 use work.instcache_p.all;
-
 
 entity instcache is
   
@@ -54,26 +54,7 @@ architecture behavior of instcache is
 
   subtype rom_data_t is unsigned(31 downto 0);
   type rom_t is array (0 to 1023) of rom_data_t;
-
-  impure function init_rom(filename: string)
-    return rom_t is
-    file f : text open read_mode is filename;
-    variable tmp : std_logic_vector(31 downto 0);
-    variable l : line;
-    variable rom : rom_t;
-  begin
-    for i in rom'range loop
-      if not endfile(f) then
-        readline(f, l);
-        hread(l, tmp);
-        rom(i) := unsigned(tmp);
-      end if;
-    end loop;
-
-    return rom;
-  end function;
-
-  signal rom: rom_t := init_rom("components/code.dat");
+  signal rom: rom_t := icache_init;
 
 begin
 

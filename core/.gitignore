@@ -3,6 +3,7 @@ coretb
 coretb.ghw
 work-obj93.cf
 components/code
-components/code.dat
+components/code.log
+components/meminit.vhd
 misc/tohex
 misc/fromhex
