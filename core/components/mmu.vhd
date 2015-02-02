@@ -75,118 +75,73 @@ end entity mmu;
 
 architecture behavior of mmu is
 
-  type src_t is (SRC_SRAM, SRC_DATA, SRC_U232C, SRC_NOPE);
-
-  type latch_t is record
-    src  : src_t;
-    data : unsigned(7 downto 0);
-  end record latch_t;
-
-  constant latch_init : latch_t := (src => SRC_NOPE,
-                                    data => (others => '0'));
-  signal r, rin : latch_t := latch_init;
+  type src_t is (SRC_SRAM, SRC_DATA, SRC_U232C);
+  signal src  : src_t := SRC_DATA;
+  signal data : unsigned(31 downto 0) := (others => '-');
 
 begin
 
-  process (r, uio, uoo, cacheo, din) is
-    variable v      : latch_t;
-    variable dv     : mmu_out_t;
-    variable uiv    : u232c_in_in_t;
-    variable uov    : u232c_out_in_t;
-    variable cachev : datacache_in_t;
+  uoi <= (data => din.data(7 downto 0),
+          go   => '1')
+         when din.en = '1'
+         and  din.we = '1'
+         and  din.addr = "1" & x"00003" else
+         (data => (others => '-'),
+          go   => '0');
 
-    variable addr19 : unsigned(19 downto 0);
-  begin
-    v := r;
-    dv := (data => (others => '-'),
+  uii <= (rden => '1')
+         when din.en = '1'
+         and  din.we = '0'
+         and  din.addr = "1" & x"00001" else
+         (rden => '0');
+
+  cachei <= (addr => din.addr(19 downto 0),
+             data => din.data,
+             en   => din.en,
+             we   => din.we)
+            when din.addr(20) = '1' else
+            (addr => (others => '-'),
+             data => (others => '-'),
+             en   => '0',
+             we   => '-');
+
+  dout <= (data =>  cacheo.data,
+           miss =>  cacheo.miss)
+          when src = SRC_SRAM else
+          (data => uio.data,
+           miss => '0')
+          when src = SRC_U232C else
+          (data => data,
            miss => '0');
-    uiv := (rden => '0');
-    uov := (data => (others => '-'),
-            go   => '0');
-    cachev := (addr => (others => '-'),
-               data => (others => '-'),
-               en   => '0',
-               we   => '1');
 
-    ---------------------------------------------------------------------------
-
-    if din.en = '1' then
-      if din.addr(20) = '1' then
-        addr19 := din.addr(19 downto 0);
-
-        if din.we = '1' then
-          case addr19 is
-            when x"00000" | x"00001" | x"00002" =>
-              assert false report "cannot write to this address" severity error;
-            when x"00003" =>
-              uov.data := din.data(7 downto 0);
-              uov.go   := '1';
-              v.src        := SRC_NOPE;
-            when others => null;
-          end case;
-        else
-          case addr19 is
-            when x"00000" =>
-              v.data := (0      => not uio.empty,
-                         others => '0');
-              v.src := SRC_DATA;
-            when x"00001" =>
-              uiv.rden := '1';
-              v.src := SRC_U232C;
-            when x"00002" =>
-              v.data := (0      => not uoo.busy,
-                         others => '0');
-              v.src := SRC_DATA;
-            when x"00003" =>
-              assert false report "cannot read from this address" severity error;
-            when others => null;
-          end case;
-        end if;
-      else
-        cachev := (addr => din.addr(19 downto 0),
-                   data => din.data,
-                   en   => din.en,
-                   we   => din.we);
-        v.src := SRC_SRAM;
-      end if;
-    else
-      v.src := SRC_NOPE;
-    end if;
-
-    ---------------------------------------------------------------------------
-
-    case r.src is
-      when SRC_SRAM =>
-        dv.data := cacheo.data;
-        dv.miss := cacheo.miss;
-      when SRC_DATA =>
-        dv.data := resize(r.data, 32);
-        dv.miss := '0';
-      when SRC_U232C =>
-        dv.data := resize(uio.data, 32);
-        dv.miss := '0';
-      when SRC_NOPE =>
-        dv.data := (others => '0');
-        dv.miss := '0';
-    end case;
-
-    ---------------------------------------------------------------------------
-
-    rin    <= v;
-    uii    <= uiv;
-    uoi    <= uov;
-    cachei <= cachev;
-    dout   <= dv;
-  end process;
-
-  process (clk, xrst) is
+  seq : process (clk, xrst) is
   begin
     if xrst = '0' then
-      r <= (src  => SRC_NOPE,
-            data => (others => '-'));
+      src  <= SRC_DATA;
+      data <= (others => '-');
     elsif rising_edge(clk) then
-      r <= rin;
+      if din.en = '0' and din.we = '0' then
+        if din.addr(20) = '0' then
+          src  <= SRC_SRAM;
+        elsif din.addr = "1" & x"00000" then
+          src  <= SRC_DATA;
+          data <= (0      => not uio.empty,
+                   others => '0');
+        elsif din.addr = "1" & x"00001" then
+          src  <= SRC_U232C;
+        elsif din.addr = "1" & x"00002" then
+          src  <= SRC_DATA;
+          data <= (0      => not uoo.busy,
+                   others => '0');
+        else
+          src  <= SRC_DATA;
+          data <= (others => '-');
+        end if;
+      else
+        src  <= SRC_DATA;
+        data <= (others => '-');
+      end if;
     end if;
-  end process;
+  end process seq;
 
 end architecture behavior;
