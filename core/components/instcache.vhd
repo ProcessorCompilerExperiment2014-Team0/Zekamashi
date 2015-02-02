@@ -52,9 +52,7 @@ end entity instcache;
 
 architecture behavior of instcache is
 
-  subtype rom_data_t is unsigned(31 downto 0);
-  type rom_t is array (0 to 1023) of rom_data_t;
-  signal rom: rom_t := icache_init;
+  signal rom: icache_init_t := icache_init;
 
 begin
 
