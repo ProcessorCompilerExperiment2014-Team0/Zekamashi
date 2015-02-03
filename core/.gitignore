@@ -1,6 +1,8 @@
 *.o
 coretb
 coretb.ghw
+input.dat
+output.dat
 work-obj93.cf
 components/code
 components/code.log
