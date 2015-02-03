@@ -182,7 +182,7 @@ begin
       din    => srami,
       dout   => sramo);
 
-  u232c_in : u232c_in
+  u232c_inc : u232c_in
     generic map (
       wtime => wtime)
     port map (
@@ -192,7 +192,7 @@ begin
       din  => uii,
       dout => uio);
 
-  u232c_out : u232c_out
+  u232c_outc : u232c_out
     generic map (
       wtime => wtime)
     port map (

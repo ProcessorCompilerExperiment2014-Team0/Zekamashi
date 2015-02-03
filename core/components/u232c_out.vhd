@@ -59,72 +59,46 @@ end u232c_out;
 architecture behavior of u232c_out is
 
   type latch_t is record
-    buf       : unsigned(7 downto 0);
-    busy      : std_logic;
-    countdown : unsigned(15 downto 0);
-    sendbuf   : unsigned(8 downto 0);
-    state     : integer range 0 to 9;
+    buf   : unsigned(8 downto 0);
+    count : unsigned(15 downto 0);
+    state : integer range -1 to 9;
   end record;
 
   constant latch_init : latch_t := (
-    buf       => (others => '1'),
-    busy      => '0',
-    countdown => (others => '0'),
-    sendbuf   => (others => '1'),
-    state     => 9);
+    buf   => (others => '1'),
+    count => (others => '0'),
+    state => -1);
 
-  signal r, rin : latch_t := latch_init;
+  signal r : latch_t := latch_init;
 
 begin
 
-  process(r, din)
-    variable v: latch_t;
+  dout.busy <= '1' when r.state /= -1 else '0';
 
-    variable d: std_logic_vector(7 downto 0);
-  begin
-    v  := r;
-
-    if din.go = '1' and r.busy = '0' then
-      v.buf  := din.data;
-      v.busy := '1';
-    end if;
-
-    if r.countdown = to_unsigned(0, 32) then
-      case r.state is
-        when 9 =>
-          if r.busy = '1' then
-            v.sendbuf   := r.buf & "0";
-            v.state     := v.state - 1;
-            v.countdown := wtime;
-            v.busy      := '0';
-          end if;
-        when others =>
-          v.sendbuf   := "1" & r.sendbuf(8 downto 1);
-          v.countdown := wtime;
-
-          if r.state = 0 then
-            v.state := 9;
-          else
-            v.state := r.state - 1;
-          end if;
-      end case;
-    else
-      v.countdown := r.countdown - 1;
-    end if;
-
-    rin  <= v;
-    tx   <= r.sendbuf(0);
-    dout <= (busy => v.busy);
-  end process;
-
-  process(clk, xrst)
-    variable v : latch_t;
+  process (clk)
   begin
     if xrst = '0' then
       r <= latch_init;
-    elsif rising_edge(clk) then
-      r <= rin;
+    elsif rising_edge (clk) then
+      case r.state is
+        when -1 =>
+          if din.go = '1' then
+            r.buf   <= din.data & "0";
+            r.count <= wtime;
+            r.state <= 9;
+          end if;
+        when others =>
+          if r.count = 0 then
+            r.buf   <= "1" & r.buf(8 downto 1);
+            r.count <= wtime;
+            r.state <= r.state - 1;
+          else
+            r.count <= r.count - 1;
+          end if;
+      end case;
     end if;
   end process;
+
+  tx <= r.buf(0);
 
 end behavior;

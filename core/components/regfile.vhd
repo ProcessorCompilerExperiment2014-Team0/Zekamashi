@@ -15,7 +15,6 @@ package regfile_p is
     r2   : reg_index_t;
     w    : reg_index_t;
     d    : unsigned(31 downto 0);
-    dump : std_logic;
   end record regfile_in_t;
 
   type regfile_out_t is record
