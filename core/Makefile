@@ -1,14 +1,14 @@
 CC = gcc
 CFLAGS = -std=c99
 
-TESTBENCH = coretb loopbacktb u232ctb
-SIMS = u232c_sim coretb sramsim
+TESTBENCH = coretb coretb_nomiss loopbacktb u232ctb
 GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments
-GHDL_SIM_OPT = --stop-time=500us
+GHDL_SIM_OPT = --stop-time=500us --stack-max-size=500Mb --stack-size=500Mb
 
 CORETB_DEPS = alu.vhd core.vhd datacache.vhd datacache_ram.vhd inputbuf.vhd instcache.vhd meminit.vhd mmu.vhd regfile.vhd sram.vhd u232c_in.vhd u232c_out.vhd
 CORETB_SIM = coretb.vhd rxtx.vhd sramsim.vhd util.vhd
+CORETB_NOMISS_SIM = coretb_nomiss.vhd datacache_nomiss.vhd rxtx.vhd sramsim.vhd util.vhd
 LOOPBACKTB_DEPS = inputbuf.vhd loopback.vhd u232c_in.vhd u232c_out.vhd
 LOOPBACKTB_SIM = loopbacktb.vhd rxtx.vhd
 
@@ -25,6 +25,7 @@ components/meminit.vhd: components/code components/meminit.erb
 	cd components; ruby meminit.erb
 
 coretb: $(CORETB_DEPS:%=components/%) $(CORETB_SIM:%=sim/%)
+coretb_nomiss: $(CORETB_DEPS:%=components/%) $(CORETB_NOMISS_SIM:%=sim/%)
 loopbacktb: $(LOOPBACKTB_DEPS:%=components/%) $(LOOPBACKTB_SIM:%=sim/%)
 u232ctb: $(U232CTB_DEPS:%=components/%) $(U232CTB_SIM:%=sim/%)
 
