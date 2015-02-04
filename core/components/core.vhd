@@ -37,9 +37,13 @@ end package core_p;
 -- Definition
 -------------------------------------------------------------------------------
 
+library std;
+use std.textio.all;
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.std_logic_textio.all;
 
 library work;
 use work.core_p.all;
@@ -82,14 +86,20 @@ architecture behavior of core is
     OP_BRA,
     OP_JMP);
 
+  -----------------------------------------------------------------------------
+  -- Latch
+  -----------------------------------------------------------------------------
+
   type latch_ifid_t is record
-    pc   : word_t;
-    inst : word_t;
+    bubble : boolean;
+    pc     : word_t;
+    inst   : word_t;
   end record latch_ifid_t;
 
   type latch_idexe_t is record
-    opmode   : opmode_t;
+    bubble   : boolean;
     pc       : word_t;
+    opmode   : opmode_t;
     inst     : word_t;
     rav      : word_t;
     rbv      : word_t;
@@ -100,26 +110,31 @@ architecture behavior of core is
   end record latch_idexe_t;
 
   type latch_exemem_t is record
-    opmode  : opmode_t;
+    bubble  : boolean;
     pc      : word_t;
+    opmode  : opmode_t;
     wb      : reg_index_t;
     alu_out : word_t;
     data    : word_t;
   end record latch_exemem_t;
 
   type latch_memwb_t is record
+    bubble  : boolean;
+    pc      : word_t;
     opmode  : opmode_t;
     wb      : reg_index_t;
     alu_out : word_t;
   end record latch_memwb_t;
 
   constant d_bubble : latch_ifid_t := (
+    bubble   => true,
     pc       => (others => '1'),
     inst     => unop);
 
   constant e_bubble : latch_idexe_t := (
-    opmode   => OP_ALU,
+    bubble   => true,
     pc       => (others => '1'),
+    opmode   => OP_ALU,
     inst     => unop,
     rav      => (others => '0'),
     rbv      => (others => '0'),
@@ -129,13 +144,16 @@ architecture behavior of core is
     alu_inst => ALU_INST_OR);
 
   constant m_bubble : latch_exemem_t := (
+    bubble   => true,
+    pc       => (others => '1'),
     opmode   => OP_ALU,
-    pc       => (others => '0'),
     wb       => 31,
     alu_out  => (others => '-'),
     data     => (others => '-'));
 
   constant w_bubble : latch_memwb_t := (
+    bubble   => true,
+    pc       => (others => '1'),
     opmode   => OP_ALU,
     wb       => 31,
     alu_out  => (others => '0'));
@@ -368,7 +386,33 @@ architecture behavior of core is
     end if;
   end function forward_data_ir_exe;
 
-  signal hz : hazard_t;                 -- for debug
+  -----------------------------------------------------------------------------
+  -- debug
+  -----------------------------------------------------------------------------
+
+  type regfile_t is array (0 to 31) of word_t;
+
+  type debug_t is record
+    hz        : hazard_t;
+    ir        : regfile_t;
+    ir_prev   : regfile_t;
+    ir_bubble : boolean;
+    ir_pc     : word_t;
+    fr        : regfile_t;
+  end record debug_t;
+
+  constant debuginfo_init : debug_t := (
+    hz        => HZ_FINE,
+    ir        => (others => (others => '0')),
+    ir_prev   => (others => (others => '0')),
+    ir_bubble => true,
+    ir_pc     => (others => '1'),
+    fr        => (others => (others => '0')));
+
+  signal debuginfo : debug_t := debuginfo_init;
+
+  file ir_dump : text open write_mode is "ir.log";
+  file fr_dump : text open write_mode is "fr.log";
 
 begin
 
@@ -387,6 +431,10 @@ begin
     variable mdisp  : unsigned(15 downto 0);
     variable cond   : word_t;
 
+    -- variables for write back
+    variable ir_idx  : reg_index_t;
+    variable ir_data : word_t;
+
     variable hazard : hazard_t := HZ_FINE;
 
   begin
@@ -401,33 +449,36 @@ begin
                 en   => '0',
                 we   => '0');
 
-    hazard := detect_hazard(r);
-    hz     <= hazard;
+    hazard  := detect_hazard(r);
+    debuginfo.hz <= hazard;
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
     if r.rs = '0' then
-      v.d.inst := icacheo.data;
-      v.d.pc   := r.pc;
-      v.pc     := r.pc + 1;
+      v.d.bubble := false;
+      v.d.inst   := icacheo.data;
+      v.d.pc     := r.pc;
+      v.pc       := r.pc + 1;
     else
-      v.d.inst := unop;
-      v.d.pc   := r.pc;
-      v.pc     := (others => '0');
+      v.d.bubble := true;
+      v.d.inst   := unop;
+      v.d.pc     := r.pc;
+      v.pc       := (others => '0');
     end if;
 
     -------------------------------------------------------------------------
     -- Instruction Decode
     -------------------------------------------------------------------------
 
-    v.e.pc   := r.d.pc;
-    v.e.ra   := to_integer(r.d.inst(25 downto 21));
-    v.e.rb   := to_integer(r.d.inst(20 downto 16));
-    v.e.rav  := iro.d1;
-    v.e.rbv  := iro.d2;
-    v.e.inst := r.d.inst;
+    v.e.bubble := r.d.bubble;
+    v.e.pc     := r.d.pc;
+    v.e.ra     := to_integer(r.d.inst(25 downto 21));
+    v.e.rb     := to_integer(r.d.inst(20 downto 16));
+    v.e.rav    := iro.d1;
+    v.e.rbv    := iro.d2;
+    v.e.inst   := r.d.inst;
 
     iri.r1 <= to_integer(r.d.inst(25 downto 21));
     iri.r2 <= to_integer(r.d.inst(20 downto 16));
@@ -503,6 +554,9 @@ begin
     -- Execute
     -------------------------------------------------------------------------
 
+    v.m.bubble := r.e.bubble;
+    v.m.pc     := r.e.pc;
+
     aluv.inst :=  r.e.alu_inst;
     mdisp := r.e.inst(15 downto 0);
 
@@ -544,6 +598,9 @@ begin
     -- Memory
     -------------------------------------------------------------------------
 
+    v.w.bubble := r.m.bubble;
+    v.w.pc     := r.m.pc;
+
     case r.m.opmode is
       when OP_LOAD =>
         mmuv := (addr => r.m.alu_out(20 downto 0),
@@ -572,20 +629,30 @@ begin
 
     case r.w.opmode is
       when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-        iri.w <= r.w.wb;
-        iri.d <= r.w.alu_out;
+        ir_idx  := r.w.wb;
+        ir_data := r.w.alu_out;
       when OP_LOAD =>
         if mmuo.miss = '0' then
-          iri.w <= r.w.wb;
-          iri.d <= mmuo.data;
+          ir_idx  := r.w.wb;
+          ir_data := mmuo.data;
         else
-          iri.w <= 31;
-          iri.d <= (others => '-');
+          ir_idx  := 31;
+          ir_data := (others => '-');
         end if;
       when others =>
-        iri.w <= 31;
-        iri.d <= (others => '-');
+        ir_idx  := 31;
+        ir_data := (others => '-');
     end case;
+
+    iri.w <= ir_idx;
+    iri.d <= ir_data;
+
+    debuginfo.ir_bubble <= r.w.bubble;
+    debuginfo.ir_pc     <= r.w.pc;
+
+    if ir_idx /= 31 then
+      debuginfo.ir(ir_idx) <= ir_data;
+    end if;
 
     ---------------------------------------------------------------------------
     -- Pipeline Stalling
@@ -629,11 +696,28 @@ begin
   end process;
 
   seq : process (clk, xrst) is
+    variable l : line;
   begin
     if xrst = '0' then
-      r <= latch_init;
+      r         <= latch_init;
     elsif rising_edge(clk) then
       r <= rin;
+
+      -- register dump
+      if not debuginfo.ir_bubble then
+        write(l, string'("PC : "));
+        hwrite(l, std_logic_vector(debuginfo.ir_pc));
+        writeline(ir_dump, l);
+        for i in 0 to 31 loop
+          write(l, string'("$"));
+          write(l, i, LEFT, 2);
+          write(l, string'(" : "));
+          hwrite(l, std_logic_vector(debuginfo.ir_prev(i)));
+          writeline(ir_dump, l);
+        end loop;
+        writeline(ir_dump, l);
+      end if;
+      debuginfo.ir_prev <= debuginfo.ir;
     end if;
   end process;
 
