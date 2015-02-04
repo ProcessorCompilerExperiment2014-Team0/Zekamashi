@@ -506,7 +506,8 @@ void core::mem_st_lw(uint32_t &src, int addr) {
   uint32_t old = mem[addr];
   mem[addr] = src;
   if(opt >> OPTION_M & 1) {
-    cerr << "st: addr = "
+    cerr << dmanip << pc
+         << " st: addr = "
          << dmanip << addr << ", value = "
          << dmanip << old << " -> "
          << dmanip << src << '\n';
@@ -538,7 +539,8 @@ void core::mem_ld_lw(uint32_t &dst, int addr) {
   }
   dst = mem[addr];
   if(opt >> OPTION_M & 1) {
-    cerr << "ld: addr = "
+    cerr << dmanip << pc
+         << " ld: addr = "
          << dmanip << addr << ", value = "
          << dmanip << dst << '\n';
   }
