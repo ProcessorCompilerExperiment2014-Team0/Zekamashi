@@ -686,10 +686,13 @@ begin
 
     icachev.addr := v.pc(16 downto 0);
 
+    if hazard /= HZ_WB then
+      mmui    <= mmuv;
+    end if;
+
     if hazard = HZ_FINE or hazard = HZ_ID then
       icachei <= icachev;
       alui    <= aluv;
-      mmui    <= mmuv;
     end if;
 
     rin <= v;
