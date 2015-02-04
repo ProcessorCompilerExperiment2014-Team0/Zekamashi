@@ -4,7 +4,7 @@ CFLAGS = -std=c99
 TESTBENCH = coretb coretb_nomiss loopbacktb u232ctb
 GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments
-GHDL_SIM_OPT = --stop-time=500us --stack-max-size=500Mb --stack-size=500Mb
+GHDL_SIM_OPT = --stop-time=500us
 
 CORETB_DEPS = alu.vhd core.vhd datacache.vhd datacache_ram.vhd inputbuf.vhd instcache.vhd meminit.vhd mmu.vhd regfile.vhd sram.vhd u232c_in.vhd u232c_out.vhd
 CORETB_SIM = coretb.vhd rxtx.vhd sramsim.vhd util.vhd

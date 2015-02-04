@@ -51,10 +51,10 @@ begin
 
   process (clk, xrst) is
     type ram_t is array (0 to 1048575) of unsigned(31 downto 0);
-    variable ram : ram_t := (others => (others => '-'));
+    variable ram : ram_t;
   begin
     if xrst = '0' then
-      ram := (others => (others => '-'));
+      null;
     elsif rising_edge(clk) then
       if din.en = '1' then
         if din.we = '1' then
