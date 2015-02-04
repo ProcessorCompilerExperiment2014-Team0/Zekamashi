@@ -74,8 +74,8 @@ begin
       when ALU_INST_ADD => o := i1 + i2;
       when ALU_INST_SUB => o := i1 - i2;
       when ALU_INST_EQ  => if i1 =  i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
-      when ALU_INST_LE  => if i1 <  i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
-      when ALU_INST_LT  => if i1 <= i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
+      when ALU_INST_LE  => if i1 <= i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
+      when ALU_INST_LT  => if i1 <  i2 then o := to_unsigned(1, 32); else o := to_unsigned(0, 32); end if;
       when ALU_INST_AND => o := i1 and i2;
       when ALU_INST_OR  => o := i1 or  i2;
       when ALU_INST_XOR => o := i1 xor i2;
