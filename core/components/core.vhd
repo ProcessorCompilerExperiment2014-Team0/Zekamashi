@@ -181,7 +181,7 @@ architecture behavior of core is
   procedure flush_pipeline (
     v : out latch_t) is
   begin
-    v.d.inst := unop;  -- BIS R31,R31,R31
+    v.d := d_bubble;
   end procedure flush_pipeline;
 
   function decode_alu_inst (
