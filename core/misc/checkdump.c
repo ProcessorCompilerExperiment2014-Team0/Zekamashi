@@ -8,8 +8,9 @@ main(int argc, char **argv) {
   FILE *f1, *f2;
   int i;
 
-  if (argc != 2) {
+  if (argc != 3) {
     puts("usage: chechdump file1 file2\n");
+    return 0;
   }
 
   if ((f1 = fopen(argv[1], "r")) == NULL) {
@@ -23,7 +24,7 @@ main(int argc, char **argv) {
     return 1;
   }
 
-  i = 0;
+  i = 1;
   while(fgets(str1, 99, f1) && fgets(str2, 99, f2)) {
     if (strcmp(str1, str2) != 0) {
       printf("found diff at l%d\n", i);
