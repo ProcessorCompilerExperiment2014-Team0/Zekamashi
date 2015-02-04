@@ -3,9 +3,12 @@ coretb
 coretb.ghw
 input.dat
 output.dat
+ir.log
+fr.log
 work-obj93.cf
 components/code
 components/code.log
 components/meminit.vhd
+misc/checkdump
 misc/tohex
 misc/fromhex
