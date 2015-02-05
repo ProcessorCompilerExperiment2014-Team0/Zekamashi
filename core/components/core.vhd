@@ -124,6 +124,7 @@ architecture behavior of core is
     opmode  : opmode_t;
     wb      : reg_index_t;
     alu_out : word_t;
+    mmui    : mmu_in_t;
   end record latch_memwb_t;
 
   constant d_bubble : latch_ifid_t := (
@@ -156,7 +157,11 @@ architecture behavior of core is
     pc       => (others => '1'),
     opmode   => OP_ALU,
     wb       => 31,
-    alu_out  => (others => '0'));
+    alu_out  => (others => '0'),
+    mmui     => (en => '0',
+                 we => '-',
+                 addr => (others => '-'),
+                 data => (others => '-')));
 
   type latch_t is record
     rs : std_logic;                     -- reset signal
@@ -623,6 +628,7 @@ begin
 
     v.w.wb      := r.m.wb;
     v.w.alu_out := r.m.alu_out;
+    v.w.mmui    := mmuv;
     v.w.opmode  := r.m.opmode;
 
     -------------------------------------------------------------------------
@@ -654,6 +660,11 @@ begin
     debuginfo.ir_idx    <= ir_idx;
     debuginfo.ir_data   <= ir_data;
 
+    -------------------------------------------------------------------------
+    -- Instruction Fetch
+    -------------------------------------------------------------------------
+
+    icachev := (addr => v.pc(16 downto 0));
 
     ---------------------------------------------------------------------------
     -- Pipeline Stalling
@@ -671,32 +682,26 @@ begin
         v.e  := r.e;
         v.m  := m_bubble;
 
+        icachev := (addr => r.pc(16 downto 0));
+
       when HZ_WB =>
+
         v.pc := r.pc;
         v.d  := r.d;
         v.e  := r.e;
         v.m  := r.m;
         v.w  := r.w;
 
+        icachev := (addr => r.pc(16 downto 0));
+        mmuv    := r.w.mmui;
+
       when others => null;
     end case;
 
-    -------------------------------------------------------------------------
-    -- Instruction Fetch
-    -------------------------------------------------------------------------
-
-    icachev.addr := v.pc(16 downto 0);
-
-    if hazard /= HZ_WB then
-      mmui    <= mmuv;
-    end if;
-
-    if hazard = HZ_FINE or hazard = HZ_ID then
-      icachei <= icachev;
-      alui    <= aluv;
-    end if;
-
-    rin <= v;
+    mmui    <= mmuv;
+    icachei <= icachev;
+    alui    <= aluv;
+    rin     <= v;
   end process;
 
   seq : process (clk, xrst) is
