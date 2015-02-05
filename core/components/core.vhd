@@ -124,6 +124,7 @@ architecture behavior of core is
     opmode  : opmode_t;
     wb      : reg_index_t;
     alu_out : word_t;
+    mmui    : mmu_in_t;
   end record latch_memwb_t;
 
   constant d_bubble : latch_ifid_t := (
@@ -156,7 +157,11 @@ architecture behavior of core is
     pc       => (others => '1'),
     opmode   => OP_ALU,
     wb       => 31,
-    alu_out  => (others => '0'));
+    alu_out  => (others => '0'),
+    mmui     => (en => '0',
+                 we => '-',
+                 addr => (others => '-'),
+                 data => (others => '-')));
 
   type latch_t is record
     rs : std_logic;                     -- reset signal
@@ -395,7 +400,8 @@ architecture behavior of core is
   type debug_t is record
     hz        : hazard_t;
     ir        : regfile_t;
-    ir_prev   : regfile_t;
+    ir_idx    : reg_index_t;
+    ir_data   : word_t;
     ir_bubble : boolean;
     ir_pc     : word_t;
     fr        : regfile_t;
@@ -404,7 +410,8 @@ architecture behavior of core is
   constant debuginfo_init : debug_t := (
     hz        => HZ_FINE,
     ir        => (others => (others => '0')),
-    ir_prev   => (others => (others => '0')),
+    ir_idx    => 31,
+    ir_data   => (others => '-'),
     ir_bubble => true,
     ir_pc     => (others => '1'),
     fr        => (others => (others => '0')));
@@ -621,6 +628,7 @@ begin
 
     v.w.wb      := r.m.wb;
     v.w.alu_out := r.m.alu_out;
+    v.w.mmui    := mmuv;
     v.w.opmode  := r.m.opmode;
 
     -------------------------------------------------------------------------
@@ -649,10 +657,14 @@ begin
 
     debuginfo.ir_bubble <= r.w.bubble;
     debuginfo.ir_pc     <= r.w.pc;
+    debuginfo.ir_idx    <= ir_idx;
+    debuginfo.ir_data   <= ir_data;
 
-    if ir_idx /= 31 then
-      debuginfo.ir(ir_idx) <= ir_data;
-    end if;
+    -------------------------------------------------------------------------
+    -- Instruction Fetch
+    -------------------------------------------------------------------------
+
+    icachev := (addr => v.pc(16 downto 0));
 
     ---------------------------------------------------------------------------
     -- Pipeline Stalling
@@ -670,32 +682,26 @@ begin
         v.e  := r.e;
         v.m  := m_bubble;
 
+        icachev := (addr => r.pc(16 downto 0));
+
       when HZ_WB =>
+
         v.pc := r.pc;
         v.d  := r.d;
         v.e  := r.e;
         v.m  := r.m;
         v.w  := r.w;
 
+        icachev := (addr => r.pc(16 downto 0));
+        mmuv    := r.w.mmui;
+
       when others => null;
     end case;
 
-    -------------------------------------------------------------------------
-    -- Instruction Fetch
-    -------------------------------------------------------------------------
-
-    icachev.addr := v.pc(16 downto 0);
-
-    if hazard /= HZ_WB then
-      mmui    <= mmuv;
-    end if;
-
-    if hazard = HZ_FINE or hazard = HZ_ID then
-      icachei <= icachev;
-      alui    <= aluv;
-    end if;
-
-    rin <= v;
+    mmui    <= mmuv;
+    icachei <= icachev;
+    alui    <= aluv;
+    rin     <= v;
   end process;
 
   seq : process (clk, xrst) is
@@ -707,7 +713,7 @@ begin
       r <= rin;
 
       -- register dump
-      if not debuginfo.ir_bubble then
+      if not debuginfo.ir_bubble and debuginfo.hz /= HZ_WB then
         write(l, string'("PC : "));
         hwrite(l, std_logic_vector(debuginfo.ir_pc));
         writeline(ir_dump, l);
@@ -715,12 +721,15 @@ begin
           write(l, string'("$"));
           write(l, i, LEFT, 2);
           write(l, string'(" : "));
-          hwrite(l, std_logic_vector(debuginfo.ir_prev(i)));
+          hwrite(l, std_logic_vector(debuginfo.ir(i)));
           writeline(ir_dump, l);
         end loop;
         writeline(ir_dump, l);
       end if;
-      debuginfo.ir_prev <= debuginfo.ir;
+
+      if debuginfo.ir_idx /= 31 then
+        debuginfo.ir(debuginfo.ir_idx) <= debuginfo.ir_data;
+      end if;
     end if;
   end process;
 
