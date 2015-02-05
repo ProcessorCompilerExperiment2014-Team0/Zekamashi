@@ -682,6 +682,8 @@ begin
         v.d  := r.d;
         v.e  := e_bubble;
 
+        icachev := (addr => r.pc(16 downto 0));
+
       when HZ_EXE =>
         v.pc := r.pc;
         v.d  := r.d;
