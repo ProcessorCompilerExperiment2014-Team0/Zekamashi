@@ -395,7 +395,8 @@ architecture behavior of core is
   type debug_t is record
     hz        : hazard_t;
     ir        : regfile_t;
-    ir_prev   : regfile_t;
+    ir_idx    : reg_index_t;
+    ir_data   : word_t;
     ir_bubble : boolean;
     ir_pc     : word_t;
     fr        : regfile_t;
@@ -404,7 +405,8 @@ architecture behavior of core is
   constant debuginfo_init : debug_t := (
     hz        => HZ_FINE,
     ir        => (others => (others => '0')),
-    ir_prev   => (others => (others => '0')),
+    ir_idx    => 31,
+    ir_data   => (others => '-'),
     ir_bubble => true,
     ir_pc     => (others => '1'),
     fr        => (others => (others => '0')));
@@ -649,10 +651,9 @@ begin
 
     debuginfo.ir_bubble <= r.w.bubble;
     debuginfo.ir_pc     <= r.w.pc;
+    debuginfo.ir_idx    <= ir_idx;
+    debuginfo.ir_data   <= ir_data;
 
-    if ir_idx /= 31 then
-      debuginfo.ir(ir_idx) <= ir_data;
-    end if;
 
     ---------------------------------------------------------------------------
     -- Pipeline Stalling
@@ -707,7 +708,7 @@ begin
       r <= rin;
 
       -- register dump
-      if not debuginfo.ir_bubble then
+      if not debuginfo.ir_bubble and debuginfo.hz /= HZ_WB then
         write(l, string'("PC : "));
         hwrite(l, std_logic_vector(debuginfo.ir_pc));
         writeline(ir_dump, l);
@@ -715,12 +716,15 @@ begin
           write(l, string'("$"));
           write(l, i, LEFT, 2);
           write(l, string'(" : "));
-          hwrite(l, std_logic_vector(debuginfo.ir_prev(i)));
+          hwrite(l, std_logic_vector(debuginfo.ir(i)));
           writeline(ir_dump, l);
         end loop;
         writeline(ir_dump, l);
       end if;
-      debuginfo.ir_prev <= debuginfo.ir;
+
+      if debuginfo.ir_idx /= 31 then
+        debuginfo.ir(debuginfo.ir_idx) <= debuginfo.ir_data;
+      end if;
     end if;
   end process;
 
