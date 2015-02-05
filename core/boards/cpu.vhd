@@ -99,6 +99,9 @@ begin
   clk   <= clk1;
 
   corec : core
+    generic map (
+      dump_ir => false,
+      dump_fr => false)
     port map (
       iri     => iri,
       iro     => iro,

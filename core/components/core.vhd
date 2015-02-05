@@ -15,6 +15,9 @@ use work.regfile_p.all;
 package core_p is
 
   component core is
+    generic (
+      dump_ir : boolean;
+      dump_fr : boolean);
     port (
       clk  : in std_logic;
       xrst : in std_logic;
@@ -54,6 +57,9 @@ use work.regfile_p.all;
 use work.util_p.all;
 
 entity core is
+  generic (
+    dump_ir : boolean := false;
+    dump_fr : boolean := false);
   port (
     clk  : in std_logic;
     xrst : in std_logic;
@@ -713,22 +719,24 @@ begin
       r <= rin;
 
       -- register dump
-      if not debuginfo.ir_bubble and debuginfo.hz /= HZ_WB then
-        write(l, string'("PC : "));
-        hwrite(l, std_logic_vector(debuginfo.ir_pc));
-        writeline(ir_dump, l);
-        for i in 0 to 31 loop
-          write(l, string'("$"));
-          write(l, i, LEFT, 2);
-          write(l, string'(" : "));
-          hwrite(l, std_logic_vector(debuginfo.ir(i)));
+      if dump_ir then
+        if not debuginfo.ir_bubble and debuginfo.hz /= HZ_WB then
+          write(l, string'("PC : "));
+          hwrite(l, std_logic_vector(debuginfo.ir_pc));
           writeline(ir_dump, l);
-        end loop;
-        writeline(ir_dump, l);
-      end if;
+          for i in 0 to 31 loop
+            write(l, string'("$"));
+            write(l, i, LEFT, 2);
+            write(l, string'(" : "));
+            hwrite(l, std_logic_vector(debuginfo.ir(i)));
+            writeline(ir_dump, l);
+          end loop;
+          writeline(ir_dump, l);
+        end if;
 
-      if debuginfo.ir_idx /= 31 then
-        debuginfo.ir(debuginfo.ir_idx) <= debuginfo.ir_data;
+        if debuginfo.ir_idx /= 31 then
+          debuginfo.ir(debuginfo.ir_idx) <= debuginfo.ir_data;
+        end if;
       end if;
     end if;
   end process;

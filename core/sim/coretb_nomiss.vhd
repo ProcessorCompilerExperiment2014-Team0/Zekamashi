@@ -84,6 +84,9 @@ begin
       dout => fro);
 
   corec : core
+    generic map (
+      dump_ir => true,
+      dump_fr => true)
     port map (
       clk     => clk,
       xrst    => xrst,
