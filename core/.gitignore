@@ -1,6 +1,8 @@
 *.o
 coretb
+coretb_nomiss
 coretb.ghw
+coretb_nomiss.ghw
 input.dat
 output.dat
 ir.log
