@@ -1,3 +1,4 @@
+start_point:
 	LDA	$30, 12288($31)
 	LDA	$27, 28672($31)
     # main program start
@@ -10,7 +11,7 @@
 	LDL	$29, 0($30)
 	STL	$29, 0($30)
 	LDA	$30, 1($30)
-	BSR	$29, min_caml_print_int
+	BSR	$29, min_caml_print_char
 	LDA	$30, -1($30)
 	LDL	$29, 0($30)
     # main program end
@@ -616,4 +617,4 @@ min_caml_print_newline:
 	RET $28, ($29)
 
 min_caml_main_end:
-	LDA	$0, 0($0)
+	BR	$28, start_point
