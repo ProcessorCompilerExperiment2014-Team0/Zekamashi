@@ -78,6 +78,21 @@ core::core(int argc, char **argv) {
     i_stat[i] = 0LL;
   }
 
+  // for pipeline
+  enable_stall = ENABLE_STALL;
+  enable_data_forward = ENABLE_DATA_FORWARD;
+  load_delay = LOAD_DELAY;
+  branch_delay = BRANCH_DELAY;
+  if(enable_stall) {
+    int_delay = INT_DEFAULT_DELAY;
+    float_delay = FLOAT_DEFAULT_DELAY;
+  } else {
+    int_delay = INT_ARITH_DELAY;
+    float_delay = FLOAT_ARITH_DELAY;
+  }
+  unwritten_ir.assign(int_delay, make_pair(31, 0u));
+  unwritten_fr.assign(float_delay, make_pair(31, 0u));
+
   if(argc < 3) return;
   int i = 2;
   if(argv[2][0] != '-') {
@@ -219,6 +234,8 @@ void core::run() {
       case 0x5:                   // mem format
         ra = (inst >> 21) & 0x1F;
         rb = (inst >> 16) & 0x1F;
+        read_ir(ra);
+        read_ir(rb);
         df = inst & 0xFFFF;
         switch(opcd) {
         case 0x08:
@@ -248,6 +265,8 @@ void core::run() {
         case 0x1a:              // mbr format
           ra = (inst >> 21) & 0x1F;
           rb = (inst >> 16) & 0x1F;
+          read_ir(ra);
+          read_ir(rb);
           df = inst & 0xFF;
           switch(df >> 14) {
           case 0x0:
@@ -266,6 +285,7 @@ void core::run() {
         case 0x1c:              // float
           ra = (inst >> 21) & 0x1F;
           rb = (inst >> 16) & 0x1F;
+          read_fr(ra);
           rc = inst & 0x1F;
           df = (inst >> 5) & 0x7FF;
           switch(df) {
@@ -283,6 +303,7 @@ void core::run() {
       case 0x6:
       case 0x7:                 // bra format
         ra = (inst >> 21) & 0x1F;
+        read_ir(ra);
         df = inst & 0x1FFFFF;
         switch(opcd) {
         case 0x30:
@@ -317,9 +338,11 @@ void core::run() {
           case 0x14:
             switch(df) {
             case 0x004:
+              read_ir(ra);
               i_itofs(ra, rc);
               break;
             case 0x08b:
+              read_fr(rb);
               i_sqrts(rb, rc);
               break;
             default:
@@ -327,23 +350,30 @@ void core::run() {
             }
             break;
           case 0x16:
+            read_fr(rb);
             switch(df) {
             case 0x0a5:
+              read_fr(ra);
               i_cmpseq(ra, rb, rc);
               break;
             case 0x0a7:
+              read_fr(ra);
               i_cmpsle(ra, rb, rc);
               break;
             case 0x0a6:
+              read_fr(ra);
               i_cmpslt(ra, rb, rc);
               break;
             case 0x080:
+              read_fr(ra);
               i_adds(ra, rb, rc);
               break;
             case 0x081:
+              read_fr(ra);
               i_subs(ra, rb, rc);
               break;
             case 0x082:
+              read_fr(ra);
               i_muls(ra, rb, rc);
               break;
             case 0x083:
@@ -364,12 +394,14 @@ void core::run() {
           }
         } else {                  // integer
           ra = (inst >> 21) & 0x1F;
+          read_ir(ra);
           df = (inst >> 5) & 0x7F;
           rc = inst & 0x1F;
           if(inst >> 12 & 1) {    // literal
             b = (inst >> 13) & 0xFF;
           } else {                // register
             rb = (inst >> 16) & 0x1F;
+            read_ir(rb);
             b = ir[rb].i;
           }
           switch(opcd) {
@@ -550,14 +582,100 @@ void core::inc_pc() {
   pc++;
 }
 
+void core::read_ir(int src) {
+  if(mem_fst(unwritten_ir, src)) {
+    if(enable_stall) {
+      do {
+        stall();
+      } while(mem_fst(unwritten_ir, src));
+    } else {
+      cerr << dmanip << "RAW Hazard\n  pc: "
+           << pc << endl;
+      exit(1);
+    }
+  }
+}
+
+void core::read_fr(int src) {
+  if(mem_fst(unwritten_fr, src)) {
+    if(enable_stall) {
+      do {
+        stall();
+      } while(mem_fst(unwritten_fr, src));
+    } else {
+      cerr << dmanip << "RAW Hazard\n  pc: "
+           << pc << endl;
+      exit(1);
+    }
+  }
+}
+
+void core::reserve_write_ir(int dst, uint32_t data) {
+  unwritten_ir.push_back(make_pair(dst, data));
+  unwritten_fr.push_back(make_pair(31, 0u));
+}
+
+void core::reserve_write_ir(int dst, int32_t data) {
+  data_type d;
+  d.i = data;
+  unwritten_ir.push_back(make_pair(dst, d.u));
+  unwritten_fr.push_back(make_pair(31, 0u));
+}
+
+void core::reserve_write_fr(int dst, uint32_t data) {
+  unwritten_fr.push_back(make_pair(dst, data));
+  unwritten_ir.push_back(make_pair(31, 0u));
+}
+
+void core::reserve_write_fr(int dst, int32_t data) {
+  data_type d;
+  d.i = data;
+  unwritten_fr.push_back(make_pair(dst, d.u));
+  unwritten_ir.push_back(make_pair(31, 0u));
+}
+
+void core::reserve_write_fr(int dst, float data) {
+  data_type d;
+  d.f = data;
+  unwritten_fr.push_back(make_pair(dst, d.u));
+  unwritten_ir.push_back(make_pair(31, 0u));
+}
+
+void core::write_ir() {
+  auto ip = unwritten_ir.front();
+  if(ip.first != 31) {
+    ir[ip.first].u = ip.second;
+  }
+  unwritten_ir.pop_front();
+}
+
+void core::write_fr() {
+  auto fp = unwritten_fr.front();
+  if(fp.first != 31) {
+    fr[fp.first].u = fp.second;
+  }
+  unwritten_ir.pop_front();
+}
+
+void core::write_register() {
+  write_ir();
+  write_fr();
+}
+
+void core::stall() {
+  write_register();
+  unwritten_ir.push_back(make_pair(31, 0u));
+  unwritten_fr.push_back(make_pair(31, 0u));
+}
+
 void core::i_lda(int ra, int rb, int disp) {
-  ir[ra].i = ir[rb].i + extend(disp, 16);
+  reserve_write_ir(ra, ir[rb].i + extend(disp, 16));
   inc_pc();
   i_stat[I_LDA]++;
 }
 
 void core::i_ldah(int ra, int rb, int disp) {
-  ir[ra].i = ir[rb].i + extend(disp, 16) * 65536;
+  reserve_write_ir(ra, ir[rb].i + extend(disp, 16) * 65536);
   inc_pc();
   i_stat[I_LDAH]++;
 }
@@ -591,8 +709,14 @@ void core::i_stl(int ra, int rb, int disp) {
 }
 
 int core::i_br(int ra, int disp) {
-  ir[ra].i = pc + 1;
+  reserve_write_ir(ra, pc + 1);
   if(disp == 0) {
+    while(!unwritten_ir.empty()) {
+      write_ir();
+    }
+    while(!unwritten_fr.empty()) {
+      write_fr();
+    }
     return 1;
   }
   pc += extend(disp, 16);
@@ -601,7 +725,7 @@ int core::i_br(int ra, int disp) {
 }
 
 void core::i_bsr(int ra, int disp) {
-  ir[ra].i = pc + 1;
+  reserve_write_ir(ra, pc + 1);
   pc += extend(disp, 16);
   if(opt >> OPTION_S & 1) {
     map<unsigned, long long>::iterator p = br_map.find(pc);
@@ -651,109 +775,106 @@ void core::i_fbne(int fa, int disp) {
 }
 
 void core::i_jmp(int ra, int rb, int func) {
-  int temp = ir[rb].i;
-  ir[ra].i = pc + 1;
-  pc = temp;
+  reserve_write_ir(ra, pc + 1);
+  pc = ir[rb].i;
   i_stat[I_JMP]++;
 }
 
 void core::i_jsr(int ra, int rb, int func) {
-  int temp = ir[rb].i;
-  ir[ra].i = pc + 1;
-  pc = temp;
+  reserve_write_ir(ra, pc + 1);
+  pc = ir[rb].i;
   i_stat[I_JSR]++;
 }
 
 void core::i_ret(int ra, int rb, int func) {
-  int temp = ir[rb].i;
-  ir[ra].i = pc + 1;
-  pc = temp;
+  reserve_write_ir(ra, pc + 1);
+  pc = ir[rb].i;
   i_stat[I_RET]++;
 }
 
 void core::i_addl(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i + b;
+  reserve_write_ir(rc, ir[ra].i + b);
   inc_pc();
   i_stat[I_ADDL]++;
 }
 
 void core::i_subl(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i - b;
+  reserve_write_ir(rc, ir[ra].i - b);
   inc_pc();
   i_stat[I_SUBL]++;
 }
 
 void core::i_cmpeq(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i == b ? 1 : 0;
+  reserve_write_ir(rc, ir[ra].i == b ? 1 : 0);
   inc_pc();
   i_stat[I_CMPEQ]++;
 }
 
 void core::i_cmple(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i <= b ? 1 : 0;
+  reserve_write_ir(rc, ir[ra].i <= b ? 1 : 0);
   inc_pc();
   i_stat[I_CMPLE]++;
 }
 
 void core::i_cmplt(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i < b ? 1 : 0;
+  reserve_write_ir(rc, ir[ra].i < b ? 1 : 0);
   inc_pc();
   i_stat[I_CMPLT]++;
 }
 
 void core::i_and(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i & b;
+  reserve_write_ir(rc, ir[ra].i & b);
   inc_pc();
   i_stat[I_AND]++;
 }
 
 void core::i_bis(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i | b;
+  reserve_write_ir(rc, ir[ra].i | b);
   inc_pc();
   i_stat[I_BIS]++;
 }
 
 void core::i_xor(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i ^ b;
+  reserve_write_ir(rc, ir[ra].i ^ b);
   inc_pc();
   i_stat[I_XOR]++;
 }
 
 void core::i_eqv(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i ^ ~b;
+  reserve_write_ir(rc, ir[ra].i ^ ~b);
   inc_pc();
   i_stat[I_EQV]++;
 }
 
 void core::i_sll(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i << b;
+  reserve_write_ir(rc, ir[ra].i << b);
   inc_pc();
   i_stat[I_SLL]++;
 }
 
 void core::i_srl(int ra, int b, int rc) {
-  ir[rc].u = ir[ra].u >> b;
+  reserve_write_ir(rc, ir[ra].u >> b);
   inc_pc();
   i_stat[I_SRL]++;
 }
 
 void core::i_sra(int ra, int b, int rc) {
-  ir[rc].i = ir[ra].i >> b;
+  reserve_write_ir(rc, ir[ra].i >> b);
   inc_pc();
   i_stat[I_SRA]++;
 }
 
 void core::i_itofs(int ra, int fc) {
-  fr[fc].u = ir[ra].u;
+  reserve_write_fr(fc, ir[ra].u);
   inc_pc();
   i_stat[I_ITOFS]++;
 }
 
 void core::i_adds(int fa, int fb, int fc) {
   if(opt >> OPTION_N & 1 || opt >> OPTION_N_ADDS & 1) {
-    fr[fc].f = fr[fa].f + fr[fb].f;
+    reserve_write_fr(fc, fr[fa].f + fr[fb].f);
   } else {
-    fr[fc].u = fadd(fr[fa].u, fr[fb].u);
+    reserve_write_fr(fc, fadd(fr[fa].u, fr[fb].u));
   }
   inc_pc();
   i_stat[I_ADDS]++;
@@ -761,9 +882,9 @@ void core::i_adds(int fa, int fb, int fc) {
 
 void core::i_subs(int fa, int fb, int fc) {
   if(opt >> OPTION_N & 1 || opt >> OPTION_N_SUBS & 1) {
-    fr[fc].f = fr[fa].f - fr[fb].f;
+    reserve_write_fr(fc, fr[fa].f - fr[fb].f);
   } else {
-    fr[fc].u = fsub(fr[fa].u, fr[fb].u);
+    reserve_write_fr(fc, fsub(fr[fa].u, fr[fb].u));
   }
   inc_pc();
   i_stat[I_SUBS]++;
@@ -771,9 +892,9 @@ void core::i_subs(int fa, int fb, int fc) {
 
 void core::i_muls(int fa, int fb, int fc) {
   if(opt >> OPTION_N & 1 || opt >> OPTION_N_MULS & 1) {
-    fr[fc].f = fr[fa].f * fr[fb].f;
+    reserve_write_fr(fc, fr[fa].f * fr[fb].f);
   } else {
-    fr[fc].u = fmul(fr[fa].u, fr[fb].u);
+    reserve_write_fr(fc, fmul(fr[fa].u, fr[fb].u));
   }
   inc_pc();
   i_stat[I_MULS]++;
@@ -781,9 +902,9 @@ void core::i_muls(int fa, int fb, int fc) {
 
 void core::i_invs(int fb, int fc) {
   if(opt >> OPTION_N & 1 || opt >> OPTION_N_INVS & 1) {
-    fr[fc].f = 1.0 / fr[fb].f;
+    reserve_write_fr(fc, 1.0f / fr[fb].f);
   } else {
-    fr[fc].u = finv(fr[fb].u);
+    reserve_write_fr(fc, finv(fr[fb].u));
   }
   inc_pc();
   i_stat[I_INVS]++;
@@ -791,37 +912,37 @@ void core::i_invs(int fb, int fc) {
 
 void core::i_sqrts(int fb, int fc) {
   if(opt >> OPTION_N & 1 || opt >> OPTION_N_SQRTS & 1) {
-    fr[fc].f = sqrtf(fr[fb].f);
+    reserve_write_fr(fc, sqrtf(fr[fb].f));
   } else {
-    fr[fc].u = fsqrt(fr[fb].u);
+    reserve_write_fr(fc, fsqrt(fr[fb].u));
   }
   inc_pc();
   i_stat[I_SQRTS]++;
 }
 
 void core::i_cmpseq(int fa, int fb, int fc) {
-  fr[fc].f = fr[fa].f == fr[fb].f ? 2.0 : 0.0;
+  reserve_write_fr(fc, fr[fa].f == fr[fb].f ? 2.0f : 0.0f);
   inc_pc();
   i_stat[I_CMPSEQ]++;
 }
 
 void core::i_cmpsle(int fa, int fb, int fc) {
-  fr[fc].f = fr[fa].f <= fr[fb].f ? 2.0 : 0.0;
+  reserve_write_fr(fc, fr[fa].f <= fr[fb].f ? 2.0f : 0.0f);
   inc_pc();
   i_stat[I_CMPSLE]++;
 }
 
 void core::i_cmpslt(int fa, int fb, int fc) {
-  fr[fc].f = fr[fa].f < fr[fb].f ? 2.0 : 0.0;
+  reserve_write_fr(fc, fr[fa].f < fr[fb].f ? 2.0f : 0.0f);
   inc_pc();
   i_stat[I_CMPSLT]++;
 }
 
 void core::i_cvtsl_c(int fb, int fc) {
   if(opt >> OPTION_N & 1 || opt >> OPTION_N_CVTSL & 1) {
-    fr[fc].i = (int32_t)fr[fb].f;
+    reserve_write_fr(fc, (int32_t)fr[fb].f);
   } else {
-    fr[fc].u = ftrc(fr[fb].u);
+    reserve_write_fr(fc, ftrc(fr[fb].u));
   }
   inc_pc();
   i_stat[I_CVTSL]++;
@@ -829,16 +950,16 @@ void core::i_cvtsl_c(int fb, int fc) {
 
 void core::i_cvtls(int fb, int fc) {
   if(opt >> OPTION_N & 1 || opt >> OPTION_N_CVTLS & 1) {
-    fr[fc].f = (float)fr[fb].i;
+    reserve_write_fr(fc, (float)fr[fb].i);
   } else {
-    fr[fc].u = itof(fr[fb].u);
+    reserve_write_fr(fc, itof(fr[fb].u));
   }
   inc_pc();
   i_stat[I_CVTLS]++;
 }
 
 void core::i_ftois(int fa, int rc) {
-  ir[rc].u = fr[fa].u;
+  reserve_write_ir(rc, fr[fa].u);
   inc_pc();
   i_stat[I_FTOIS]++;
 }
@@ -904,4 +1025,13 @@ void core::write_br_stat() {
     os << p->first << " " << p->second << '\n';
   }
   os.close();
+}
+
+template <class T, class U> bool mem_fst(list<pair<T, U> > &l, T &x) {
+  for(auto p = l.begin(); p != l.end(); p++) {
+    if(p->first == x) {
+      return true;
+    }
+  }
+  return false;
 }

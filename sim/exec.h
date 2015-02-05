@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <list>
 #include <cstdint>
 using namespace std;
 
@@ -36,6 +37,15 @@ union data_type {
 };
 
 class core {
+public:
+  static const int INT_DEFAULT_DELAY = 4;
+  static const int FLOAT_DEFAULT_DELAY = 6;
+  static const bool ENABLE_STALL = false;
+  static const bool ENABLE_DATA_FORWARD = false;
+  static const int INT_ARITH_DELAY = 2;
+  static const int FLOAT_ARITH_DELAY = 4;
+  static const int LOAD_DELAY = 3;
+  static const int BRANCH_DELAY = 2;
 private:
   unsigned pc;
   unsigned inst_len;
@@ -44,6 +54,15 @@ private:
   data_type rd_data;
   data_type wt_data;
   uint32_t *mem;
+
+  int int_delay;
+  int float_delay;
+  bool enable_stall;
+  bool enable_data_forward;
+  int load_delay;
+  int branch_delay;
+  list<pair<int, uint32_t> > unwritten_ir;
+  list<pair<int, uint32_t> > unwritten_fr;
 
   long long i_count;
   long long i_limit;
@@ -69,6 +88,18 @@ private:
   inline void mem_st_lw(uint32_t &src, int addr);
   inline void mem_ld_lw(uint32_t &dst, int addr);
   inline void inc_pc();
+  inline void read_ir(int src);
+  inline void read_fr(int src);
+  inline void reserve_write_ir(int dst, uint32_t data);
+  inline void reserve_write_ir(int dst, int32_t data);
+  inline void reserve_write_fr(int dst, uint32_t data);
+  inline void reserve_write_fr(int dst, int32_t data);
+  inline void reserve_write_fr(int dst, float data);
+  inline void write_ir();
+  inline void write_fr();
+  inline void write_register();
+  inline void stall();
+
   inline void i_lda(int ra, int rb, int disp);
   inline void i_ldah(int ra, int rb, int disp);
   inline void i_lds(int ra, int rb, int disp);
@@ -112,5 +143,7 @@ private:
   inline static int extend(int v, int len);
   inline static ostream &dmanip(ostream &st);
 };
+
+template <class T, class U> bool mem_fst(list<pair<T, U> >&, T&);
 
 #endif
