@@ -151,7 +151,7 @@ begin  -- architecture behavior
     zav     := r.addr0;
     xwav    := not r.we0;
     v.we1   := r.we0;
-    v.data1 := v.data0;
+    v.data1 := r.data0;
 
     -- stage 2
     v.we2   := r.we1;
@@ -159,7 +159,7 @@ begin  -- architecture behavior
 
     -- stage 3
     if r.we2 = '1' then
-      zdv     := v.data2;
+      zdv     := r.data2;
       zdpv    := "0000";
       v.odata := (others => '-');
     else
