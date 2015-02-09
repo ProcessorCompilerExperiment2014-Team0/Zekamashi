@@ -83,15 +83,15 @@ core::core(int argc, char **argv) {
   enable_data_forward = ENABLE_DATA_FORWARD;
   load_delay = LOAD_DELAY;
   branch_delay = BRANCH_DELAY;
-  if(enable_stall) {
+  if(enable_data_forward) {
     int_delay = INT_DEFAULT_DELAY;
     float_delay = FLOAT_DEFAULT_DELAY;
   } else {
     int_delay = INT_ARITH_DELAY;
     float_delay = FLOAT_ARITH_DELAY;
   }
-  unwritten_ir.assign(int_delay, make_pair(31, 0u));
-  unwritten_fr.assign(float_delay, make_pair(31, 0u));
+  unwritten_ir.assign(int_delay + 1, make_pair(31, 0u));
+  unwritten_fr.assign(float_delay + 1, make_pair(31, 0u));
 
   if(argc < 3) return;
   int i = 2;
@@ -170,6 +170,10 @@ core::core(int argc, char **argv) {
           throw argv[i];
         }
         sscanf(argv[i], "%lld", &i_limit);
+      } else if(!strcmp(argv[i], "-enable-stall")) {
+        enable_stall = true;
+      } else if(!strcmp(argv[i], "-enable-data-forward")) {
+        enable_data_forward = true;
       } else {
         throw argv[i];
       }
@@ -472,8 +476,9 @@ void core::run() {
            << hex << setfill('0') << setw(8) << uppercase << i << endl;
       return;
     }
-    ir[NUM_OF_R - 1].i = 0;
-    fr[NUM_OF_R - 1].i = 0;
+    write_register();
+    // ir[NUM_OF_R - 1].i = 0;
+    // fr[NUM_OF_R - 1].i = 0;
   }
 }
 
@@ -583,28 +588,28 @@ void core::inc_pc() {
 }
 
 void core::read_ir(int src) {
-  if(mem_fst(unwritten_ir, src)) {
+  if(src != 31 && mem_fst(unwritten_ir, src)) {
     if(enable_stall) {
       do {
         stall();
       } while(mem_fst(unwritten_ir, src));
     } else {
-      cerr << dmanip << "RAW Hazard\n  pc: "
-           << pc << endl;
+      cerr <<"RAW Hazard in $" << src << "\n  PC: "
+           << dmanip << pc << endl;
       exit(1);
     }
   }
 }
 
 void core::read_fr(int src) {
-  if(mem_fst(unwritten_fr, src)) {
+  if(src != 31 && mem_fst(unwritten_fr, src)) {
     if(enable_stall) {
       do {
         stall();
       } while(mem_fst(unwritten_fr, src));
     } else {
-      cerr << dmanip << "RAW Hazard\n  pc: "
-           << pc << endl;
+      cerr << "RAW Hazard in $" << src << "\n  PC: "
+           << dmanip << pc << endl;
       exit(1);
     }
   }
@@ -654,7 +659,7 @@ void core::write_fr() {
   if(fp.first != 31) {
     fr[fp.first].u = fp.second;
   }
-  unwritten_ir.pop_front();
+  unwritten_fr.pop_front();
 }
 
 void core::write_register() {
@@ -666,6 +671,7 @@ void core::stall() {
   write_register();
   unwritten_ir.push_back(make_pair(31, 0u));
   unwritten_fr.push_back(make_pair(31, 0u));
+  cerr << "Stall\n  PC: " << dmanip << pc << endl;
 }
 
 void core::i_lda(int ra, int rb, int disp) {
@@ -719,6 +725,9 @@ int core::i_br(int ra, int disp) {
     }
     return 1;
   }
+  for(int i=0; i<branch_delay; i++) {
+    stall();
+  }
   pc += extend(disp, 16);
   i_stat[I_BR]++;
   return 0;
@@ -726,6 +735,9 @@ int core::i_br(int ra, int disp) {
 
 void core::i_bsr(int ra, int disp) {
   reserve_write_ir(ra, pc + 1);
+  for(int i=0; i<branch_delay; i++) {
+    stall();
+  }
   pc += extend(disp, 16);
   if(opt >> OPTION_S & 1) {
     map<unsigned, long long>::iterator p = br_map.find(pc);
@@ -740,6 +752,9 @@ void core::i_bsr(int ra, int disp) {
 
 void core::i_beq(int ra, int disp) {
   if(ir[ra].i == 0) {
+    for(int i=0; i<branch_delay; i++) {
+      stall();
+    }
     pc += extend(disp, 16);
   } else {
     inc_pc();
@@ -750,6 +765,9 @@ void core::i_beq(int ra, int disp) {
 void core::i_bne(int ra, int disp) {
   if(ir[ra].i != 0) {
     pc += extend(disp, 16);
+    for(int i=0; i<branch_delay; i++) {
+      stall();
+    }
   } else {
     inc_pc();
   }
@@ -757,7 +775,10 @@ void core::i_bne(int ra, int disp) {
 }
 
 void core::i_fbeq(int fa, int disp) {
-  if(fr[fa].f == 0.0) {
+  if(fr[fa].f == 0.0f) {
+    for(int i=0; i<branch_delay; i++) {
+      stall();
+    }
     pc += extend(disp, 16);
   } else {
     inc_pc();
@@ -766,7 +787,10 @@ void core::i_fbeq(int fa, int disp) {
 }
 
 void core::i_fbne(int fa, int disp) {
-  if(fr[fa].f != 0.0) {
+  if(fr[fa].f != 0.0f) {
+    for(int i=0; i<branch_delay; i++) {
+      stall();
+    }
     pc += extend(disp, 16);
   } else {
     inc_pc();
@@ -775,20 +799,32 @@ void core::i_fbne(int fa, int disp) {
 }
 
 void core::i_jmp(int ra, int rb, int func) {
+  int temp = ir[rb].i;
   reserve_write_ir(ra, pc + 1);
-  pc = ir[rb].i;
+  for(int i=0; i<branch_delay; i++) {
+    stall();
+  }
+  pc = temp;
   i_stat[I_JMP]++;
 }
 
 void core::i_jsr(int ra, int rb, int func) {
+  int temp = ir[rb].i;
   reserve_write_ir(ra, pc + 1);
-  pc = ir[rb].i;
+  for(int i=0; i<branch_delay; i++) {
+    stall();
+  }
+  pc = temp;
   i_stat[I_JSR]++;
 }
 
 void core::i_ret(int ra, int rb, int func) {
+  int temp = ir[rb].i;
   reserve_write_ir(ra, pc + 1);
-  pc = ir[rb].i;
+  for(int i=0; i<branch_delay; i++) {
+    stall();
+  }
+  pc = temp;
   i_stat[I_RET]++;
 }
 
