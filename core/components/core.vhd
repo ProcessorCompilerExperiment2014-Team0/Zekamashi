@@ -88,7 +88,9 @@ architecture behavior of core is
     OP_LDA,
     OP_LDAH,
     OP_ALU,
-    OP_FPU,
+    OP_FLT,
+    OP_ITFP,
+    OP_FTIP,
     OP_BRA,
     OP_JMP);
 
@@ -189,6 +191,10 @@ architecture behavior of core is
 
   signal r, rin : latch_t := latch_init;
 
+  -----------------------------------------------------------------------------
+  -- Utilities for Instruction Decode
+  -----------------------------------------------------------------------------
+
   procedure flush_pipeline (
     v : out latch_t) is
   begin
@@ -251,7 +257,7 @@ architecture behavior of core is
   end function branch_success;
 
   ---------------------------------------------------------------------------
-  -- Hazard Detection
+  -- Data Forwarding
   ---------------------------------------------------------------------------
 
   type hazard_t is (
@@ -260,142 +266,84 @@ architecture behavior of core is
     HZ_EXE, -- there is raw hazard, where op cannot see the result of load
     HZ_WB); -- there is cache miss
 
-  function brc_inst (
-    inst : word_t)
-    return boolean is
-  begin
-    return inst(31 downto 29) = "111";
-  end function brc_inst;
-
-  function jmp_inst (
-    inst : word_t)
-    return boolean is
-    variable opcode : unsigned(5 downto 0);
-  begin
-    opcode := inst(31 downto 26);
-    return opcode = "011010";    -- 1a jmp
-  end function jmp_inst;
-
-  function detect_hz_id (
-    r : latch_t)
-    return boolean is
-    variable ri : reg_index_t;
-  begin
-    if brc_inst(r.d.inst) then
-      ri := to_integer(r.d.inst(25 downto 21));
-      return ri /= 31 and ((r.e.opmode = OP_LOAD and ri = r.e.wb) or
-                           (r.m.opmode = OP_LOAD and ri = r.m.wb));
-    elsif jmp_inst(r.d.inst) then
-      ri := to_integer(r.d.inst(20 downto 16));
-      return ri /= 31 and ((r.e.opmode = OP_LOAD and ri = r.e.wb) or
-                           (r.m.opmode = OP_LOAD and ri = r.m.wb));
-    else
-      return false;
-    end if;
-  end function detect_hz_id;
-
-  function detect_hz_exe (
-    r : latch_t)
-    return boolean is
-  begin
-
-    if r.m.opmode = OP_LOAD then
-      if r.e.opmode = OP_ALU or r.e.opmode = OP_STORE then
-        if r.e.ra /= 31 and r.e.ra = r.m.wb then
-          return true;
-        end if;
-      end if;
-
-      if r.e.opmode = OP_LDA or r.e.opmode = OP_LDAH or r.e.opmode = OP_LOAD or
-        r.e.opmode = OP_STORE or (r.e.opmode = OP_ALU and r.e.inst(12) = '0') then
-        return r.e.rb /= 31 and r.e.rb = r.m.wb;
-      end if;
-    end if;
-    return false;
-  end function detect_hz_exe;
-
-  impure function detect_hazard (
-    r : latch_t)
-    return hazard_t is
-  begin
-    if mmuo.miss = '1' then
-      assert r.w.opmode = OP_LOAD report "something is wrong with memory operation" severity error;
-      return HZ_WB;
-    elsif detect_hz_exe(r) then
-      return HZ_EXE;
-    elsif detect_hz_id(r) then
-      return HZ_ID;
-    else
-      return HZ_FINE;
-    end if;
-  end function detect_hazard;
-
-  ---------------------------------------------------------------------------
-  -- Data Forwarding
-  ---------------------------------------------------------------------------
-
-  impure function forward_data_ir_id (
-    v   : word_t;
-    n   : reg_index_t)
-    return word_t is
+  procedure forward_data_ir_id (
+    dst : out   word_t;
+    hz  : inout hazard_t;
+    v   : in    word_t;
+    n   : in    reg_index_t) is
+    variable hz0 : hazard_t;
   begin
     if n = 31 then
-      return to_unsigned(0, 32);
+      dst := to_unsigned(0, 32);
     elsif n = r.e.wb then
       case r.e.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return aluo.o;
+          dst := aluo.o;
+          hz  := hz;
         when others =>
-          return (others => '-');
+          dst := (others => '-');
+          hz  := HZ_ID;
       end case;
     elsif n = r.m.wb then
       case r.m.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return r.m.alu_out;
+          dst := r.m.alu_out;
+          hz  := hz;
         when others =>
-          return (others => '0');
+          dst := (others => '-');
+          hz  := HZ_ID;
       end case;
     elsif n = r.w.wb then
       case r.w.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return r.w.alu_out;
+          dst := r.w.alu_out;
+          hz  := hz;
         when OP_LOAD =>
-          return mmuo.data;
+          dst := mmuo.data;
+          hz  := hz;
         when others =>
-          return (others => '0');
+          dst := (others => '-');
+          hz  := HZ_ID;
       end case;
     else
-      return v;
+      dst := v;
     end if;
-  end function forward_data_ir_id;
+  end procedure forward_data_ir_id;
 
-  impure function forward_data_ir_exe (
-    v : word_t;
-    n : reg_index_t)
-    return word_t is
+  procedure forward_data_ir_exe (
+    dst : out   word_t;
+    hz  : inout hazard_t;
+    v   : in    word_t;
+    n   : in    reg_index_t) is
   begin
     if n = 31 then
-      return to_unsigned(0, 32);
+      dst := to_unsigned(0, 32);
     elsif n = r.m.wb then
       case r.m.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return r.m.alu_out;
+          dst := r.m.alu_out;
+          hz  := hz;
         when others =>
-          return (others => '-');
+          dst := (others => '-');
+          hz  := HZ_EXE;
       end case;
     elsif n = r.w.wb then
       case r.w.opmode is
         when OP_ALU | OP_LDA | OP_LDAH | OP_JMP =>
-          return r.w.alu_out;
+          dst := r.w.alu_out;
+          hz  := hz;
         when OP_LOAD =>
-          return mmuo.data;
+          dst := mmuo.data;
+          hz  := hz;
         when others =>
-          return (others => '-');
+          dst := (others => '-');
+          hz  := HZ_EXE;
       end case;
     else
-      return v;
+      dst := v;
+      hz  := hz;
     end if;
-  end function forward_data_ir_exe;
+  end procedure forward_data_ir_exe;
 
   -----------------------------------------------------------------------------
   -- debug
@@ -429,6 +377,10 @@ architecture behavior of core is
 
 begin
 
+  -----------------------------------------------------------------------------
+  -- Core Logic
+  -----------------------------------------------------------------------------
+
   comb : process (r, icacheo, aluo, mmuo, iro, fro) is
     variable v       : latch_t;
     variable icachev : instcache_in_t;
@@ -448,7 +400,7 @@ begin
     variable ir_idx  : reg_index_t;
     variable ir_data : word_t;
 
-    variable hazard : hazard_t := HZ_FINE;
+    variable hazard : hazard_t;
 
   begin
     v       := r;
@@ -462,8 +414,7 @@ begin
                 en   => '0',
                 we   => '0');
 
-    hazard  := detect_hazard(r);
-    debuginfo.hz <= hazard;
+    hazard  := hz_fine;
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
@@ -508,7 +459,7 @@ begin
             v.e.alu_inst := decode_alu_inst(opcode, opfunc);
 
           when b"01_1010" =>               -- floating-point arithmetic
-            v.e.opmode := OP_FPU;
+            v.e.opmode := OP_FLT;
             -- fixme!
 
           when others =>
@@ -527,7 +478,7 @@ begin
                              v.e.wb     := 31;
           when b"01_1010" =>
             v.e.opmode := OP_JMP;
-            v.pc       := forward_data_ir_id(v.e.rbv, v.e.rb);
+            forward_data_ir_id(v.pc, hazard, v.e.rbv, v.e.rb);
             flush_pipeline(v);
 
           when others => assert false report "invalid instruction" severity warning;
@@ -540,7 +491,8 @@ begin
           v.e.alu_inst := ALU_INST_NOP;
           v.e.opmode   := OP_BRA;
           bdisp        := r.d.inst(20 downto 0);
-          cond         := forward_data_ir_id(v.e.rav, v.e.ra);  -- refer v
+          forward_data_ir_id(cond, hazard, v.e.rav, v.e.ra);  -- refer v
+
           if branch_success(cond, opcode) then
             v.pc := unsigned(signed(r.d.pc) + signed(bdisp));
             flush_pipeline(v);
@@ -573,37 +525,39 @@ begin
 
     case r.e.opmode is
       when OP_ALU =>
-        aluv.i1 := forward_data_ir_exe(r.e.rav, r.e.ra);
+        forward_data_ir_exe(aluv.i1, hazard, r.e.rav, r.e.ra);
         if r.e.inst(12) = '1' then      -- litp
           aluv.i2 := resize(r.e.inst(20 downto 13), 32);
         else
-          aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
+          forward_data_ir_exe(aluv.i2, hazard, r.e.rbv, r.e.rb);
         end if;
       when OP_LDA =>
         aluv.i1 := unsigned(resize(signed(mdisp), 32));
-        aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
+        forward_data_ir_exe(aluv.i2, hazard, r.e.rbv, r.e.rb);
       when OP_LDAH =>
         aluv.i1 := mdisp & x"0000";
-        aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
-      when OP_LOAD | OP_STORE =>
+        forward_data_ir_exe(aluv.i2, hazard, r.e.rbv, r.e.rb);
+      when OP_LOAD =>
         aluv.i1 := unsigned(resize(signed(mdisp), 32));
-        aluv.i2 := forward_data_ir_exe(r.e.rbv, r.e.rb);
+        forward_data_ir_exe(aluv.i2, hazard, r.e.rbv, r.e.rb);
+      when OP_STORE =>
+        aluv.i1 := unsigned(resize(signed(mdisp), 32));
+        forward_data_ir_exe(aluv.i2, hazard, r.e.rbv, r.e.rb);
+        forward_data_ir_exe(v.m.data, hazard, r.e.rav, r.e.ra);
       when OP_JMP =>
         aluv.i1 := r.e.pc;
         aluv.i2 := to_unsigned(1, 32);
       when OP_BRA =>
         aluv.i1 := to_unsigned(0, 32);
         aluv.i2 := to_unsigned(0, 32);
-      when OP_FPU => null;
+      when OP_FLT => null;
                      -- fixme
-
       when others => null;
     end case;
-    
+
     v.m.alu_out := aluo.o;
     v.m.wb      := r.e.wb;
     v.m.opmode  := r.e.opmode;
-    v.m.data    := forward_data_ir_exe(r.e.rav, r.e.ra);  -- necessary for only store
 
     -------------------------------------------------------------------------
     -- Memory
@@ -650,6 +604,7 @@ begin
         else
           ir_idx  := 31;
           ir_data := (others => '-');
+          hazard  := HZ_WB;
         end if;
       when others =>
         ir_idx  := 31;
@@ -663,6 +618,7 @@ begin
     debuginfo.ir_pc     <= r.w.pc;
     debuginfo.ir_idx    <= ir_idx;
     debuginfo.ir_data   <= ir_data;
+    debuginfo.hz        <= hazard;
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
@@ -676,6 +632,7 @@ begin
 
     case hazard is
       when HZ_ID =>
+
         v.pc := r.pc;
         v.d  := r.d;
         v.e  := e_bubble;
