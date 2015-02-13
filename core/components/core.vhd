@@ -96,13 +96,13 @@ architecture behavior of core is
   -- Latch
   -----------------------------------------------------------------------------
 
-  type latch_ifid_t is record
+  type latch_id_t is record
     bubble : boolean;
     pc     : word_t;
     inst   : word_t;
-  end record latch_ifid_t;
+  end record latch_id_t;
 
-  type latch_idexe_t is record
+  type latch_exe_t is record
     bubble   : boolean;
     pc       : word_t;
     opmode   : opmode_t;
@@ -113,32 +113,32 @@ architecture behavior of core is
     rb       : reg_index_t;
     wb       : reg_index_t;
     alu_inst : alu_inst_t;
-  end record latch_idexe_t;
+  end record latch_exe_t;
 
-  type latch_exemem_t is record
+  type latch_mem_t is record
     bubble  : boolean;
     pc      : word_t;
     opmode  : opmode_t;
     wb      : reg_index_t;
     alu_out : word_t;
     data    : word_t;
-  end record latch_exemem_t;
+  end record latch_mem_t;
 
-  type latch_memwb_t is record
+  type latch_wb_t is record
     bubble  : boolean;
     pc      : word_t;
     opmode  : opmode_t;
     wb      : reg_index_t;
     alu_out : word_t;
     mmui    : mmu_in_t;
-  end record latch_memwb_t;
+  end record latch_wb_t;
 
-  constant d_bubble : latch_ifid_t := (
+  constant d_bubble : latch_id_t := (
     bubble   => true,
     pc       => (others => '1'),
     inst     => unop);
 
-  constant e_bubble : latch_idexe_t := (
+  constant e_bubble : latch_exe_t := (
     bubble   => true,
     pc       => (others => '1'),
     opmode   => OP_ALU,
@@ -150,7 +150,7 @@ architecture behavior of core is
     wb       => 31,
     alu_inst => ALU_INST_OR);
 
-  constant m_bubble : latch_exemem_t := (
+  constant m_bubble : latch_mem_t := (
     bubble   => true,
     pc       => (others => '1'),
     opmode   => OP_ALU,
@@ -158,7 +158,7 @@ architecture behavior of core is
     alu_out  => (others => '-'),
     data     => (others => '-'));
 
-  constant w_bubble : latch_memwb_t := (
+  constant w_bubble : latch_wb_t := (
     bubble   => true,
     pc       => (others => '1'),
     opmode   => OP_ALU,
@@ -173,10 +173,10 @@ architecture behavior of core is
     rs : std_logic;                     -- reset signal
     pc : word_t;                        -- program counter
     -- latches
-    d  : latch_ifid_t;
-    e  : latch_idexe_t;
-    m  : latch_exemem_t;
-    w  : latch_memwb_t;
+    d  : latch_id_t;
+    e  : latch_exe_t;
+    m  : latch_mem_t;
+    w  : latch_wb_t;
   end record latch_t;
 
   constant latch_init : latch_t := (  -- fixme
@@ -475,10 +475,8 @@ begin
       v.d.pc     := r.pc;
       v.pc       := r.pc + 1;
     else
-      v.d.bubble := true;
-      v.d.inst   := unop;
-      v.d.pc     := r.pc;
-      v.pc       := (others => '0');
+      v.d  := d_bubble;
+      v.pc := (others => '0');
     end if;
 
     -------------------------------------------------------------------------
