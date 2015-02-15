@@ -1,4 +1,9 @@
 -------------------------------------------------------------------------------
+-- FPU
+--  latency: 2clk
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
 -- Declaration
 -------------------------------------------------------------------------------
 
@@ -25,12 +30,12 @@ package fpu_p is
 
   type fpu_in_t is record
     inst : fpu_inst_t;
-    i1   : reg_data_t;
-    i2   : reg_data_t;
+    i1   : unsigned(31 downto 0);
+    i2   : unsigned(31 downto 0);
   end record;
 
   type fpu_out_t is record
-    o : reg_data_t;
+    o : unsigned(31 downto 0);
   end record;
 
   component fpu
@@ -52,16 +57,16 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.fpu_common_p.all;
-use work.fadd_p.all;
-use work.fcmp_p.all;
-use work.fdiv_p.all;
-use work.fneg_p.all;
-use work.fmul_p.all;
-use work.fsqrt_p.all;
-use work.fsub_p.all;
-use work.ftoi_p.all;
-use work.itof_p.all;
+--use work.fpu_common_p.all;
+--use work.fadd_p.all;
+--use work.fcmp_p.all;
+--use work.fdiv_p.all;
+--use work.fneg_p.all;
+--use work.fmul_p.all;
+--use work.fsqrt_p.all;
+--use work.fsub_p.all;
+--use work.ftoi_p.all;
+--use work.itof_p.all;
 
 use work.fpu_p.all;
 
@@ -73,7 +78,7 @@ entity fpu is
     dout : out fpu_out_t);
 end fpu;
 
-architecture behavior of zebius_fpu is
+architecture behavior of fpu is
 
 begin
 
