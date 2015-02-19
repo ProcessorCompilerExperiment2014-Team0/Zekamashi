@@ -1,20 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.3.64 (w)1999-2014 BSI
-[*] Thu Feb  5 02:52:25 2015
+[*] Thu Feb  5 07:34:26 2015
 [*]
 [dumpfile] "/home/zeptometer/podgorica/Zekamashi/core/coretb.ghw"
-[dumpfile_mtime] "Thu Feb  5 02:26:23 2015"
-[dumpfile_size] 20917635
+[dumpfile_mtime] "Thu Feb  5 07:28:42 2015"
+[dumpfile_size] 34942981
 [savefile] "/home/zeptometer/podgorica/Zekamashi/core/coretb.gtkw"
-[timestart] 11581830000
+[timestart] 44430000000
 [size] 1920 1017
-[pos] -9 -33
-*-24.000000 11645000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-32.000000 60605000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.coretb.
 [treeopen] top.coretb.alui.
 [treeopen] top.coretb.aluo.
-[treeopen] top.coretb.corec.
 [treeopen] top.coretb.corec.debuginfo.
 [treeopen] top.coretb.corec.r.
 [treeopen] top.coretb.corec.r.d.
@@ -24,13 +23,16 @@
 [treeopen] top.coretb.datacachec.r.
 [treeopen] top.coretb.dcachei.
 [treeopen] top.coretb.dcacheo.
-[treeopen] top.coretb.irc.
+[treeopen] top.coretb.icachei.
+[treeopen] top.coretb.icacheo.
 [treeopen] top.coretb.irc.ram.
 [treeopen] top.coretb.mmuc.din.
 [treeopen] top.coretb.mmuc.dout.
+[treeopen] top.coretb.mmuc.r.
 [treeopen] top.coretb.srami.
 [treeopen] top.coretb.sramo.
 [treeopen] top.coretb.u232c_outc.din.
+[treeopen] top.coretb.uio.
 [sst_width] 232
 [signals_width] 134
 [sst_expanded] 1
@@ -39,8 +41,9 @@
 top.coretb.clk
 top.coretb.xrst
 top.coretb.corec.debuginfo.hz
-@23
+@22
 #{top.coretb.irc.ram[30][31:0]} top.coretb.irc.ram[30][31] top.coretb.irc.ram[30][30] top.coretb.irc.ram[30][29] top.coretb.irc.ram[30][28] top.coretb.irc.ram[30][27] top.coretb.irc.ram[30][26] top.coretb.irc.ram[30][25] top.coretb.irc.ram[30][24] top.coretb.irc.ram[30][23] top.coretb.irc.ram[30][22] top.coretb.irc.ram[30][21] top.coretb.irc.ram[30][20] top.coretb.irc.ram[30][19] top.coretb.irc.ram[30][18] top.coretb.irc.ram[30][17] top.coretb.irc.ram[30][16] top.coretb.irc.ram[30][15] top.coretb.irc.ram[30][14] top.coretb.irc.ram[30][13] top.coretb.irc.ram[30][12] top.coretb.irc.ram[30][11] top.coretb.irc.ram[30][10] top.coretb.irc.ram[30][9] top.coretb.irc.ram[30][8] top.coretb.irc.ram[30][7] top.coretb.irc.ram[30][6] top.coretb.irc.ram[30][5] top.coretb.irc.ram[30][4] top.coretb.irc.ram[30][3] top.coretb.irc.ram[30][2] top.coretb.irc.ram[30][1] top.coretb.irc.ram[30][0]
+#{top.coretb.corec.r.pc[31:0]} top.coretb.corec.r.pc[31] top.coretb.corec.r.pc[30] top.coretb.corec.r.pc[29] top.coretb.corec.r.pc[28] top.coretb.corec.r.pc[27] top.coretb.corec.r.pc[26] top.coretb.corec.r.pc[25] top.coretb.corec.r.pc[24] top.coretb.corec.r.pc[23] top.coretb.corec.r.pc[22] top.coretb.corec.r.pc[21] top.coretb.corec.r.pc[20] top.coretb.corec.r.pc[19] top.coretb.corec.r.pc[18] top.coretb.corec.r.pc[17] top.coretb.corec.r.pc[16] top.coretb.corec.r.pc[15] top.coretb.corec.r.pc[14] top.coretb.corec.r.pc[13] top.coretb.corec.r.pc[12] top.coretb.corec.r.pc[11] top.coretb.corec.r.pc[10] top.coretb.corec.r.pc[9] top.coretb.corec.r.pc[8] top.coretb.corec.r.pc[7] top.coretb.corec.r.pc[6] top.coretb.corec.r.pc[5] top.coretb.corec.r.pc[4] top.coretb.corec.r.pc[3] top.coretb.corec.r.pc[2] top.coretb.corec.r.pc[1] top.coretb.corec.r.pc[0]
 @200
 -decode
 @22
@@ -73,7 +76,7 @@ top.coretb.corec.r.m.wb
 #{top.coretb.corec.r.m.data[31:0]} top.coretb.corec.r.m.data[31] top.coretb.corec.r.m.data[30] top.coretb.corec.r.m.data[29] top.coretb.corec.r.m.data[28] top.coretb.corec.r.m.data[27] top.coretb.corec.r.m.data[26] top.coretb.corec.r.m.data[25] top.coretb.corec.r.m.data[24] top.coretb.corec.r.m.data[23] top.coretb.corec.r.m.data[22] top.coretb.corec.r.m.data[21] top.coretb.corec.r.m.data[20] top.coretb.corec.r.m.data[19] top.coretb.corec.r.m.data[18] top.coretb.corec.r.m.data[17] top.coretb.corec.r.m.data[16] top.coretb.corec.r.m.data[15] top.coretb.corec.r.m.data[14] top.coretb.corec.r.m.data[13] top.coretb.corec.r.m.data[12] top.coretb.corec.r.m.data[11] top.coretb.corec.r.m.data[10] top.coretb.corec.r.m.data[9] top.coretb.corec.r.m.data[8] top.coretb.corec.r.m.data[7] top.coretb.corec.r.m.data[6] top.coretb.corec.r.m.data[5] top.coretb.corec.r.m.data[4] top.coretb.corec.r.m.data[3] top.coretb.corec.r.m.data[2] top.coretb.corec.r.m.data[1] top.coretb.corec.r.m.data[0]
 @200
 -wb
-@23
+@22
 #{top.coretb.corec.r.w.pc[31:0]} top.coretb.corec.r.w.pc[31] top.coretb.corec.r.w.pc[30] top.coretb.corec.r.w.pc[29] top.coretb.corec.r.w.pc[28] top.coretb.corec.r.w.pc[27] top.coretb.corec.r.w.pc[26] top.coretb.corec.r.w.pc[25] top.coretb.corec.r.w.pc[24] top.coretb.corec.r.w.pc[23] top.coretb.corec.r.w.pc[22] top.coretb.corec.r.w.pc[21] top.coretb.corec.r.w.pc[20] top.coretb.corec.r.w.pc[19] top.coretb.corec.r.w.pc[18] top.coretb.corec.r.w.pc[17] top.coretb.corec.r.w.pc[16] top.coretb.corec.r.w.pc[15] top.coretb.corec.r.w.pc[14] top.coretb.corec.r.w.pc[13] top.coretb.corec.r.w.pc[12] top.coretb.corec.r.w.pc[11] top.coretb.corec.r.w.pc[10] top.coretb.corec.r.w.pc[9] top.coretb.corec.r.w.pc[8] top.coretb.corec.r.w.pc[7] top.coretb.corec.r.w.pc[6] top.coretb.corec.r.w.pc[5] top.coretb.corec.r.w.pc[4] top.coretb.corec.r.w.pc[3] top.coretb.corec.r.w.pc[2] top.coretb.corec.r.w.pc[1] top.coretb.corec.r.w.pc[0]
 @28
 top.coretb.corec.r.w.opmode
@@ -81,16 +84,34 @@ top.coretb.corec.r.w.wb
 @22
 #{top.coretb.corec.r.w.alu_out[31:0]} top.coretb.corec.r.w.alu_out[31] top.coretb.corec.r.w.alu_out[30] top.coretb.corec.r.w.alu_out[29] top.coretb.corec.r.w.alu_out[28] top.coretb.corec.r.w.alu_out[27] top.coretb.corec.r.w.alu_out[26] top.coretb.corec.r.w.alu_out[25] top.coretb.corec.r.w.alu_out[24] top.coretb.corec.r.w.alu_out[23] top.coretb.corec.r.w.alu_out[22] top.coretb.corec.r.w.alu_out[21] top.coretb.corec.r.w.alu_out[20] top.coretb.corec.r.w.alu_out[19] top.coretb.corec.r.w.alu_out[18] top.coretb.corec.r.w.alu_out[17] top.coretb.corec.r.w.alu_out[16] top.coretb.corec.r.w.alu_out[15] top.coretb.corec.r.w.alu_out[14] top.coretb.corec.r.w.alu_out[13] top.coretb.corec.r.w.alu_out[12] top.coretb.corec.r.w.alu_out[11] top.coretb.corec.r.w.alu_out[10] top.coretb.corec.r.w.alu_out[9] top.coretb.corec.r.w.alu_out[8] top.coretb.corec.r.w.alu_out[7] top.coretb.corec.r.w.alu_out[6] top.coretb.corec.r.w.alu_out[5] top.coretb.corec.r.w.alu_out[4] top.coretb.corec.r.w.alu_out[3] top.coretb.corec.r.w.alu_out[2] top.coretb.corec.r.w.alu_out[1] top.coretb.corec.r.w.alu_out[0]
 @200
--output
+-* icache
+@22
+#{top.coretb.icachei.addr[16:0]} top.coretb.icachei.addr[16] top.coretb.icachei.addr[15] top.coretb.icachei.addr[14] top.coretb.icachei.addr[13] top.coretb.icachei.addr[12] top.coretb.icachei.addr[11] top.coretb.icachei.addr[10] top.coretb.icachei.addr[9] top.coretb.icachei.addr[8] top.coretb.icachei.addr[7] top.coretb.icachei.addr[6] top.coretb.icachei.addr[5] top.coretb.icachei.addr[4] top.coretb.icachei.addr[3] top.coretb.icachei.addr[2] top.coretb.icachei.addr[1] top.coretb.icachei.addr[0]
+#{top.coretb.icacheo.data[31:0]} top.coretb.icacheo.data[31] top.coretb.icacheo.data[30] top.coretb.icacheo.data[29] top.coretb.icacheo.data[28] top.coretb.icacheo.data[27] top.coretb.icacheo.data[26] top.coretb.icacheo.data[25] top.coretb.icacheo.data[24] top.coretb.icacheo.data[23] top.coretb.icacheo.data[22] top.coretb.icacheo.data[21] top.coretb.icacheo.data[20] top.coretb.icacheo.data[19] top.coretb.icacheo.data[18] top.coretb.icacheo.data[17] top.coretb.icacheo.data[16] top.coretb.icacheo.data[15] top.coretb.icacheo.data[14] top.coretb.icacheo.data[13] top.coretb.icacheo.data[12] top.coretb.icacheo.data[11] top.coretb.icacheo.data[10] top.coretb.icacheo.data[9] top.coretb.icacheo.data[8] top.coretb.icacheo.data[7] top.coretb.icacheo.data[6] top.coretb.icacheo.data[5] top.coretb.icacheo.data[4] top.coretb.icacheo.data[3] top.coretb.icacheo.data[2] top.coretb.icacheo.data[1] top.coretb.icacheo.data[0]
+@200
+-* input
+@28
+top.coretb.uii.rden
+top.coretb.uio.empty
+@22
+#{top.coretb.uio.data[7:0]} top.coretb.uio.data[7] top.coretb.uio.data[6] top.coretb.uio.data[5] top.coretb.uio.data[4] top.coretb.uio.data[3] top.coretb.uio.data[2] top.coretb.uio.data[1] top.coretb.uio.data[0]
+@200
+-* output
 @28
 top.coretb.u232c_outc.din.go
 @22
 #{top.coretb.u232c_outc.din.data[7:0]} top.coretb.u232c_outc.din.data[7] top.coretb.u232c_outc.din.data[6] top.coretb.u232c_outc.din.data[5] top.coretb.u232c_outc.din.data[4] top.coretb.u232c_outc.din.data[3] top.coretb.u232c_outc.din.data[2] top.coretb.u232c_outc.din.data[1] top.coretb.u232c_outc.din.data[0]
 @28
 top.coretb.u232c_outc.dout.busy
+@29
 top.coretb.u232c_outc.tx
 @200
 -* mmu
+@28
+top.coretb.mmuc.r.src
+@22
+#{top.coretb.mmuc.r.data[7:0]} top.coretb.mmuc.r.data[7] top.coretb.mmuc.r.data[6] top.coretb.mmuc.r.data[5] top.coretb.mmuc.r.data[4] top.coretb.mmuc.r.data[3] top.coretb.mmuc.r.data[2] top.coretb.mmuc.r.data[1] top.coretb.mmuc.r.data[0]
+@200
 -in
 @28
 top.coretb.mmuc.din.en
