@@ -129,7 +129,7 @@ architecture behavior of core is
   type latch_exe_t is record
     bubble    : boolean;
     pc        : word_t;
-    arg       : unsigned(19 downto 0);
+    arg       : unsigned(20 downto 0);
     rav       : word_t;
     rbv       : word_t;
     ra        : reg_index_t;
@@ -598,7 +598,7 @@ begin
     v.e.pc     := r.d.pc;
     v.e.ra     := to_integer(r.d.inst(25 downto 21));
     v.e.rb     := to_integer(r.d.inst(20 downto 16));
-    v.e.arg   := r.d.inst(19 downto 0);
+    v.e.arg   := r.d.inst(20 downto 0);
 
     opcode := r.d.inst(31 downto 26);
 
@@ -865,7 +865,7 @@ begin
         aluv.i2 := bdata;
       when ALU_INPUT_ARITH_LIT =>
         aluv.i1 := adata;
-        aluv.i2 := resize(r.e.arg(19 downto 13), 32);  -- literal
+        aluv.i2 := resize(r.e.arg(20 downto 13), 32);  -- literal
       when ALU_INPUT_MEM =>
         aluv.i1 := unsigned(resize(signed(r.e.arg(15 downto 0)), 32)); -- memory displacement
         aluv.i2 := bdata;
