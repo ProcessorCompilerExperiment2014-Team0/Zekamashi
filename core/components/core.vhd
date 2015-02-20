@@ -172,6 +172,14 @@ architecture behavior of core is
     src    : fwb_src_t;
   end record latch_fwb_t;
 
+  -- wb buf(for data forwarding)
+  type wbbuf_t is record
+    iwb   : reg_index_t;
+    idata : word_t;
+    fwb   : reg_index_t;
+    fdata : word_t;
+  end record wbbuf_t;
+
   -- bubbles
 
   constant d_bubble : latch_id_t := (
@@ -224,27 +232,35 @@ architecture behavior of core is
     wb     => 31,
     src    => FWB_SRC_FPU);
 
+  constant wbbuf_bubble : wbbuf_t := (
+    iwb   => 31,
+    idata => (others => '-'),
+    fwb   => 31,
+    fdata => (others => '-'));
+
   type latch_t is record
-    rs  : std_logic;                    -- reset signal
-    pc  : word_t;                       -- program counter
+    rs    : std_logic;                  -- reset signal
+    pc    : word_t;                     -- program counter
     -- latches
-    d   : latch_id_t;
-    e   : latch_exe_t;
-    m   : latch_mem_t;
-    w   : latch_wb_t;
-    fw1 : latch_fwb_t;
-    fw2 : latch_fwb_t;
+    d     : latch_id_t;
+    e     : latch_exe_t;
+    m     : latch_mem_t;
+    w     : latch_wb_t;
+    fw1   : latch_fwb_t;
+    fw2   : latch_fwb_t;
+    wbbuf : wbbuf_t;
   end record latch_t;
 
   constant latch_init : latch_t := (
-    rs  => '1',
-    pc  => (others => '0'),
-    d   => d_bubble,
-    e   => e_bubble,
-    m   => m_bubble,
-    w   => w_bubble,
-    fw1 => fw_bubble,
-    fw2 => fw_bubble);
+    rs    => '1',
+    pc    => (others => '0'),
+    d     => d_bubble,
+    e     => e_bubble,
+    m     => m_bubble,
+    w     => w_bubble,
+    fw1   => fw_bubble,
+    fw2   => fw_bubble,
+    wbbuf => wbbuf_bubble);
 
   signal r, rin : latch_t := latch_init;
 
@@ -383,6 +399,9 @@ architecture behavior of core is
           dst := mmuo.data;
           hz  := hz;
       end case;
+    elsif n = r.wbbuf.iwb then
+      dst := r.wbbuf.idata;
+      hz  := hz;
     else
       dst := v;
       hz  := hz;
@@ -415,6 +434,9 @@ architecture behavior of core is
           dst := mmuo.data;
           hz  := hz;
       end case;
+    elsif n = r.wbbuf.iwb then
+      dst := r.wbbuf.idata;
+      hz  := hz;
     else
       dst := v;
       hz  := hz;
@@ -435,6 +457,9 @@ architecture behavior of core is
       hz := HZ_ID;
     elsif n = r.fw2.wb then
       hz := HZ_ID;
+    elsif n = r.wbbuf.fwb then
+      dst := r.wbbuf.fdata;
+      hz  := hz;
     else
       dst := v;
       hz  := hz;
@@ -453,6 +478,9 @@ architecture behavior of core is
       hz := HZ_EXE;
     elsif n = r.fw2.wb then
       hz := HZ_EXE;
+    elsif n = r.wbbuf.fwb then
+      dst := r.wbbuf.fdata;
+      hz  := hz;
     else
       dst := v;
       hz  := hz;
@@ -517,6 +545,8 @@ begin
     -- variables for write back
     variable ir_idx  : reg_index_t;
     variable ir_data : word_t;
+    variable fr_idx  : reg_index_t;
+    variable fr_data : word_t;
 
     variable hazard : hazard_t;
 
@@ -802,13 +832,13 @@ begin
     -- Execute
     -------------------------------------------------------------------------
 
-    v.m.bubble := false;
+    v.m.bubble := r.e.bubble;
     v.m.pc     := r.e.pc;
     v.m.wb     := r.e.iwb;
     v.m.src    := r.e.isrc;
     v.m.memop  := r.e.memop;
 
-    v.fw1.bubble := false;
+    v.fw1.bubble := r.e.bubble;
     v.fw1.pc     := r.e.pc;
     v.fw1.wb     := r.e.fwb;
     v.fw1.src    := r.e.fsrc;
@@ -892,7 +922,7 @@ begin
     v.fw2 := r.fw1;
 
     -------------------------------------------------------------------------
-    -- Integer Register Write Back
+    -- Write Back
     -------------------------------------------------------------------------
 
     case r.w.src is
@@ -910,19 +940,32 @@ begin
         end if;
     end case;
 
+    iri.w <= ir_idx;
+    iri.d <= ir_data;
+
+    v.wbbuf.iwb   := ir_idx;
+    v.wbbuf.idata := ir_data;
+
     case r.fw2.src is
       when FWB_SRC_FPU =>
-        fri.w <= r.fw2.wb;
-        fri.d <= fpuo.o;
+        fr_idx  := r.fw2.wb;
+        fr_data := fpuo.o;
       when FWB_SRC_IR =>
         if hazard /= HZ_WB then
-          fri.w <= r.fw2.wb;
-          fri.d <= ir_data;
+          fr_idx  := r.fw2.wb;
+          fr_data := ir_data;
         else
-          fri.w  <= 31;
-          fri.d  <= (others => '-');
+          fr_idx  := 31;
+          fr_data := (others => '-');
         end if;
     end case;
+
+    fri.w <= fr_idx;
+    fri.d <= fr_data;
+
+    v.wbbuf.fwb   := fr_idx;
+    v.wbbuf.fdata := fr_data;
+
 
     debuginfo.ir_bubble <= r.w.bubble;
     debuginfo.ir_pc     <= r.w.pc;
