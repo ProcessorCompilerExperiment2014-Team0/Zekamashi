@@ -557,9 +557,10 @@ begin
     aluv := (inst => ALU_INST_NOP,
              i1   => (others => '-'),
              i2   => (others => '-'));
-    fpuv := (inst => FPU_INST_NOP,
-             i1   => (others => '-'),
-             i2   => (others => '-'));
+    fpuv := (stall => '0',
+             inst  => FPU_INST_NOP,
+             i1    => (others => '-'),
+             i2    => (others => '-'));
     mmuv := (addr => (others => '0'),
              data => (others => '0'),
              en   => '0',
@@ -1011,8 +1012,9 @@ begin
         v.fw1 := r.fw1;
         v.fw2 := r.fw2;
 
-        icachev := (addr => r.pc(16 downto 0));
-        mmuv    := r.w.mmui;
+        fpuv.stall := '1';
+        icachev    := (addr => r.pc(16 downto 0));
+        mmuv       := r.w.mmui;
 
       when others => null;
     end case;

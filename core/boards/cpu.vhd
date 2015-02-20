@@ -7,6 +7,7 @@ use unisim.vcomponents.all;
 
 library work;
 use work.alu_p.all;
+use work.fpu_p.all;
 use work.core_p.all;
 use work.instcache_p.all;
 use work.datacache_p.all;
@@ -56,6 +57,8 @@ architecture rtl of cpu is
   signal fro     : regfile_out_t;
   signal alui    : alu_in_t;
   signal aluo    : alu_out_t;
+  signal fpui    : fpu_in_t;
+  signal fpuo    : fpu_out_t;
   signal dcachei : datacache_in_t;
   signal dcacheo : datacache_out_t;
   signal icachei : instcache_in_t;
@@ -113,6 +116,8 @@ begin
       icacheo => icacheo,
       alui    => alui,
       aluo    => aluo,
+      fpui    => fpui,
+      fpuo    => fpuo,
       mmui    => mmui,
       mmuo    => mmuo);
 
@@ -140,6 +145,13 @@ begin
     port map (
       din  => alui,
       dout => aluo);
+
+  fpuc : fpu
+    port map (
+      clk  => clk,
+      xrst => xrst,
+      din  => fpui,
+      dout => fpuo);
 
   mmuc : mmu
     port map (
