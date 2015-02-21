@@ -1008,11 +1008,13 @@ begin
         icachev := (addr => r.pc(16 downto 0));
 
       when HZ_EXE =>
-        v.pc  := r.pc;
-        v.d   := r.d;
-        v.e   := r.e;
-        v.m   := m_bubble;
-        v.fw1 := fw_bubble;
+        v.pc    := r.pc;
+        v.d     := r.d;
+        v.e     := r.e;
+        v.e.rav := adata;
+        v.e.rbv := bdata;
+        v.m     := m_bubble;
+        v.fw1   := fw_bubble;
 
         icachev := (addr => r.pc(16 downto 0));
 
