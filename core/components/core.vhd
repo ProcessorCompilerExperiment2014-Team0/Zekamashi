@@ -531,7 +531,7 @@ begin
   -- Core Logic
   -----------------------------------------------------------------------------
 
-  comb : process (r, icacheo, aluo, mmuo, iro, fro) is
+  comb : process (r, icacheo, aluo, fpuo, mmuo, iro, fro) is
     variable v       : latch_t;
     variable icachev : instcache_in_t;
     variable aluv    : alu_in_t;
