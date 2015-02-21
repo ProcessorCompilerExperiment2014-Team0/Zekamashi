@@ -166,6 +166,13 @@ begin
     a     => din.i2,
     s     => s_itof);
 
+  inv : finv port map (
+    clk   => clk,
+    xrst  => xrst,
+    stall => din.stall,
+    a     => din.i2,
+    s     => s_inv);
+
   comb: process (r, din, s_add, s_mul, s_sub, s_eq, s_le, s_lt, s_inv, s_sqrt, s_ftoi, s_itof) is
     variable v : latch_t;
   begin
@@ -182,7 +189,7 @@ begin
       when FPU_INST_EQ   => dout.o <= s_eq;
       when FPU_INST_LE   => dout.o <= s_le;
       when FPU_INST_LT   => dout.o <= s_lt;
-      when FPU_INST_INV  => dout.o <= (others => '0');  -- fixme!
+      when FPU_INST_INV  => dout.o <= s_inv;
       when FPU_INST_SQRT => dout.o <= (others => '0');  -- fixme!
       when FPU_INST_FTOI => dout.o <= s_ftoi;
       when FPU_INST_ITOF => dout.o <= s_itof;
