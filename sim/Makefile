@@ -10,7 +10,7 @@ fpu = $(addprefix $(fpudir), $(fpus))
 
 exec = ./amatsukaze
 asm = ../asm/asagumo
-execflags = -r -enable-stall
+execflags = -d -enable-stall
 test_src = $(shell echo test/*.s)
 test_targ = $(test_src:%.s=%.test)
 
