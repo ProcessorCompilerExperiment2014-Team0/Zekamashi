@@ -751,6 +751,7 @@ void core::i_bsr(int ra, int disp) {
 }
 
 void core::i_beq(int ra, int disp) {
+  reserve_write_ir(31, 0u);
   if(ir[ra].i == 0) {
     for(int i=0; i<branch_delay; i++) {
       stall();
@@ -763,6 +764,7 @@ void core::i_beq(int ra, int disp) {
 }
 
 void core::i_bne(int ra, int disp) {
+  reserve_write_ir(31, 0u);
   if(ir[ra].i != 0) {
     pc += extend(disp, 16);
     for(int i=0; i<branch_delay; i++) {
@@ -775,6 +777,7 @@ void core::i_bne(int ra, int disp) {
 }
 
 void core::i_fbeq(int fa, int disp) {
+  reserve_write_ir(31, 0u);
   if(fr[fa].f == 0.0f) {
     for(int i=0; i<branch_delay; i++) {
       stall();
@@ -787,6 +790,7 @@ void core::i_fbeq(int fa, int disp) {
 }
 
 void core::i_fbne(int fa, int disp) {
+  reserve_write_ir(31, 0u);
   if(fr[fa].f != 0.0f) {
     for(int i=0; i<branch_delay; i++) {
       stall();
