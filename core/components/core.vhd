@@ -1022,6 +1022,7 @@ begin
     mmui    <= mmuv;
     icachei <= icachev;
     alui    <= aluv;
+	 fpui    <= fpuv;
     rin     <= v;
   end process;
 
