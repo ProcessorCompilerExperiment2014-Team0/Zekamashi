@@ -310,7 +310,7 @@ architecture behavior of core is
       when others => null;
     end case;
 
-    assert false report "invalid alu instruction" severity warning;
+    assert false report "invalid alu instruction" severity error;
     return ALU_INST_NOP;
   end function decode_alu_inst;
 
@@ -331,7 +331,7 @@ architecture behavior of core is
       when b"000_0010_1111" => return FPU_INST_FTOI;
       when b"000_1011_1110" => return FPU_INST_ITOF;
       when others =>
-        assert false report "invalid FPU instruction" severity warning;
+        assert false report "invalid FPU instruction" severity error;
         return FPU_INST_NOP;
     end case;
   end function decode_fpu_inst;
@@ -348,7 +348,7 @@ architecture behavior of core is
       when b"11_0001" => return cond /= 0;  -- FBEQ
       when b"11_0101" => return cond = 0;  -- FBNE
       when others =>
-        assert false report "invalid branch instruction" severity warning;
+        assert false report "invalid branch instruction" severity error;
         return false;
     end case;
   end function branch_success;
@@ -605,6 +605,10 @@ begin
 
     case opcode(5 downto 3) is
       when "010" =>                                     -- operation format
+
+        opfunc := r.d.inst(11 downto 5);
+        fpfunc := r.d.inst(15 downto 5);
+
         case opcode is
           when b"01_0000" | b"01_0001" | b"01_0010" =>  -- integer arithmetic
             v.e.rav      := iro.d1;
@@ -625,7 +629,6 @@ begin
               v.e.fwd_b     := FWD_NONE;
             end if;
 
-            opfunc       := r.d.inst(11 downto 5);
             v.e.alu_inst := decode_alu_inst(opcode, opfunc);
 
           when b"01_0110" =>            -- floating-point arithmetic
@@ -641,7 +644,6 @@ begin
             v.e.fwb       := rc;
             v.e.fsrc      := FWB_SRC_FPU;
 
-            fpfunc       := r.d.inst(15 downto 5);
             v.e.fpu_inst := decode_fpu_inst(fpfunc);
 
           when b"01_0100" =>
@@ -672,11 +674,11 @@ begin
                 v.e.fsrc      := FWB_SRC_FPU;
 
               when others =>
-                assert false report "invalid instruction" severity warning;
+                assert false report "invalid instruction" severity error;
             end case;
 
           when others =>
-            assert false report "invalid instruction" severity warning;
+            assert false report "invalid instruction" severity error;
         end case;
 
       when "100" =>                     -- memory format / fr
@@ -696,7 +698,7 @@ begin
             v.e.fsrc  := FWB_SRC_IR;
             v.e.fwb   := ra;
 
-          when b"10_1010" =>            -- STS
+          when b"10_0110" =>            -- STS
             v.e.fwd_a := FWD_FR;
             v.e.memop := MEM_STORE;
             v.e.iwb   := 31;
@@ -705,7 +707,7 @@ begin
             v.e.fwb   := 31;
 
           when others =>
-            assert false report "invalid instruction" severity warning;
+            assert false report "invalid instruction" severity error;
         end case;
 
       when "001" | "011" | "101" =>     -- memory format
@@ -768,7 +770,7 @@ begin
             forward_data_ir_id(v.pc, hazard, v.e.rbv, rb);
             flush_pipeline(v);
 
-          when others => assert false report "invalid instruction" severity warning;
+          when others => assert false report "invalid instruction" severity error;
         end case;
 
       when "111" =>                     -- integer conditional branch
@@ -826,7 +828,7 @@ begin
         end if;
 
       when others =>
-        assert false report "invalid instruction" severity warning;
+        assert false report "invalid instruction" severity error;
     end case;
 
     -------------------------------------------------------------------------
