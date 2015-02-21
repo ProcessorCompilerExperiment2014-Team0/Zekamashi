@@ -1020,13 +1020,15 @@ begin
 
       when HZ_WB =>
 
-        v.pc  := r.pc;
-        v.d   := r.d;
-        v.e   := r.e;
-        v.m   := r.m;
-        v.w   := r.w;
-        v.fw1 := r.fw1;
-        v.fw2 := r.fw2;
+        v.pc    := r.pc;
+        v.d     := r.d;
+        v.e     := r.e;
+        v.e.rav := adata;
+        v.e.rbv := bdata;
+        v.m     := r.m;
+        v.w     := r.w;
+        v.fw1   := r.fw1;
+        v.fw2   := r.fw2;
 
         fpuv.stall := '1';
         icachev    := (addr => r.pc(16 downto 0));
