@@ -501,6 +501,10 @@ architecture behavior of core is
     ir_bubble : boolean;
     ir_pc     : word_t;
     fr        : regfile_t;
+    fr_idx    : reg_index_t;
+    fr_data   : word_t;
+    fr_bubble : boolean;
+    fr_pc     : word_t;
   end record debug_t;
 
   constant debuginfo_init : debug_t := (
@@ -510,7 +514,11 @@ architecture behavior of core is
     ir_data   => (others => '-'),
     ir_bubble => true,
     ir_pc     => (others => '1'),
-    fr        => (others => (others => '0')));
+    fr        => (others => (others => '0')),
+    fr_idx    => 31,
+    fr_data   => (others => '-'),
+    fr_bubble => true,
+    fr_pc     => (others => '1'));
 
   signal debuginfo : debug_t := debuginfo_init;
 
@@ -974,6 +982,10 @@ begin
     debuginfo.ir_pc     <= r.w.pc;
     debuginfo.ir_idx    <= ir_idx;
     debuginfo.ir_data   <= ir_data;
+    debuginfo.fr_bubble <= r.fw2.bubble;
+    debuginfo.fr_pc     <= r.fw2.pc;
+    debuginfo.fr_idx    <= fr_idx;
+    debuginfo.fr_data   <= fr_data;
     debuginfo.hz        <= hazard;
 
     -------------------------------------------------------------------------
@@ -1056,6 +1068,27 @@ begin
           debuginfo.ir(debuginfo.ir_idx) <= debuginfo.ir_data;
         end if;
       end if;
+
+      if dump_fr then
+        if not debuginfo.fr_bubble and debuginfo.hz /= HZ_WB then
+          write(l, string'("PC : "));
+          hwrite(l, std_logic_vector(debuginfo.fr_pc));
+          writeline(fr_dump, l);
+          for i in 0 to 31 loop
+            write(l, string'("$f"));
+            write(l, i, LEFT, 2);
+            write(l, string'(" : "));
+            hwrite(l, std_logic_vector(debuginfo.fr(i)));
+            writeline(fr_dump, l);
+          end loop;
+          writeline(fr_dump, l);
+        end if;
+
+        if debuginfo.fr_idx /= 31 then
+          debuginfo.fr(debuginfo.fr_idx) <= debuginfo.fr_data;
+        end if;
+      end if;
+
     end if;
   end process;
 
