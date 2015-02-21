@@ -1,6 +1,19 @@
 #include <stdio.h>
 #include <string.h>
 
+char*
+chomp(char* str)
+{
+  int i;
+  for (i=0; str[i] != '\0'; i++)
+    if (str[i] == '\n' || str[i] == '\r') {
+      str[i] = '\0';
+      break;
+    }
+      
+  return str;
+}
+
 int
 main(int argc, char **argv) {
   char str1[100];
@@ -26,7 +39,7 @@ main(int argc, char **argv) {
 
   i = 1;
   while(fgets(str1, 99, f1) && fgets(str2, 99, f2)) {
-    if (strcmp(str1, str2) != 0) {
+    if (strcmp(chomp(str1), chomp(str2)) != 0) {
       printf("found diff at l%d\n", i);
       return 0;
     }
