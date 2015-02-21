@@ -345,8 +345,8 @@ architecture behavior of core is
       when b"11_1001" =>
         return not is_metavalue(cond) and cond = 0;  -- to suppress warning
       when b"11_1101" => return cond /= 0;  -- BNE
-      when b"11_0001" => return cond /= 0;  -- FBEQ
-      when b"11_0101" => return cond = 0;  -- FBNE
+      when b"11_0001" => return cond = 0;  -- FBEQ
+      when b"11_0101" => return cond /= 0;  -- FBNE
       when others =>
         assert false report "invalid branch instruction" severity error;
         return false;
