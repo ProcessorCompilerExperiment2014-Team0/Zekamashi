@@ -63,10 +63,10 @@ main(int argc, char **argv) {
     } else {
       printf("found diff at %dth inst\n\n", ninst);
 
-      int i = ((bufidx - 1) + BUFNUM) % BUFNUM;
+      int i = (bufidx + 1) % BUFNUM;
       while (i != bufidx) {
         printf("%s", buf[i]);
-        i = ((i - 1) + BUFNUM) % BUFNUM;
+        i = (i + 1) % BUFNUM;
       }
       puts("A:");
       printf("%s", buf1);
