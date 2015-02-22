@@ -1,25 +1,33 @@
 #include <stdio.h>
 #include <string.h>
 
+#define BUFNUM 10
+#define BUFSIZE 1000
+
+char buf[BUFNUM][BUFSIZE];
+int bufidx = 0;
+
+char* buf1;
+char buf2[BUFSIZE];
+
+
 char*
-chomp(char* str)
+chompsucc(char* str)
 {
   int i;
   for (i=0; str[i] != '\0'; i++)
     if (str[i] == '\n' || str[i] == '\r') {
-      str[i] = '\0';
+      str[i] = '\n';
+      str[i+1] = '\0';
       break;
     }
       
-  return str;
+  return &str[i+1];
 }
 
 int
 main(int argc, char **argv) {
-  char str1[100];
-  char str2[100];
   FILE *f1, *f2;
-  int i;
 
   if (argc != 3) {
     puts("usage: chechdump file1 file2\n");
@@ -37,16 +45,38 @@ main(int argc, char **argv) {
     return 1;
   }
 
-  i = 1;
-  while(fgets(str1, 99, f1) && fgets(str2, 99, f2)) {
-    if (strcmp(chomp(str1), chomp(str2)) != 0) {
-      printf("found diff at l%d\n", i);
-      return 0;
+  for (int ninst = 0;; ninst++) {
+    char *s1 = buf1 = buf[bufidx];
+    char *s2 = buf2;
+
+    for (int i = 0; i < 34; i++) {
+      if (! (fgets(s1, 30, f1) && fgets(s2, 30, f2))) {
+        printf("no diff\n");
+        goto end;
+      }
+      s1 = chompsucc(s1);
+      s2 = chompsucc(s2);
     }
-    i++;
+
+    if (strcmp(buf1, buf2) == 0) {
+      bufidx = (bufidx + 1)%BUFNUM;
+    } else {
+      printf("found diff at %dth inst\n\n", ninst);
+
+      int i = ((bufidx - 1) + BUFNUM) % BUFNUM;
+      while (i != bufidx) {
+        printf("%s", buf[i]);
+        i = ((i - 1) + BUFNUM) % BUFNUM;
+      }
+      puts("A:");
+      printf("%s", buf1);
+      puts("B:");
+      printf("%s", buf2);
+      goto end;
+    }
   }
 
-  printf("no diff\n");
+end:
 
   fclose(f1);
   fclose(f2);
