@@ -310,7 +310,7 @@ architecture behavior of core is
       when others => null;
     end case;
 
-    assert false report "invalid alu instruction" severity error;
+    assert false report "invalid alu instruction" severity warning;
     return ALU_INST_NOP;
   end function decode_alu_inst;
 
