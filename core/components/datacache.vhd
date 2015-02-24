@@ -76,26 +76,27 @@ architecture behavior of datacache is
 
   subtype tag_t is unsigned(9 downto 0);
   type tagarray_t is array (0 to 127) of tag_t;
-  signal tagarray : tagarray_t := (others => (others => '0'));
   signal cache_in : datacache_ram_in_t;
   signal cache_out : datacache_ram_out_t;
 
   type state_t is (ST_FINE, ST_MISS, ST_DONE);
 
   type latch_t is record
-    state : state_t;
-    head  : unsigned(16 downto 0);
-    idx   : integer range 0 to 7;
-    data  : unsigned(31 downto 0);
-    cnt   : integer range 0 to 11;
+    state    : state_t;
+    tagarray : tagarray_t;
+    head     : unsigned(16 downto 0);
+    idx      : integer range 0 to 7;
+    data     : unsigned(31 downto 0);
+    cnt      : integer range 0 to 11;
   end record latch_t;
 
   constant latch_init : latch_t := (
-    state => ST_FINE,
-    head  => (others => '-'),
-    idx   => 0,
-    data  => (others => '-'),
-    cnt   => 0);
+    state    => ST_FINE,
+    tagarray => (others => (others => '0')),
+    head     => (others => '-'),
+    idx      => 0,
+    data     => (others => '-'),
+    cnt      => 0);
 
   signal r, rin : latch_t := latch_init;
 
@@ -128,22 +129,23 @@ begin
         if din.en = '1' then
           case din.we is
             when '0' =>
-              if tagarray(to_integer(din.addr(9 downto 3))) = din.addr(19 downto 10) then
+              if r.tagarray(to_integer(din.addr(9 downto 3))) = din.addr(19 downto 10) then
                 cv := (we   => '0',
                        en   => '1',
                        addr => din.addr(9 downto 0),
                        data => (others => '-'));
                 v.state := ST_FINE;
               else
-                v := (state => ST_MISS,
-                      head  => din.addr(19 downto 3),
-                      idx   => to_integer(din.addr(2 downto 0)),
-                      data  => (others => '-'),
-                      cnt   => 0);
+                v := (state    => ST_MISS,
+                      tagarray => r.tagarray,
+                      head     => din.addr(19 downto 3),
+                      idx      => to_integer(din.addr(2 downto 0)),
+                      data     => (others => '-'),
+                      cnt      => 0);
               end if;
 
             when '1' =>
-              if tagarray(to_integer(din.addr(9 downto 3))) = din.addr(19 downto 10) then
+              if r.tagarray(to_integer(din.addr(9 downto 3))) = din.addr(19 downto 10) then
                 cv := (we   => '1',
                        en   => '1',
                        addr => din.addr(9 downto 0),
@@ -179,7 +181,7 @@ begin
 
         if r.cnt = 11 then
           v.state := ST_DONE;
-          tagarray(to_integer(r.head(6 downto 0))) <= r.head(16 downto 7);
+          v.tagarray(to_integer(r.head(6 downto 0))) := r.head(16 downto 7);
         else
           v.cnt := r.cnt + 1;
         end if;
