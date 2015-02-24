@@ -452,10 +452,10 @@ architecture behavior of core is
       dst := (others => '-');
       hz  := HZ_ID;
     elsif n = r.fw2.wb then
-      dst := to_unsigned(0, 32);
+      dst := (others => '-');
       hz  := HZ_ID;
     elsif n = r.wbbuf.fwb then
-      dst := (others => '-');
+      dst := r.wbbuf.fdata;
       hz  := hz;
     else
       dst := v;
