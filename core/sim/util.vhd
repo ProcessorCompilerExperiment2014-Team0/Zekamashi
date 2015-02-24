@@ -30,8 +30,8 @@ package body util_p is
       if v(i) /= '0' and v(i) /= '1' then
         return true;
       end if;
-      return false;
     end loop;
+    return false;
   end function is_metavalue;
 
 end package body util_p;
