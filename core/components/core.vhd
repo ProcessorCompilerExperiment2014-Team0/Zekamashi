@@ -452,13 +452,16 @@ architecture behavior of core is
     if n = 31 then
       dst := to_unsigned(0, 32);
     elsif n = r.e.fwb then
-      hz := HZ_ID;
+      dst := (others => '-');
+      hz  := HZ_ID;
     elsif n = r.fw1.wb then
-      hz := HZ_ID;
+      dst := (others => '-');
+      hz  := HZ_ID;
     elsif n = r.fw2.wb then
-      hz := HZ_ID;
+      dst := to_unsigned(0, 32);
+      hz  := HZ_ID;
     elsif n = r.wbbuf.fwb then
-      dst := r.wbbuf.fdata;
+      dst := (others => '-');
       hz  := hz;
     else
       dst := v;
@@ -474,10 +477,13 @@ architecture behavior of core is
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
+      hz  := hz;
     elsif n = r.fw1.wb then
-      hz := HZ_EXE;
+      dst := (others => '-');
+      hz  := HZ_EXE;
     elsif n = r.fw2.wb then
-      hz := HZ_EXE;
+      dst := (others => '-');
+      hz  := HZ_EXE;
     elsif n = r.wbbuf.fwb then
       dst := r.wbbuf.fdata;
       hz  := hz;
