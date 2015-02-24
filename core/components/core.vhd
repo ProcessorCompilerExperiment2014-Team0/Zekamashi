@@ -317,8 +317,8 @@ architecture behavior of core is
   function decode_fpu_inst (
     fpfunc : unsigned(10 downto 0))
     return fpu_inst_t is
-    -- This function does not returns FPU_INST_SQRT, because
-    -- SQRTS is placed at other opcode.
+  -- This function does not returns FPU_INST_SQRT, because
+  -- SQRTS is placed at other opcode.
   begin
     case fpfunc is
       when b"000_1010_0101" => return FPU_INST_EQ;
@@ -610,13 +610,11 @@ begin
     v.e.arg   := r.d.inst(20 downto 0);
 
     opcode := r.d.inst(31 downto 26);
+    opfunc := r.d.inst(11 downto 5);
+    fpfunc := r.d.inst(15 downto 5);
 
     case opcode(5 downto 3) is
       when "010" =>                                     -- operation format
-
-        opfunc := r.d.inst(11 downto 5);
-        fpfunc := r.d.inst(15 downto 5);
-
         case opcode is
           when b"01_0000" | b"01_0001" | b"01_0010" =>  -- integer arithmetic
             v.e.rav      := iro.d1;
@@ -718,7 +716,45 @@ begin
             assert false report "invalid instruction" severity error;
         end case;
 
-      when "001" | "011" | "101" =>     -- memory format
+      when "011" =>                     -- JSR / FTOIS
+        v.e.rav       := fro.d1;
+        v.e.rbv       := iro.d2;
+
+        case opcode is
+          when b"01_1010" =>            -- JMP
+            v.e.alu_inst  := ALU_INST_ADD;
+            v.e.alu_input := ALU_INPUT_PC;
+            v.e.fwd_a     := FWD_NONE;
+            v.e.fwd_b     := FWD_NONE;
+            v.e.memop     := MEM_NOP;
+            v.e.iwb       := ra;
+            v.e.isrc      := IWB_SRC_ALU;
+            v.e.fwb       := 31;
+            v.e.fsrc      := FWB_SRC_FPU;
+
+            forward_data_ir_id(v.pc, hazard, v.e.rbv, rb);
+            flush_pipeline(v);
+
+          when b"01_1100" =>
+            if fpfunc = b"000_0111_1000" then
+              v.e.alu_inst  := ALU_INST_ADD;
+              v.e.alu_input := ALU_INPUT_ARITH;
+              v.e.fwd_a     := FWD_FR;
+              v.e.fwd_b     := FWD_IR;
+              v.e.memop     := MEM_NOP;
+              v.e.iwb       := rc;
+              v.e.isrc      := IWB_SRC_ALU;
+              v.e.fwb       := 31;
+              v.e.fsrc      := FWB_SRC_FPU;
+            else
+              assert false report "invalid instruction" severity error;
+            end if;
+
+          when others =>
+            assert false report "invalid instruction" severity error;
+        end case;
+
+      when "001" | "101" =>     -- memory format
         v.e.rav      := iro.d1;
         v.e.rbv      := iro.d2;
 
@@ -764,19 +800,6 @@ begin
             v.e.isrc      := IWB_SRC_ALU;
             v.e.fwb       := 31;
             v.e.fsrc      := FWB_SRC_FPU;
-
-          when b"01_1010" =>            -- JMP
-            v.e.alu_input := ALU_INPUT_PC;
-            v.e.fwd_a     := FWD_NONE;
-            v.e.fwd_b     := FWD_NONE;
-            v.e.memop     := MEM_NOP;
-            v.e.iwb       := ra;
-            v.e.isrc      := IWB_SRC_ALU;
-            v.e.fwb       := 31;
-            v.e.fsrc      := FWB_SRC_FPU;
-
-            forward_data_ir_id(v.pc, hazard, v.e.rbv, rb);
-            flush_pipeline(v);
 
           when others => assert false report "invalid instruction" severity error;
         end case;
@@ -1040,7 +1063,7 @@ begin
     mmui    <= mmuv;
     icachei <= icachev;
     alui    <= aluv;
-	 fpui    <= fpuv;
+    fpui    <= fpuv;
     rin     <= v;
   end process;
 
