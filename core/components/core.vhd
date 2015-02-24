@@ -373,14 +373,8 @@ architecture behavior of core is
     if n = 31 then
       dst := to_unsigned(0, 32);
     elsif n = r.e.iwb then
-      case r.e.isrc is
-        when IWB_SRC_ALU =>
-          dst := aluo.o;
-          hz  := hz;
-        when IWB_SRC_MEM =>
-          dst := (others => '-');
-          hz  := HZ_ID;
-      end case;
+      dst := (others => '-');
+      hz  := HZ_ID;
     elsif n = r.m.wb then
       case r.m.src is
         when IWB_SRC_ALU =>
