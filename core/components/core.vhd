@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- declaration
+-- Declaration
 -------------------------------------------------------------------------------
 
 library ieee;
@@ -269,8 +269,9 @@ architecture behavior of core is
   -----------------------------------------------------------------------------
 
   procedure flush_pipeline (
-    v : out latch_t) is
+    v : inout latch_t) is
   begin
+    v   := v;
     v.d := d_bubble;
   end procedure flush_pipeline;
 
@@ -372,6 +373,7 @@ architecture behavior of core is
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
+      hz  := hz;
     elsif n = r.e.iwb then
       dst := (others => '-');
       hz  := HZ_ID;
@@ -410,6 +412,7 @@ architecture behavior of core is
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
+      hz  := hz;
     elsif n = r.m.wb then
       case r.m.src is
         when IWB_SRC_ALU =>
@@ -445,6 +448,7 @@ architecture behavior of core is
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
+      hz  := hz;
     elsif n = r.e.fwb then
       dst := (others => '-');
       hz  := HZ_ID;
@@ -1071,7 +1075,7 @@ begin
     variable l : line;
   begin
     if xrst = '0' then
-      r         <= latch_init;
+      r <= latch_init;
     elsif rising_edge(clk) then
       r <= rin;
 
