@@ -108,7 +108,7 @@ begin
       din  => cache_in,
       dout => cache_out);
 
-  process (din, cache_in, r) is
+  process (din, cache_out, sramo, r) is
     variable v  : latch_t;
     variable dv : datacache_out_t;
     variable cv : datacache_ram_in_t;
