@@ -75,7 +75,7 @@ begin
 
   dout.busy <= '1' when r.state /= -1 else '0';
 
-  process (clk)
+  process (clk, xrst)
   begin
     if xrst = '0' then
       r <= latch_init;

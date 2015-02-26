@@ -209,7 +209,7 @@ begin
     rin      <= v;
   end process;
 
-  process (clk) is
+  process (clk, xrst) is
   begin
     if xrst = '0' then
       r <= latch_init;
