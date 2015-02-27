@@ -5,7 +5,7 @@ open Conv
 
 exception Option_format
 
-type opt = {mutable ofile: string}
+type opt = {mutable ofile: string; mutable bootloader: bool}
 
 let write ot tbl asm =
   List.iter (put_int ot) (List.map (Conv.encode tbl) asm)
@@ -13,21 +13,15 @@ let write ot tbl asm =
 let print_options () =
   prerr_endline "Option format error";
   prerr_endline "Usage: zasm [input file] [options]";
-  (* prerr_endline "  -v            Output for vhdl"; *)
-  (* prerr_endline "  -s <n>        Set offset as n words"; *)
+  prerr_endline "  -b            Output for bootloader";
   prerr_endline "  -o <filename> Set output file"
 
 let rec get_option n opt =
   let len = Array.length Sys.argv in
   if n < len
   then match Sys.argv.(n) with
-  (* | "-v" -> opt.vhdl <- true; *)
-  (*   get_option (n+1) opt *)
-  (* | "-s" -> *)
-  (*   if (n+1) < len *)
-  (*   then opt.offset <- int_of_string Sys.argv.(n+1) *)
-  (*   else raise Option_format; *)
-  (*   get_option (n+2) opt *)
+  | "-b" -> opt.bootloader <- true;
+    get_option (n+1) opt
   | "-o" ->
     if (n+1) < len
     then opt.ofile <- Sys.argv.(n+1)
@@ -45,12 +39,16 @@ let main () =
       let lexbuf = Lexing.from_channel input in
       let asm = insts token lexbuf in
       let ofile = String.sub Sys.argv.(1) 0 (String.length Sys.argv.(1) - 2) in
-      let opt = get_option 2 {ofile = ofile} in
+      let opt = get_option 2 {ofile = ofile; bootloader = false} in
       let output = open_out_bin opt.ofile in
       let tbl = Hashtbl.create (List.length asm) in
       try
-        let asm' = expand [] tbl (align [] tbl 0 asm) in
+        let origin = if opt.bootloader then 0x40 else 0 in
+        let asm' = expand [] tbl (align [] tbl origin asm) in
         write output tbl asm';
+        if opt.bootloader then
+          List.iter (output_byte output) [0;0;0;0]
+        else ();
         List.iter (show stdout tbl) asm'
       with
       | Unbound_label (l,p,m,a) -> prerr_endline "Unbound label:";
