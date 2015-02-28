@@ -1,6 +1,6 @@
 targ = amatsukaze
 fpudir = ../FPU/
-fpus = def.o fadd.o fsub.o fmul.o fneg.o finv.o fsqrt.o ftrc.o itof.o table.o
+fpus = def.o fadd.o fmul.o fneg.o finv.o fsqrt.o ftrc.o itof.o table.o
 fpu = $(addprefix $(fpudir), $(fpus))
 CC = gcc
 CPPFLAGS = -Wall -O2

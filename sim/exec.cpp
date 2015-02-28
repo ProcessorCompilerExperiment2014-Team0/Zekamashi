@@ -193,7 +193,7 @@ void core::run() {
   uint32_t inst;
   uint32_t opcd;
   int ra, rb, rc, df, b;
-  for(i_count = 0LL; pc!=inst_len && (i_limit<0 || i_count<i_limit); i_count++) {
+  for(i_count = 0LL; i_limit<0 || i_count<i_limit; i_count++) {
     inst = mem[pc];
     opcd = inst >> 26;
     if(opt >> OPTION_R & 1) {
