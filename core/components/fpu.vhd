@@ -190,8 +190,10 @@ begin
   begin
     v := r;
 
-    v.inst0 := din.inst;
-    v.inst1 := r.inst0;
+    if din.stall /= '1' then
+      v.inst0 := din.inst;
+      v.inst1 := r.inst0;
+    end if;
 
     case r.inst1 is
       when FPU_INST_NOP  => dout.o <= (others => '-');
