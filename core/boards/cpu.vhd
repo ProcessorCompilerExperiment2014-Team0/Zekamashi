@@ -51,26 +51,28 @@ architecture rtl of cpu is
 
   signal clk, clk1, iclk, dclk, iclkfd, clkfd: std_logic;
 
-  signal iri     : regfile_in_t;
-  signal iro     : regfile_out_t;
-  signal fri     : regfile_in_t;
-  signal fro     : regfile_out_t;
-  signal alui    : alu_in_t;
-  signal aluo    : alu_out_t;
-  signal fpui    : fpu_in_t;
-  signal fpuo    : fpu_out_t;
-  signal dcachei : datacache_in_t;
-  signal dcacheo : datacache_out_t;
-  signal icachei : instcache_in_t;
-  signal icacheo : instcache_out_t;
-  signal mmui    : mmu_in_t;
-  signal mmuo    : mmu_out_t;
-  signal srami   : sram_in_t;
-  signal sramo   : sram_out_t;
-  signal uii     : u232c_in_in_t;
-  signal uio     : u232c_in_out_t;
-  signal uoi     : u232c_out_in_t;
-  signal uoo     : u232c_out_out_t;
+  signal iri      : regfile_in_t;
+  signal iro      : regfile_out_t;
+  signal fri      : regfile_in_t;
+  signal fro      : regfile_out_t;
+  signal alui     : alu_in_t;
+  signal aluo     : alu_out_t;
+  signal fpui     : fpu_in_t;
+  signal fpuo     : fpu_out_t;
+  signal dcachei  : datacache_in_t;
+  signal dcacheo  : datacache_out_t;
+  signal icacheri : instcache_read_in_t;
+  signal icachero : instcache_read_out_t;
+  signal icachewi : instcache_write_in_t;
+  signal icachewo : instcache_write_out_t;
+  signal mmui     : mmu_in_t;
+  signal mmuo     : mmu_out_t;
+  signal srami    : sram_in_t;
+  signal sramo    : sram_out_t;
+  signal uii      : u232c_in_in_t;
+  signal uio      : u232c_in_out_t;
+  signal uoi      : u232c_out_in_t;
+  signal uoo      : u232c_out_out_t;
 
 begin
 
@@ -112,8 +114,8 @@ begin
       fro     => fro,
       clk     => clk,
       xrst    => xrst,
-      icachei => icachei,
-      icacheo => icacheo,
+      icachei => icacheri,
+      icacheo => icachero,
       alui    => alui,
       aluo    => aluo,
       fpui    => fpui,
@@ -138,8 +140,10 @@ begin
   instcachec : instcache
     port map (
       clk  => clk,
-      din  => icachei,
-      dout => icacheo);
+      din  => icacheri,
+      dout => icachero,
+      ein  => icachewi,
+      eout => icachewo);
 
   aluc : alu
     port map (
@@ -155,16 +159,18 @@ begin
 
   mmuc : mmu
     port map (
-      clk    => clk,
-      xrst   => xrst,
-      uii    => uii,
-      uio    => uio,
-      uoi    => uoi,
-      uoo    => uoo,
-      cachei => dcachei,
-      cacheo => dcacheo,
-      din    => mmui,
-      dout   => mmuo);
+      clk     => clk,
+      xrst    => xrst,
+      uii     => uii,
+      uio     => uio,
+      uoi     => uoi,
+      uoo     => uoo,
+      dcachei => dcachei,
+      dcacheo => dcacheo,
+      icachei => icachewi,
+      icacheo => icachewo,
+      din     => mmui,
+      dout    => mmuo);
 
   datacachec : datacache
     port map (

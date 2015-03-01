@@ -27,8 +27,8 @@ package core_p is
       iro     : in  regfile_out_t;
       fri     : out regfile_in_t;
       fro     : in  regfile_out_t;
-      icachei : out instcache_in_t;
-      icacheo : in  instcache_out_t;
+      icachei : out instcache_read_in_t;
+      icacheo : in  instcache_read_out_t;
       alui    : out alu_in_t;
       aluo    : in  alu_out_t;
       fpui    : out fpu_in_t;
@@ -72,8 +72,8 @@ entity core is
     iro     : in  regfile_out_t;
     fri     : out regfile_in_t;
     fro     : in  regfile_out_t;
-    icachei : out instcache_in_t;
-    icacheo : in  instcache_out_t;
+    icachei : out instcache_read_in_t;
+    icacheo : in  instcache_read_out_t;
     alui    : out alu_in_t;
     aluo    : in  alu_out_t;
     fpui    : out fpu_in_t;
@@ -537,7 +537,7 @@ begin
 
   comb : process (r, icacheo, aluo, fpuo, mmuo, iro, fro) is
     variable v       : latch_t;
-    variable icachev : instcache_in_t;
+    variable icachev : instcache_read_in_t;
     variable aluv    : alu_in_t;
     variable fpuv    : fpu_in_t;
     variable mmuv    : mmu_in_t;
@@ -673,7 +673,7 @@ begin
                 v.e.fwb       := rc;
                 v.e.fsrc      := FWB_SRC_IR;
 
-              when b"101_1000_1011" =>  -- SQRTS
+              when b"000_1000_1011" =>  -- SQRTS
                 v.e.alu_input := ALU_INPUT_ARITH;
                 v.e.alu_inst  := ALU_INST_NOP;
                 v.e.fpu_inst  := FPU_INST_SQRT;
@@ -1019,7 +1019,7 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    icachev := (addr => v.pc(16 downto 0));
+    icachev := (addr => v.pc(12 downto 0));
 
     ---------------------------------------------------------------------------
     -- Pipeline Stalling
@@ -1032,7 +1032,7 @@ begin
         v.d  := r.d;
         v.e  := e_bubble;
 
-        icachev := (addr => r.pc(16 downto 0));
+        icachev := (addr => r.pc(12 downto 0));
 
       when HZ_EXE =>
         v.pc    := r.pc;
@@ -1043,7 +1043,7 @@ begin
         v.m     := m_bubble;
         v.fw1   := fw_bubble;
 
-        icachev := (addr => r.pc(16 downto 0));
+        icachev := (addr => r.pc(12 downto 0));
 
       when HZ_WB =>
 
@@ -1058,7 +1058,7 @@ begin
         v.fw2   := r.fw2;
 
         fpuv.stall := '1';
-        icachev    := (addr => r.pc(16 downto 0));
+        icachev    := (addr => r.pc(12 downto 0));
         mmuv       := r.w.mmui;
 
       when others => null;

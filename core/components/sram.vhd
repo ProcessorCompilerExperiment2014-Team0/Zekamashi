@@ -135,7 +135,7 @@ begin  -- architecture behavior
     variable xwav : std_logic;
   begin
 
-    v    := rin;
+    v    := r;
     dv   := (data => (others => '-'));
     zav  := (others => '0');
     zdv  := (others => '0');

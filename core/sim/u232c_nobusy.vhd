@@ -76,14 +76,18 @@ begin
     if rising_edge(clk) then
       if din.rden = '1' then
         if endfile(ifile) then
-          dout.empty <= '1';
           dout.data  <= (others => '1');
         else
           readline(ifile, l);
           hread(l, v);
-          dout.empty <= '0';
           dout.data  <= unsigned(v);
         end if;
+      end if;
+
+      if endfile(ifile) then
+        dout.empty <= '1';
+      else
+        dout.empty <= '0';
       end if;
     end if;
   end process;

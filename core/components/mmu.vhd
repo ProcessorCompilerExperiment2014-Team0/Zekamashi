@@ -10,6 +10,7 @@ library work;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.datacache_p.all;
+use work.instcache_p.all;
 
 package mmu_p is
 
@@ -30,12 +31,14 @@ package mmu_p is
       clk  : in std_logic;
       xrst : in std_logic;
 
-      uii    : out u232c_in_in_t;
-      uio    : in  u232c_in_out_t;
-      uoi    : out u232c_out_in_t;
-      uoo    : in  u232c_out_out_t;
-      cachei : out datacache_in_t;
-      cacheo : in  datacache_out_t;
+      uii     : out u232c_in_in_t;
+      uio     : in  u232c_in_out_t;
+      uoi     : out u232c_out_in_t;
+      uoo     : in  u232c_out_out_t;
+      dcachei : out datacache_in_t;
+      dcacheo : in  datacache_out_t;
+      icachei : out instcache_write_in_t;
+      icacheo : in  instcache_write_out_t;
 
       din  : in  mmu_in_t;
       dout : out mmu_out_t);
@@ -55,6 +58,7 @@ library work;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.datacache_p.all;
+use work.instcache_p.all;
 use work.mmu_p.all;
 
 entity mmu is
@@ -66,8 +70,10 @@ entity mmu is
     uio    : in  u232c_in_out_t;
     uoi    : out u232c_out_in_t;
     uoo    : in  u232c_out_out_t;
-    cachei : out datacache_in_t;
-    cacheo : in  datacache_out_t;
+    dcachei : out datacache_in_t;
+    dcacheo : in  datacache_out_t;
+    icachei : out instcache_write_in_t;
+    icacheo : in  instcache_write_out_t;
 
     din  : in  mmu_in_t;
     dout : out mmu_out_t);
@@ -82,18 +88,21 @@ architecture behavior of mmu is
     data : unsigned(7 downto 0);
   end record latch_t;
 
-  constant latch_init : latch_t := (src => SRC_NOPE,
-                                    data => (others => '0'));
+  constant latch_init : latch_t := (
+    src => SRC_NOPE,
+    data => (others => '0'));
+
   signal r, rin : latch_t := latch_init;
 
 begin
 
-  process (r, uio, uoo, cacheo, din) is
-    variable v      : latch_t;
-    variable dv     : mmu_out_t;
-    variable uiv    : u232c_in_in_t;
-    variable uov    : u232c_out_in_t;
-    variable cachev : datacache_in_t;
+  process (r, uio, uoo, dcacheo, din) is
+    variable v       : latch_t;
+    variable dv      : mmu_out_t;
+    variable uiv     : u232c_in_in_t;
+    variable uov     : u232c_out_in_t;
+    variable dcachev : datacache_in_t;
+    variable icachev : instcache_write_in_t;
 
     variable addr19 : unsigned(19 downto 0);
   begin
@@ -103,14 +112,23 @@ begin
     uiv := (rden => '0');
     uov := (data => (others => '-'),
             go   => '0');
-    cachev := (addr => (others => '-'),
-               data => (others => '-'),
-               en   => '0',
-               we   => '1');
+    dcachev := (addr => (others => '-'),
+                data => (others => '-'),
+                en   => '0',
+                we   => '1');
+    icachev := (we   => '0',
+                addr => (others => '0'),
+                data => (others => '0'));
 
     ---------------------------------------------------------------------------
 
     if din.en = '1' then
+      if din.addr(20 downto 13) = 0 then
+        icachev := (we   => '1',
+                    addr => din.addr(12 downto 0),
+                    data => din.data);
+      end if;
+
       if din.addr(20) = '1' then
         addr19 := din.addr(19 downto 0);
 
@@ -143,7 +161,7 @@ begin
           end case;
         end if;
       else
-        cachev := (addr => din.addr(19 downto 0),
+        dcachev := (addr => din.addr(19 downto 0),
                    data => din.data,
                    en   => din.en,
                    we   => din.we);
@@ -157,8 +175,8 @@ begin
 
     case r.src is
       when SRC_SRAM =>
-        dv.data := cacheo.data;
-        dv.miss := cacheo.miss;
+        dv.data := dcacheo.data;
+        dv.miss := dcacheo.miss;
       when SRC_DATA =>
         dv.data := resize(r.data, 32);
         dv.miss := '0';
@@ -172,11 +190,12 @@ begin
 
     ---------------------------------------------------------------------------
 
-    rin    <= v;
-    uii    <= uiv;
-    uoi    <= uov;
-    cachei <= cachev;
-    dout   <= dv;
+    rin     <= v;
+    uii     <= uiv;
+    uoi     <= uov;
+    dcachei <= dcachev;
+    icachei <= icachev;
+    dout    <= dv;
   end process;
 
   process (clk, xrst) is

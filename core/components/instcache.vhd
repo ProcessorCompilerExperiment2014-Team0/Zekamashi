@@ -8,19 +8,31 @@ use ieee.numeric_std.all;
 
 package instcache_p is
 
-  type instcache_in_t is record
-    addr : unsigned(16 downto 0);
-  end record instcache_in_t;
+  type instcache_read_in_t is record
+    addr : unsigned(12 downto 0);
+  end record instcache_read_in_t;
 
-  type instcache_out_t is record
+  type instcache_read_out_t is record
     data : unsigned(31 downto 0);
-  end record instcache_out_t;
+  end record instcache_read_out_t;
+
+  type instcache_write_in_t is record
+    we   : std_logic;
+    addr : unsigned(12 downto 0);
+    data : unsigned(31 downto 0);
+  end record instcache_write_in_t;
+
+  type instcache_write_out_t is record
+    data : unsigned(31 downto 0);
+  end record instcache_write_out_t;
 
   component instcache is
     port (
       clk  : in  std_logic;
-      din  : in  instcache_in_t;
-      dout : out instcache_out_t);
+      din  : in  instcache_read_in_t;
+      dout : out instcache_read_out_t;
+      ein  : in  instcache_write_in_t;
+      eout : out instcache_write_out_t);
   end component instcache;
 
 end package instcache_p;
@@ -32,34 +44,34 @@ end package instcache_p;
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use ieee.std_logic_textio.all;
-
-library std;
-use std.textio.all;
 
 library work;
-use work.meminit_p.all;
 use work.instcache_p.all;
+use work.meminit_p.all;
 
 entity instcache is
-  
   port (
     clk  : in  std_logic;
-    din  : in  instcache_in_t;
-    dout : out instcache_out_t);
-
+    din  : in  instcache_read_in_t;
+    dout : out instcache_read_out_t;
+    ein  : in  instcache_write_in_t;
+    eout : out instcache_write_out_t);
 end entity instcache;
 
 architecture behavior of instcache is
 
-  signal rom: icache_init_t := icache_init;
+  signal ram : icache_init_t := icache_init;
 
 begin
 
   process (clk) is
   begin
     if rising_edge(clk) then
-      dout.data <= rom(to_integer(din.addr(9 downto 0)));
+      if ein.we = '1' then
+        ram(to_integer(ein.addr)) <= ein.data;
+      end if;
+      dout.data <= ram(to_integer(din.addr));
+      eout.data <= ram(to_integer(ein.addr));
     end if;
   end process;
 

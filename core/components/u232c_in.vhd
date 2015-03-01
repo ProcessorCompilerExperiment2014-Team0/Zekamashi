@@ -87,7 +87,7 @@ begin
       din  => ibufi,
       dout => ibufo);
 
-  process (r, rx, din) is
+  process (r, ibufo, rx, din) is
     variable v     : latch_t;
     variable dv    : u232c_in_out_t;
     variable ibufv : inputbuf_in_t;

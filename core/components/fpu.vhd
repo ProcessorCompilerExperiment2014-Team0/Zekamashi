@@ -59,7 +59,6 @@ use ieee.numeric_std.all;
 library work;
 use work.fadd_pipeline_p.all;
 use work.fmul_pipeline_p.all;
-use work.fsub_pipeline_p.all;
 use work.ftoi_pipeline_p.all;
 use work.itof_pipeline_p.all;
 use work.feq_pipeline_p.all;
@@ -104,13 +103,16 @@ architecture behavior of fpu is
 
 begin
 
-  add : fadd_pipeline port map (
-    clk   => clk,
-    xrst  => xrst,
-    stall => din.stall,
-    a     => din.i1,
-    b     => din.i2,
-    s     => s_add);
+  add : fadd_pipeline
+    generic map (
+      negate_b => false)
+    port map (
+      clk   => clk,
+      xrst  => xrst,
+      stall => din.stall,
+      a     => din.i1,
+      b     => din.i2,
+      s     => s_add);
 
   mul : fmul_pipeline port map (
     clk   => clk,
@@ -120,13 +122,16 @@ begin
     b     => din.i2,
     s     => s_mul);
 
-  sub : fsub_pipeline port map (
-    clk   => clk,
-    xrst  => xrst,
-    stall => din.stall,
-    a     => din.i1,
-    b     => din.i2,
-    s     => s_sub);
+  sub : fadd_pipeline
+    generic map (
+      negate_b => true)
+    port map (
+      clk   => clk,
+      xrst  => xrst,
+      stall => din.stall,
+      a     => din.i1,
+      b     => din.i2,
+      s     => s_sub);
 
   eq : feq_pipeline port map (
     clk   => clk,
@@ -185,8 +190,10 @@ begin
   begin
     v := r;
 
-    v.inst0 := din.inst;
-    v.inst1 := r.inst0;
+    if din.stall /= '1' then
+      v.inst0 := din.inst;
+      v.inst1 := r.inst0;
+    end if;
 
     case r.inst1 is
       when FPU_INST_NOP  => dout.o <= (others => '-');

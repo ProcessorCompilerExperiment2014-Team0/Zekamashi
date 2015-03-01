@@ -1,5 +1,5 @@
 require 'erb'
-mems = [["icache_init", 32, 1024, "code"]]
+mems = [["icache_init", 32, 8096, "code"]]
 File.open("meminit.vhd", "w") do |f|
   f.puts ERB.new(DATA.read, nil, '-').result(binding)
 end
@@ -15,13 +15,13 @@ use ieee.numeric_std.all;
 
 package meminit_p is
   <% for name, width, len, fname in mems do %>
-  	type <%= name %>_t is array (0 to <%= len-1 %>) of unsigned(<%= width-1 %> downto 0);
+  type <%= name %>_t is array (0 to <%= len-1 %>) of unsigned(<%= width-1 %> downto 0);
     constant <%= name %> : <%= name %>_t := (
-	  <%- b = File.binread(fname).unpack("C*") -%>
-	  <%- n = width/8 -%>
-	  <%- for i in 0...((b.size+1) / n) do -%>
-	  <%= i %> => x"<% for j in 0...n do %><%= sprintf("%02x", (b[(i+1)*n-1-j])) %><% end %>",
-	  <%- end -%>
-	  others => (others => '0'));
+      <%- b = File.binread(fname).unpack("C*") -%>
+      <%- n = width/8 -%>
+      <%- for i in 0...((b.size+1) / n) do -%>
+      <%= i %> => x"<% for j in 0...n do %><%= sprintf("%02x", (b[(i+1)*n-1-j])) %><% end %>",
+      <%- end -%>
+      others => (others => '0'));
   <% end %>
 end package meminit_p;
