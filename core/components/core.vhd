@@ -673,7 +673,7 @@ begin
                 v.e.fwb       := rc;
                 v.e.fsrc      := FWB_SRC_IR;
 
-              when b"101_1000_1011" =>  -- SQRTS
+              when b"000_1000_1011" =>  -- SQRTS
                 v.e.alu_input := ALU_INPUT_ARITH;
                 v.e.alu_inst  := ALU_INST_NOP;
                 v.e.fpu_inst  := FPU_INST_SQRT;
