@@ -14,7 +14,6 @@
 #--  Update 		 :
 #--
 #-----------------------------------------------------------
-
 #-----------------------------------------------------------
 # Target Information
 CONFIG PART=5VLX50TFF1136-1 ;
@@ -23,7 +22,6 @@ CONFIG PART=5VLX50TFF1136-1 ;
 ##########################################################
 # Pin Assign
 ##########################################################
-
 #////////////////////////////////////////
 #// ZBT-RAM connection.
 #////////////////////////////////////////
@@ -107,8 +105,6 @@ NET XLBO		   LOC=AH34;
 NET  ZZA		   LOC=AA31;
 
 #// = Inputs. =
-
-
 NET RS_TX			LOC=K11;
 NET RS_RX			LOC=J11;
 
@@ -118,7 +114,6 @@ NET RS_RX			LOC=J11;
 #///////////////////////////////////////
 #// = Outputs. =
 #NET  DUMY		   LOC=K17;
-
 #// = Inputs. =
 #NET  CLK48M 	   LOC=H17;
 NET  MCLK1		   LOC=J16;
@@ -254,8 +249,6 @@ NET XRST		   LOC=H18;
 # NET  IOA<124>	   LOC=E34;
 # NET  IOA<125>	   LOC=H34;
 # NET  IOA<126>	   LOC=K32;
-
-
 ##########################################################
 # Pin Type Define
 ##########################################################
@@ -476,12 +469,10 @@ NET  ZZA		   IOSTANDARD = LVTTL;
 # NET  IOA<124>	   IOSTANDARD = LVTTL;
 # NET  IOA<125>	   IOSTANDARD = LVTTL;
 # NET  IOA<126>	   IOSTANDARD = LVTTL;
-
 #////////////////////////////////////////
 #// Clock Type Define.
 #////////////////////////////////////////
 #// = Outputs. =
-
 #// = Inputs. =
 #NET  CLK48M 	   IOSTANDARD = LVTTL;
 NET  MCLK1		   IOSTANDARD = LVTTL;
@@ -493,27 +484,31 @@ NET RS_RX		   IOSTANDARD = LVTTL;
 ############################################################################
 # Clock constraints                                                        #
 ############################################################################
-
 #NET "u_mig/u_infrastructure/sys_clk_ibufg" TNM_NET =  "SYS_CLK";
-NET "MCLK1" TNM_NET = "SYS_CLK";
-TIMESPEC "TS_SYS_CLK" = PERIOD "SYS_CLK" 14.52 ns HIGH 50 %;
+# NET "MCLK1" TNM_NET = "SYS_CLK";
+# TIMESPEC "TS_SYS_CLK" = PERIOD "SYS_CLK" 14.52 ns HIGH 50 %;
+NET "mclk1" TNM_NET = mclk1;
+TIMESPEC TS_mclk1 = PERIOD "mclk1" 14.52 ns HIGH 50%;
 
 ###############################################################################
 # Define multicycle paths - these paths may take longer because additional
 # time allowed for logic to settle in calibration/initialization FSM
 ###############################################################################
+# CLK : 14.5
+# Data Out : Setup : CLK - tS(1.5) - delay(0.5) = 12.5
+# Data Out : Hold : tH(0.5) = 0.5
+# INST xzcke     TNM = GRP_SRAM_OUT;
+# INST xe1       TNM = GRP_SRAM_OUT;
+# INST e2a       TNM = GRP_SRAM_OUT;
+# INST xe3       TNM = GRP_SRAM_OUT;
+# INST adva      TNM = GRP_SRAM_OUT;
+INST xwa       TNM = GRP_SRAM_OUT;
+INST "xzbe[*]" TNM = GRP_SRAM_OUT;
+INST "za[*]"   TNM = GRP_SRAM_OUT;
+INST "zd[*]"   TNM = GRP_SRAM_OUT;
 
-# # Data Out : Setup : tKC(7.5) - tS(1.5) = 6.0
-# # Data Out : Hold : tH(0.5) = 0.5
-NET XZCKE     OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET XE1       OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET E2A       OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET XE3       OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET ADVA      OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET XWA       OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET "XZBE[*]" OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET "ZA[*]"   OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-NET "ZD[*]"   OFFSET = OUT 6.0 ns VALID 6.5 AFTER "MCLK1" RISING;
-# # Data In : Setup : tKC(7.5) - tKQ(3.8) - delay(0.5) = 3.2
-# # Data In : Hold  : tKQX(1.5) = 1.5
-NET "ZD[*]" OFFSET = IN 3.2 ns VALID 4.7 ns BEFORE "MCLK1" RISING;
+TIMEGRP GRP_SRAM_OUT OFFSET = OUT 7.5 ns AFTER "mclk1" RISING;
+
+# Data In : Setup : tKQ(3.8) + delay(0.5) = 4.3
+# Data In : Hold  : tKQX(1.5) = 1.5
+NET "zd[*]" OFFSET = IN 6.0 ns VALID 6.5 ns BEFORE "mclk1" RISING;
