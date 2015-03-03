@@ -52,10 +52,11 @@ const char *INST_NAME[] = {
   "ITOFS  ",
 };
 
-core::core(int argc, char **argv) {
-  char buf[100];
+core::core(const string &program, ifstream *test_file, unsigned opt, long long i_limit,
+           ofstream *blog, ofstream *ilog, ofstream *flog)
+  : opt(opt), i_limit(i_limit), blog(blog), ilog(ilog), flog(flog) {
   mem = new uint32_t[SIZE_OF_MEM];
-  ifstream input(argv[1], ios::binary);
+  ifstream input(program, ios::binary);
   if(!input) {
     cerr << "Cannot open input file\n";
     exit(1);
@@ -71,114 +72,34 @@ core::core(int argc, char **argv) {
     ir[i].i = 0;
     fr[i].i = 0;
   }
-  opt = 0u;
-  i_limit = -1LL;
-  ilog = flog = NULL;
   for(int i=0; i<I_SENTINEL; i++) {
     i_stat[i] = 0LL;
   }
 
-  if(argc < 3) return;
-  int i = 2;
-  if(argv[2][0] != '-') {
+  if(test_file) {
     try {
-      set_test(argv[2]);
-      i++;
+      set_test(test_file);
     } catch (const char *s) {
       cerr << s << '\n';
       exit(1);
     }
   }
-  try {
-    for(; i<argc; i++) {
-      if(!strcmp(argv[i], "-d")) {
-        opt |= 1 << OPTION_D;
-      } else if(!strcmp(argv[i], "-r")) {
-        opt |= 1 << OPTION_R;
-        opt |= 1 << OPTION_D;
-      } else if(!strcmp(argv[i], "-m")) {
-        opt |= 1 << OPTION_M;
-      } else if(!strcmp(argv[i], "-n")) {
-        if(i+1 >= argc || argv[i+1][0] == '-') {
-          opt |= 1 << OPTION_N;
-        } else {
-          for(i++; i<argc; i++) {
-            if(argv[i][0] == '-') {
-              i--;
-              break;
-            } else if(!strcmp(argv[i], "adds")) {
-              opt |= 1 << OPTION_N_ADDS;
-            } else if(!strcmp(argv[i], "subs")) {
-              opt |= 1 << OPTION_N_SUBS;
-            } else if(!strcmp(argv[i], "muls")) {
-              opt |= 1 << OPTION_N_MULS;
-            } else if(!strcmp(argv[i], "invs")) {
-              opt |= 1 << OPTION_N_INVS;
-            } else if(!strcmp(argv[i], "sqrts")) {
-              opt |= 1 << OPTION_N_SQRTS;
-            } else if(!strcmp(argv[i], "cvtsl")) {
-              opt |= 1 << OPTION_N_CVTSL;
-            } else if(!strcmp(argv[i], "cvtls")) {
-              opt |= 1 << OPTION_N_CVTLS;
-            } else {
-              throw argv[i];
-            }
-          }
-        }
-      } else if(!strcmp(argv[i], "-s")) {
-        opt |= 1 << OPTION_S;
-        if(i+1 >= argc || argv[i+1][0] == '-') {
-          strcpy(stat_file, argv[1]);
-          strcat(stat_file, ".log");
-        } else {
-          strcpy(stat_file, argv[++i]);
-        }
-      } else if(!strcmp(argv[i], "-ir")) {
-        if(i+1 >= argc || argv[i+1][0] == '-') {
-          strcpy(buf, argv[1]);
-          strcat(buf, ".ilog");
-        } else {
-          strcpy(buf, argv[++i]);
-        }
-        ilog = new ofstream(buf);
-      } else if(!strcmp(argv[i], "-fr")) {
-        if(i+1 >= argc || argv[i+1][0] == '-') {
-          strcpy(buf, argv[1]);
-          strcat(buf, ".flog");
-        } else {
-          strcpy(buf, argv[++i]);
-        }
-        flog = new ofstream(buf);
-      } else if(!strcmp(argv[i], "-l")) {
-        i++;
-        if(i >= argc) {
-          throw argv[i];
-        }
-        sscanf(argv[i], "%lld", &i_limit);
-      } else {
-        throw argv[i];
-      }
-    }
-  } catch (char *s) {
-    cerr << "Invalid Option: " << s << endl;
-    exit(1);
-  }
 }
 
 core::~core() {
   delete [] mem;
+  if(blog) delete blog;
   if(ilog) delete ilog;
   if(flog) delete flog;
 }
 
-void core::set_test(const char *test_file_path) {
-  ifstream test_file(test_file_path);
+void core::set_test(ifstream *test_file) {
   if(!test_file) throw "Cannot open test file";
   char s[100];
   int reg;
   uint32_t val;
-  while(!test_file.eof()) {
-    test_file >> s >> hex >> val;
+  while(!test_file->eof()) {
+    *test_file >> s >> hex >> val;
     if(s[1] == 'f') {
       sscanf(s, "$f%d", &reg);
       reg += NUM_OF_R;
@@ -603,7 +524,7 @@ int core::i_br(int ra, int disp) {
 void core::i_bsr(int ra, int disp) {
   ir[ra].i = pc + 1;
   pc += extend(disp, 16);
-  if(opt >> OPTION_S & 1) {
+  if(blog) {
     map<unsigned, long long>::iterator p = br_map.find(pc);
     if(p == br_map.end()) {
       br_map.insert(make_pair(pc, 1LL));
@@ -897,11 +818,9 @@ ostream &operator<<(ostream &os, const core &c) {
 }
 
 void core::write_br_stat() {
-  if(!(opt >> OPTION_S & 1)) return;
-  ofstream os(stat_file);
+  if(!blog) return;
   map<unsigned, long long>::iterator p;
   for(p = br_map.begin(); p != br_map.end(); p++) {
-    os << p->first << " " << p->second << '\n';
+    *blog << p->first << " " << p->second << '\n';
   }
-  os.close();
 }

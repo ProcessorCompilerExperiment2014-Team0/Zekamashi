@@ -28,7 +28,97 @@ int main(int argc, char **argv) {
     print_options();
     return 0;
   }
-  core c(argc, argv);
+  string program(argv[1]);
+  ifstream *test_file = NULL;
+  ofstream *blog = NULL;
+  ofstream *ilog = NULL;
+  ofstream *flog = NULL;
+  unsigned opt = 0u;
+  long long i_limit = -1ll;
+  string buf;
+  if(argc >= 3) {
+    int i = 2;
+    if(argv[2][0] != '-') {
+      test_file = new ifstream(argv[2]);
+      i++;
+    }
+    try {
+      for(; i<argc; i++) {
+        if(!strcmp(argv[i], "-d")) {
+          opt |= 1 << OPTION_D;
+        } else if(!strcmp(argv[i], "-r")) {
+          opt |= 1 << OPTION_R;
+          opt |= 1 << OPTION_D;
+        } else if(!strcmp(argv[i], "-m")) {
+          opt |= 1 << OPTION_M;
+        } else if(!strcmp(argv[i], "-n")) {
+          if(i+1 >= argc || argv[i+1][0] == '-') {
+            opt |= 1 << OPTION_N;
+          } else {
+            for(i++; i<argc; i++) {
+              if(argv[i][0] == '-') {
+                i--;
+                break;
+              } else if(!strcmp(argv[i], "adds")) {
+                opt |= 1 << OPTION_N_ADDS;
+              } else if(!strcmp(argv[i], "subs")) {
+                opt |= 1 << OPTION_N_SUBS;
+              } else if(!strcmp(argv[i], "muls")) {
+                opt |= 1 << OPTION_N_MULS;
+              } else if(!strcmp(argv[i], "invs")) {
+                opt |= 1 << OPTION_N_INVS;
+              } else if(!strcmp(argv[i], "sqrts")) {
+                opt |= 1 << OPTION_N_SQRTS;
+              } else if(!strcmp(argv[i], "cvtsl")) {
+                opt |= 1 << OPTION_N_CVTSL;
+              } else if(!strcmp(argv[i], "cvtls")) {
+                opt |= 1 << OPTION_N_CVTLS;
+              } else {
+                throw argv[i];
+              }
+            }
+          }
+        } else if(!strcmp(argv[i], "-s")) {
+          if(i+1 >= argc || argv[i+1][0] == '-') {
+            buf.assign(program);
+            buf.append(".log");
+          } else {
+            buf.assign(argv[++i]);
+          }
+          blog = new ofstream(buf);
+        } else if(!strcmp(argv[i], "-ir")) {
+          if(i+1 >= argc || argv[i+1][0] == '-') {
+            buf.assign(program);
+            buf.append(".ilog");
+          } else {
+            buf.assign(argv[++i]);
+          }
+          ilog = new ofstream(buf);
+        } else if(!strcmp(argv[i], "-fr")) {
+          if(i+1 >= argc || argv[i+1][0] == '-') {
+            buf.assign(program);
+            buf.append(".flog");
+          } else {
+            buf.assign(argv[++i]);
+          }
+          flog = new ofstream(buf);
+        } else if(!strcmp(argv[i], "-l")) {
+          i++;
+          if(i >= argc) {
+            throw argv[i];
+          }
+          sscanf(argv[i], "%lld", &i_limit);
+        } else {
+          throw argv[i];
+        }
+      }
+    } catch (char *s) {
+      cerr << "Invalid Option: " << s << endl;
+      exit(1);
+    }
+  }
+
+  core c(program, test_file, opt, i_limit, blog, ilog, flog);
   c.run();
 
   cerr << c;
