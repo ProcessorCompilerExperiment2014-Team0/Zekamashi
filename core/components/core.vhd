@@ -127,6 +127,7 @@ architecture behavior of core is
   -----------------------------------------------------------------------------
 
   type latch_if_t is record
+    pc_now : word_t;
     pc_inc : word_t;
     pc_jmp : word_t;
     br_op  : branch_op_t;
@@ -135,6 +136,7 @@ architecture behavior of core is
 
   type latch_id_t is record
     bubble : boolean;
+    reset  : std_logic;
     pc     : word_t;
   end record latch_id_t;
 
@@ -197,6 +199,7 @@ architecture behavior of core is
   -- bubbles
 
   constant f_bubble : latch_if_t := (
+    pc_now => (others => '0'),
     pc_inc => (others => '0'),
     pc_jmp => (others => '-'),
     br_op  => BRANCH_FALSE,
@@ -204,6 +207,7 @@ architecture behavior of core is
 
   constant d_bubble : latch_id_t := (
     bubble   => true,
+    reset    => '1',
     pc       => (others => '1'));
 
   constant e_bubble : latch_exe_t := (
@@ -258,9 +262,6 @@ architecture behavior of core is
     fdata => (others => '-'));
 
   type latch_t is record
-    rs    : std_logic;                  -- reset signal
-    pc    : word_t;                     -- program counter
-    -- latches
     f     : latch_if_t;
     d     : latch_id_t;
     e     : latch_exe_t;
@@ -272,8 +273,6 @@ architecture behavior of core is
   end record latch_t;
 
   constant latch_init : latch_t := (
-    rs    => '1',
-    pc    => (others => '0'),
     f     => f_bubble,
     d     => d_bubble,
     e     => e_bubble,
@@ -569,7 +568,6 @@ begin
 
   begin
     v       := r;
-    v.rs    := '0';
     icachev := (addr => (others => '-'));
     aluv := (inst => ALU_INST_NOP,
              i1   => (others => '-'),
@@ -632,20 +630,26 @@ begin
     icachev.addr := nextpc;
 
     v.f := (
-      pc_inc => r.f.pc_inc + 1,
+      pc_now => resize(nextpc, 32),
+      pc_inc => resize(nextpc, 32) + 1,
       pc_jmp => (others => '-'),        -- these properties
       br_op  => BRANCH_FALSE,           -- will may be set at
       data   => (others => '-'));       -- instruction decode
 
     v.d := (
       bubble => false,
+      reset  => '0',
       pc     => resize(nextpc, 32));
 
     -------------------------------------------------------------------------
     -- Instruction Decode
     -------------------------------------------------------------------------
 
-    inst := icacheo.data;
+    if r.d.reset = '1' then
+      inst := unop;
+    else
+      inst := icacheo.data;
+    end if;
 
     ra := to_integer(inst(25 downto 21));
     rb := to_integer(inst(20 downto 16));
@@ -1089,12 +1093,6 @@ begin
     debuginfo.fr_data   <= fr_data;
     debuginfo.hz        <= hazard;
 
-    -------------------------------------------------------------------------
-    -- Instruction Fetch
-    -------------------------------------------------------------------------
-
-    icachev := (addr => v.pc(12 downto 0));
-
     ---------------------------------------------------------------------------
     -- Pipeline Flushing/Stalling
     ---------------------------------------------------------------------------
@@ -1110,6 +1108,8 @@ begin
           v.f := r.f;
           v.d := r.d;
           v.e := e_bubble;
+
+          icachev.addr := r.f.pc_now(12 downto 0);
         end if;
 
       when HZ_EXE =>
@@ -1120,6 +1120,8 @@ begin
         v.e.rbv := bdata;
         v.m     := m_bubble;
         v.fw1   := fw_bubble;
+
+        icachev.addr := r.f.pc_now(12 downto 0);
 
       when HZ_WB =>
         v.f     := r.f;
@@ -1132,6 +1134,7 @@ begin
         v.fw1   := r.fw1;
         v.fw2   := r.fw2;
 
+        icachev.addr := r.f.pc_now(12 downto 0);
         fpuv.stall := '1';
         mmuv       := r.w.mmui;
 
