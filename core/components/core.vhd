@@ -88,6 +88,14 @@ architecture behavior of core is
 
   constant unop : word_t := b"010001_11111_11111_000_0_0100000_11111";
 
+  type branch_op_t is (
+    BRANCH_TRUE,
+    BRANCH_FALSE,
+    BRANCH_EQ,
+    BRANCH_NE,
+    BRANCH_FEQ,
+    BRANCH_FNE);
+
   type alu_input_t is (
     ALU_INPUT_ARITH,
     ALU_INPUT_ARITH_LIT,
@@ -118,10 +126,16 @@ architecture behavior of core is
   -- Latch
   -----------------------------------------------------------------------------
 
+  type latch_if_t is record
+    pc_inc : word_t;
+    pc_jmp : word_t;
+    br_op  : branch_op_t;
+    data   : word_t;
+  end record latch_if_t;
+
   type latch_id_t is record
     bubble : boolean;
     pc     : word_t;
-    inst   : word_t;
   end record latch_id_t;
 
   -- integer pipeline
@@ -182,10 +196,15 @@ architecture behavior of core is
 
   -- bubbles
 
+  constant f_bubble : latch_if_t := (
+    pc_inc => (others => '0'),
+    pc_jmp => (others => '-'),
+    br_op  => BRANCH_FALSE,
+    data   => (others => '-'));
+
   constant d_bubble : latch_id_t := (
     bubble   => true,
-    pc       => (others => '1'),
-    inst     => unop);
+    pc       => (others => '1'));
 
   constant e_bubble : latch_exe_t := (
     bubble    => true,
@@ -242,6 +261,7 @@ architecture behavior of core is
     rs    : std_logic;                  -- reset signal
     pc    : word_t;                     -- program counter
     -- latches
+    f     : latch_if_t;
     d     : latch_id_t;
     e     : latch_exe_t;
     m     : latch_mem_t;
@@ -254,6 +274,7 @@ architecture behavior of core is
   constant latch_init : latch_t := (
     rs    => '1',
     pc    => (others => '0'),
+    f     => f_bubble,
     d     => d_bubble,
     e     => e_bubble,
     m     => m_bubble,
@@ -267,13 +288,6 @@ architecture behavior of core is
   -----------------------------------------------------------------------------
   -- Subroutines for Instruction Decode
   -----------------------------------------------------------------------------
-
-  procedure flush_pipeline (
-    v : inout latch_t) is
-  begin
-    v   := v;
-    v.d := d_bubble;
-  end procedure flush_pipeline;
 
   function decode_alu_inst (
     opcode : unsigned(5 downto 0);
@@ -336,23 +350,6 @@ architecture behavior of core is
         return FPU_INST_NOP;
     end case;
   end function decode_fpu_inst;
-
-  function branch_success (
-    cond   : word_t;
-    opcode : unsigned(5 downto 0))
-    return boolean is
-  begin
-    case opcode is
-      when b"11_1001" =>
-        return not is_metavalue(cond) and cond = 0;  -- to suppress warning
-      when b"11_1101" => return cond /= 0;  -- BNE
-      when b"11_0001" => return cond = 0;  -- FBEQ
-      when b"11_0101" => return cond /= 0;  -- FBNE
-      when others =>
-        assert false report "invalid branch instruction" severity error;
-        return false;
-    end case;
-  end function branch_success;
 
   ---------------------------------------------------------------------------
   -- Data Forwarding
@@ -542,7 +539,12 @@ begin
     variable fpuv    : fpu_in_t;
     variable mmuv    : mmu_in_t;
 
+    -- variables for instruction fetch
+    variable pcinc, pcjmp : unsigned(12 downto 0);
+    variable nextpc       : unsigned(12 downto 0);
+
     -- variables for instruction decode
+    variable inst   : word_t;
     variable opcode : unsigned(5 downto 0);
     variable ra     : reg_index_t;
     variable rb     : reg_index_t;
@@ -562,6 +564,7 @@ begin
     variable fr_idx  : reg_index_t;
     variable fr_data : word_t;
 
+    variable flush  : boolean;
     variable hazard : hazard_t;
 
   begin
@@ -586,23 +589,67 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    if r.rs = '0' then
-      v.d.bubble := false;
-      v.d.inst   := icacheo.data;
-      v.d.pc     := r.pc;
-      v.pc       := r.pc + 1;
-    else
-      v.d  := d_bubble;
-      v.pc := (others => '0');
-    end if;
+    pcinc := r.f.pc_inc(12 downto 0);
+    pcjmp := r.f.pc_jmp(12 downto 0);
+    flush := false;
+
+    case r.f.br_op is
+      when BRANCH_TRUE =>
+        flush  := true;
+        nextpc := pcjmp;
+      when BRANCH_FALSE =>
+        nextpc := pcinc;
+      when BRANCH_EQ =>
+        if r.f.data = 0 then
+          flush  := true;
+          nextpc := pcjmp;
+        else
+          nextpc := pcinc;
+        end if;
+      when BRANCH_NE =>
+        if r.f.data /= 0 then
+          flush  := true;
+          nextpc := pcjmp;
+        else
+          nextpc := pcinc;
+        end if;
+      when BRANCH_FEQ =>
+        if r.f.data(30 downto 0) = 0 then
+          flush  := true;
+          nextpc := pcjmp;
+        else
+          nextpc := pcinc;
+        end if;
+      when BRANCH_FNE =>
+        if r.f.data(30 downto 0) /= 0 then
+          flush  := true;
+          nextpc := pcjmp;
+        else
+          nextpc := pcinc;
+        end if;
+    end case;
+
+    icachev.addr := nextpc;
+
+    v.f := (
+      pc_inc => r.f.pc_inc + 1,
+      pc_jmp => (others => '-'),        -- these properties
+      br_op  => BRANCH_FALSE,           -- will may be set at
+      data   => (others => '-'));       -- instruction decode
+
+    v.d := (
+      bubble => false,
+      pc     => resize(nextpc, 32));
 
     -------------------------------------------------------------------------
     -- Instruction Decode
     -------------------------------------------------------------------------
 
-    ra := to_integer(r.d.inst(25 downto 21));
-    rb := to_integer(r.d.inst(20 downto 16));
-    rc := to_integer(r.d.inst(4 downto 0));
+    inst := icacheo.data;
+
+    ra := to_integer(inst(25 downto 21));
+    rb := to_integer(inst(20 downto 16));
+    rc := to_integer(inst(4 downto 0));
 
     iri.r1 <= ra;
     iri.r2 <= rb;
@@ -611,13 +658,13 @@ begin
     
     v.e.bubble := r.d.bubble;
     v.e.pc     := r.d.pc;
-    v.e.ra     := to_integer(r.d.inst(25 downto 21));
-    v.e.rb     := to_integer(r.d.inst(20 downto 16));
-    v.e.arg   := r.d.inst(20 downto 0);
+    v.e.ra     := to_integer(inst(25 downto 21));
+    v.e.rb     := to_integer(inst(20 downto 16));
+    v.e.arg    := inst(20 downto 0);
 
-    opcode := r.d.inst(31 downto 26);
-    opfunc := r.d.inst(11 downto 5);
-    fpfunc := r.d.inst(15 downto 5);
+    opcode := inst(31 downto 26);
+    opfunc := inst(11 downto 5);
+    fpfunc := inst(15 downto 5);
 
     case opcode(5 downto 3) is
       when "010" =>                                     -- operation format
@@ -633,7 +680,7 @@ begin
             v.e.fwb      := 31;
             v.e.fsrc     := FWB_SRC_FPU;
 
-            if r.d.inst(12) = '0' then
+            if inst(12) = '0' then
               v.e.alu_input := ALU_INPUT_ARITH;
               v.e.fwd_b     := FWD_IR;
             else
@@ -738,8 +785,9 @@ begin
             v.e.fwb       := 31;
             v.e.fsrc      := FWB_SRC_FPU;
 
-            forward_data_ir_id(v.pc, hazard, v.e.rbv, rb);
-            flush_pipeline(v);
+            forward_data_ir_id(v.f.pc_jmp, hazard, v.e.rbv, rb);
+            v.f.data := (others => '-');
+            v.f.br_op := BRANCH_TRUE;
 
           when b"01_1100" =>
             if fpfunc = b"000_0111_1000" then
@@ -823,13 +871,19 @@ begin
         v.e.iwb       := 31;
         v.e.fwb       := 31;
 
-        bdisp        := r.d.inst(20 downto 0);
-        forward_data_ir_id(cond, hazard, v.e.rav, ra);  -- refer v
+        bdisp        := inst(20 downto 0);
 
-        if branch_success(cond, opcode) then
-          v.pc := unsigned(signed(r.d.pc) + signed(bdisp));
-          flush_pipeline(v);
-        end if;
+        forward_data_ir_id(cond, hazard, v.e.rav, ra);  -- refer v
+        v.f.data     := cond;
+        v.f.pc_jmp   := unsigned(signed(r.d.pc) + signed(bdisp));
+
+        case opcode is
+          when b"11_1001" => v.f.br_op := BRANCH_EQ;
+          when b"11_1101" => v.f.br_op := BRANCH_NE;
+          when others =>
+            assert false report "invalid branch instruction" severity warning;
+            v.f.br_op := BRANCH_FALSE;
+        end case;
 
       when "110" =>  -- unconditional branch / floating-point branch
         v.e.rav   := fro.d1;
@@ -841,15 +895,16 @@ begin
         v.e.fsrc  := FWB_SRC_FPU;
         v.e.memop := MEM_NOP;
 
-        bdisp        := r.d.inst(20 downto 0);
+        bdisp        := inst(20 downto 0);
 
         if opcode(1 downto 0) = "00" then  -- BR/BSR
           v.e.alu_inst  := ALU_INST_ADD;
           v.e.alu_input := ALU_INPUT_PC;
           v.e.iwb       := ra;
 
-          v.pc := unsigned(signed(r.d.pc) + signed(bdisp));
-          flush_pipeline(v);
+          v.f.data   := (others => '-');
+          v.f.pc_jmp := unsigned(signed(r.d.pc) + signed(bdisp));
+          v.f.br_op  := BRANCH_TRUE;
         else
           -- floating-point conditional branch
           v.e.alu_inst  := ALU_INST_NOP;
@@ -857,11 +912,16 @@ begin
           v.e.iwb       := 31;
 
           forward_data_fr_id(cond, hazard, v.e.rav, ra);  -- refer v
+          v.f.data     := cond;
+          v.f.pc_jmp   := unsigned(signed(r.d.pc) + signed(bdisp));
 
-          if branch_success(cond, opcode) then
-            v.pc := unsigned(signed(r.d.pc) + signed(bdisp));
-            flush_pipeline(v);
-          end if;
+          case opcode is
+            when b"11_0001" => v.f.br_op := BRANCH_FEQ;
+            when b"11_0101" => v.f.br_op := BRANCH_FNE;
+            when others =>
+              assert false report "invalid branch instruction" severity warning;
+              v.f.br_op := BRANCH_FALSE;
+          end case;
         end if;
 
       when others =>
@@ -1036,20 +1096,24 @@ begin
     icachev := (addr => v.pc(12 downto 0));
 
     ---------------------------------------------------------------------------
-    -- Pipeline Stalling
+    -- Pipeline Flushing/Stalling
     ---------------------------------------------------------------------------
+
+    if flush then
+      v.e       := e_bubble;
+      v.f.br_op := BRANCH_FALSE;
+    end if;
 
     case hazard is
       when HZ_ID =>
-
-        v.pc := r.pc;
-        v.d  := r.d;
-        v.e  := e_bubble;
-
-        icachev := (addr => r.pc(12 downto 0));
+        if not flush then
+          v.f := r.f;
+          v.d := r.d;
+          v.e := e_bubble;
+        end if;
 
       when HZ_EXE =>
-        v.pc    := r.pc;
+        v.f     := r.f;
         v.d     := r.d;
         v.e     := r.e;
         v.e.rav := adata;
@@ -1057,11 +1121,8 @@ begin
         v.m     := m_bubble;
         v.fw1   := fw_bubble;
 
-        icachev := (addr => r.pc(12 downto 0));
-
       when HZ_WB =>
-
-        v.pc    := r.pc;
+        v.f     := r.f;
         v.d     := r.d;
         v.e     := r.e;
         v.e.rav := adata;
@@ -1072,7 +1133,6 @@ begin
         v.fw2   := r.fw2;
 
         fpuv.stall := '1';
-        icachev    := (addr => r.pc(12 downto 0));
         mmuv       := r.w.mmui;
 
       when others => null;
