@@ -547,6 +547,8 @@ begin
     variable ra     : reg_index_t;
     variable rb     : reg_index_t;
     variable rc     : reg_index_t;
+    variable fadata : word_t;
+    variable fbdata : word_t;
     variable adata  : word_t;
     variable bdata  : word_t;
     variable opfunc : unsigned(6 downto 0);
@@ -883,15 +885,27 @@ begin
 
     -- Data Forwarding
     case r.e.fwd_a is
-      when FWD_IR   => forward_data_ir_exe(adata, hazard, r.e.rav, r.e.ra);
-      when FWD_FR   => forward_data_fr_exe(adata, hazard, r.e.rav, r.e.ra);
-      when FWD_NONE => adata := (others => '-');
+      when FWD_IR =>
+        forward_data_ir_exe(adata, hazard, r.e.rav, r.e.ra);
+        fadata := (others => '0');
+      when FWD_FR =>
+        forward_data_fr_exe(adata, hazard, r.e.rav, r.e.ra);
+        fadata := adata;
+      when FWD_NONE =>
+        adata  := (others => '-');
+        fadata := (others => '-');
     end case;
 
     case r.e.fwd_b is
-      when FWD_IR   => forward_data_ir_exe(bdata, hazard, r.e.rbv, r.e.rb);
-      when FWD_FR   => forward_data_fr_exe(bdata, hazard, r.e.rbv, r.e.rb);
-      when FWD_NONE => bdata := (others => '-');
+      when FWD_IR =>
+        forward_data_ir_exe(bdata, hazard, r.e.rbv, r.e.rb);
+        fbdata := (others => '0');
+      when FWD_FR =>
+        forward_data_fr_exe(bdata, hazard, r.e.rbv, r.e.rb);
+        fbdata := bdata;
+      when FWD_NONE =>
+        bdata  := (others => '-');
+        fbdata := (others => '-');
     end case;
 
     -- Set ALU Input
@@ -922,8 +936,8 @@ begin
 
     -- Set FPU Input
     fpuv.inst := r.e.fpu_inst;
-    fpuv.i1   := adata;
-    fpuv.i2   := bdata;
+    fpuv.i1   := fadata;
+    fpuv.i2   := fbdata;
 
     -- Save data to write memory
     v.m.store_data := adata;
