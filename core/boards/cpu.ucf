@@ -489,6 +489,8 @@ NET RS_RX		   IOSTANDARD = LVTTL;
 # TIMESPEC "TS_SYS_CLK" = PERIOD "SYS_CLK" 14.52 ns HIGH 50 %;
 NET "mclk1" TNM_NET = mclk1;
 TIMESPEC TS_mclk1 = PERIOD "mclk1" 14.52 ns HIGH 50%;
+# TIMESPEC TS_mclk1 = PERIOD "mclk1" 66.6 MHz HIGH 50%;
+
 
 ###############################################################################
 # Define multicycle paths - these paths may take longer because additional
@@ -502,13 +504,17 @@ TIMESPEC TS_mclk1 = PERIOD "mclk1" 14.52 ns HIGH 50%;
 # INST e2a       TNM = GRP_SRAM_OUT;
 # INST xe3       TNM = GRP_SRAM_OUT;
 # INST adva      TNM = GRP_SRAM_OUT;
-INST xwa       TNM = GRP_SRAM_OUT;
-INST "xzbe[*]" TNM = GRP_SRAM_OUT;
-INST "za[*]"   TNM = GRP_SRAM_OUT;
-INST "zd[*]"   TNM = GRP_SRAM_OUT;
+# INST xwa       TNM = GRP_SRAM_OUT;
+# INST "xzbe[*]" TNM = GRP_SRAM_OUT;
+# INST "za[*]"   TNM = GRP_SRAM_OUT;
+# INST "zd[*]"   TNM = GRP_SRAM_OUT;
 
-TIMEGRP GRP_SRAM_OUT OFFSET = OUT 7.5 ns AFTER "mclk1" RISING;
+# TIMEGRP GRP_SRAM_OUT OFFSET = OUT 7.5 ns AFTER "mclk1" RISING;
 
 # Data In : Setup : tKQ(3.8) + delay(0.5) = 4.3
 # Data In : Hold  : tKQX(1.5) = 1.5
 NET "zd[*]" OFFSET = IN 6.0 ns VALID 6.5 ns BEFORE "mclk1" RISING;
+
+INST "datacachec/r.state_FSM_FFd2" TNM = dcache_slack_src;
+INST "datacachec/r.head_3" TNM = dcache_slack_dst;
+TIMESPEC ts_dcache_slack = FROM dcache_slack_src TO dcache_slack_dst 10.0 ns;
