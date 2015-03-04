@@ -52,9 +52,11 @@ const char *INST_NAME[] = {
   "ITOFS  ",
 };
 
-core::core(const string &program, ifstream *test_file, unsigned opt, long long i_limit,
-           ofstream *blog, ofstream *ilog, ofstream *flog)
-  : opt(opt), i_limit(i_limit), blog(blog), ilog(ilog), flog(flog) {
+core::core(const string &program, ifstream *test_file, unsigned opt,
+           long long i_limit, ofstream *blog, ofstream *ilog, ofstream *flog,
+           int cache_idx, int cache_line)
+  : opt(opt), i_limit(i_limit), blog(blog), ilog(ilog), flog(flog),
+    CACHE_IDX(cache_idx), CACHE_LINE(cache_line), cache_hit(0), cache_miss(0) {
   mem = new uint32_t[SIZE_OF_MEM];
   ifstream input(program, ios::binary);
   if(!input) {
@@ -74,6 +76,11 @@ core::core(const string &program, ifstream *test_file, unsigned opt, long long i
   }
   for(int i=0; i<I_SENTINEL; i++) {
     i_stat[i] = 0LL;
+  }
+
+  cache_tbl = new int[1 << CACHE_IDX];
+  for(int i=0; i<(1<<CACHE_IDX); i++) {
+    cache_tbl[i] = 0;
   }
 
   if(test_file) {
@@ -433,6 +440,9 @@ void core::mem_st_lw(uint32_t &src, int addr) {
          << dmanip << old << " -> "
          << dmanip << src << '\n';
   }
+  int idx = (addr >> CACHE_LINE) & ((1 << CACHE_IDX) - 1);
+  int tag = addr >> (CACHE_LINE + CACHE_IDX);
+  cache_tbl[idx] = tag;
 }
 
 void core::mem_ld_lw(uint32_t &dst, int addr) {
@@ -464,6 +474,14 @@ void core::mem_ld_lw(uint32_t &dst, int addr) {
          << " ld: addr = "
          << dmanip << addr << ", value = "
          << dmanip << dst << '\n';
+  }
+  int idx = (addr >> CACHE_LINE) & ((1 << CACHE_IDX) - 1);
+  int tag = addr >> (CACHE_LINE + CACHE_IDX);
+  if(cache_tbl[idx] == tag) {
+    cache_hit++;
+  } else {
+    cache_miss++;
+    cache_tbl[idx] = tag;
   }
 }
 
@@ -813,6 +831,10 @@ ostream &operator<<(ostream &os, const core &c) {
   for(int i=0; i<I_SENTINEL; i++) {
     os << INST_NAME[i] << ": " << c.i_stat[i] << '\n';
   }
+  os << "cache hit  : " << c.cache_hit << " ("
+     << 100.0*(c.cache_hit)/(c.cache_hit+c.cache_miss) << " %)\n"
+     << "cache miss : " << c.cache_miss << " ("
+     << 100.0*(c.cache_miss)/(c.cache_hit+c.cache_miss) << " %)\n";
   os.flags(initflag);
   return os;
 }

@@ -54,9 +54,16 @@ private:
   ofstream *flog;
   map<int, uint32_t> test_map;
   map<unsigned, long long> br_map;
+
+  const int CACHE_IDX;
+  const int CACHE_LINE;
+  int *cache_tbl;
+  long long cache_hit;
+  long long cache_miss;
 public:
-  core(const string &program, ifstream *test_file, unsigned opt, long long i_limit,
-       ofstream *blog, ofstream *ilog, ofstream *flog);
+  core(const string &program, ifstream *test_file, unsigned opt,
+       long long i_limit, ofstream *blog, ofstream *ilog, ofstream *flog,
+       int cache_idx, int cache_line);
   ~core();
   int verify();
   void run();

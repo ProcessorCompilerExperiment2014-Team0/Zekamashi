@@ -35,6 +35,8 @@ int main(int argc, char **argv) {
   ofstream *flog = NULL;
   unsigned opt = 0u;
   long long i_limit = -1ll;
+  int cache_idx = 7;
+  int cache_line = 3;
   string buf;
   if(argc >= 3) {
     int i = 2;
@@ -108,6 +110,12 @@ int main(int argc, char **argv) {
             throw argv[i];
           }
           sscanf(argv[i], "%lld", &i_limit);
+        } else if(!strcmp(argv[i], "-cache")) {
+          if(i+2 >= argc) {
+            throw argv[i];
+          }
+          sscanf(argv[++i], "%d", &cache_idx);
+          sscanf(argv[++i], "%d", &cache_line);
         } else {
           throw argv[i];
         }
@@ -118,7 +126,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  core c(program, test_file, opt, i_limit, blog, ilog, flog);
+  core c(program, test_file, opt, i_limit, blog, ilog, flog,
+         cache_idx, cache_line);
   c.run();
 
   cerr << c;
