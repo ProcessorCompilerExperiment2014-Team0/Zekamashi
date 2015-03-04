@@ -7,17 +7,20 @@ void print_options() {
   cerr <<
     "Usage: amatsukaze code [testfile] [options]\n"
     "Options:\n"
-    "  --help     Display this information\n"
-    "  -d         Show PCs and codes in every execution\n"
-    "  -r         Show contents of all the registers in every execution\n"
-    "  -m         Show addresses and values in every memory access\n"
-    "  -n <inst>  Use native operations in floating-point instructions\n"
-    "  -l <n>     Stop execution in at most n instructions\n"
-    "  -s <file>  Output \"bsr\" statistics to <file> (default: code.log)\n"
-    "  -ir <file> Output contents of integer registers to <file> "
+    "  --help      Display this information\n"
+    "  -d          Show PCs and codes in every execution\n"
+    "  -r          Show contents of all the registers in every execution\n"
+    "  -m          Show addresses and values in every memory access\n"
+    "  -n <inst>   Use native operations in floating-point instructions\n"
+    "  -l <n>      Stop execution in at most n instructions\n"
+    "  -s <file>   Output \"bsr\" statistics to <file> (default: code.log)\n"
+    "  -ir <file>  Output contents of integer registers to <file> "
     "(default: code.ilog)\n"
-    "  -fr <file> Output contents of floating-point registers to <file> "
-    "(default: code.flog)\n";
+    "  -fr <file>  Output contents of floating-point registers to <file> "
+    "(default: code.flog)\n"
+    "  -cache x y  Use direct-mapped cache whose index is x bits and line is y bits "
+    "(default: -cache 7 3)\n"
+    "  -cache2 x y Use 2way set associative cache\n";
 }
 
 int main(int argc, char **argv) {
@@ -35,6 +38,7 @@ int main(int argc, char **argv) {
   ofstream *flog = NULL;
   unsigned opt = 0u;
   long long i_limit = -1ll;
+  int cache_way = 1;
   int cache_idx = 7;
   int cache_line = 3;
   string buf;
@@ -116,6 +120,13 @@ int main(int argc, char **argv) {
           }
           sscanf(argv[++i], "%d", &cache_idx);
           sscanf(argv[++i], "%d", &cache_line);
+        } else if(!strcmp(argv[i], "-cache2")) {
+          cache_way = 2;
+          if(i+2 >= argc) {
+            throw argv[i];
+          }
+          sscanf(argv[++i], "%d", &cache_idx);
+          sscanf(argv[++i], "%d", &cache_line);
         } else {
           throw argv[i];
         }
@@ -127,7 +138,7 @@ int main(int argc, char **argv) {
   }
 
   core c(program, test_file, opt, i_limit, blog, ilog, flog,
-         cache_idx, cache_line);
+         cache_way, cache_idx, cache_line);
   c.run();
 
   cerr << c;

@@ -35,6 +35,12 @@ union data_type {
   float f;
 };
 
+struct cache2_cont {
+  int tag[2];
+  int newer;
+  cache2_cont() : tag{0,1}, newer(0) {}
+};
+
 class core {
 private:
   unsigned pc;
@@ -55,15 +61,17 @@ private:
   map<int, uint32_t> test_map;
   map<unsigned, long long> br_map;
 
+  const int CACHE_WAY;
   const int CACHE_IDX;
   const int CACHE_LINE;
   int *cache_tbl;
+  cache2_cont *cache2_tbl;
   long long cache_hit;
   long long cache_miss;
 public:
   core(const string &program, ifstream *test_file, unsigned opt,
        long long i_limit, ofstream *blog, ofstream *ilog, ofstream *flog,
-       int cache_idx, int cache_line);
+       int cache_way, int cache_idx, int cache_line);
   ~core();
   int verify();
   void run();

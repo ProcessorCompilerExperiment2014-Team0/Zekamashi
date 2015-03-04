@@ -54,9 +54,11 @@ const char *INST_NAME[] = {
 
 core::core(const string &program, ifstream *test_file, unsigned opt,
            long long i_limit, ofstream *blog, ofstream *ilog, ofstream *flog,
-           int cache_idx, int cache_line)
+           int cache_way, int cache_idx, int cache_line)
   : opt(opt), i_limit(i_limit), blog(blog), ilog(ilog), flog(flog),
-    CACHE_IDX(cache_idx), CACHE_LINE(cache_line), cache_hit(0), cache_miss(0) {
+    CACHE_WAY(cache_way), CACHE_IDX(cache_idx), CACHE_LINE(cache_line),
+    cache_tbl(NULL), cache2_tbl(NULL),
+    cache_hit(0ll), cache_miss(0ll) {
   mem = new uint32_t[SIZE_OF_MEM];
   ifstream input(program, ios::binary);
   if(!input) {
@@ -75,12 +77,16 @@ core::core(const string &program, ifstream *test_file, unsigned opt,
     fr[i].i = 0;
   }
   for(int i=0; i<I_SENTINEL; i++) {
-    i_stat[i] = 0LL;
+    i_stat[i] = 0ll;
   }
 
-  cache_tbl = new int[1 << CACHE_IDX];
-  for(int i=0; i<(1<<CACHE_IDX); i++) {
-    cache_tbl[i] = 0;
+  if(CACHE_WAY == 1) {          // direct mapped
+    cache_tbl = new int[1 << CACHE_IDX];
+    for(int i=0; i<(1<<CACHE_IDX); i++) {
+      cache_tbl[i] = 0;
+    }
+  } else {                      // 2way set associative
+    cache2_tbl = new cache2_cont[1 << CACHE_IDX];
   }
 
   if(test_file) {
@@ -95,6 +101,8 @@ core::core(const string &program, ifstream *test_file, unsigned opt,
 
 core::~core() {
   delete [] mem;
+  if(cache_tbl) delete [] cache_tbl;
+  if(cache2_tbl) delete [] cache2_tbl;
   if(blog) delete blog;
   if(ilog) delete ilog;
   if(flog) delete flog;
@@ -121,7 +129,7 @@ void core::run() {
   uint32_t inst;
   uint32_t opcd;
   int ra, rb, rc, df, b;
-  for(i_count = 0LL; i_limit<0 || i_count<i_limit; i_count++) {
+  for(i_count = 0ll; i_limit<0 || i_count<i_limit; i_count++) {
     inst = mem[pc];
     opcd = inst >> 26;
     if(opt >> OPTION_R & 1) {
@@ -442,7 +450,19 @@ void core::mem_st_lw(uint32_t &src, int addr) {
   }
   int idx = (addr >> CACHE_LINE) & ((1 << CACHE_IDX) - 1);
   int tag = addr >> (CACHE_LINE + CACHE_IDX);
-  cache_tbl[idx] = tag;
+  if(CACHE_WAY == 1) {          // direct mapped
+    cache_tbl[idx] = tag;
+  } else {                      // 2way
+    if(cache2_tbl[idx].tag[0] == tag) {
+      cache2_tbl[idx].newer = 0;
+    } else if(cache2_tbl[idx].tag[1] == tag) {
+      cache2_tbl[idx].newer = 1;
+    } else {
+      int replaced = 1 - cache2_tbl[idx].newer;
+      cache2_tbl[idx].tag[replaced] = tag;
+      cache2_tbl[idx].newer = replaced;
+    }
+  }
 }
 
 void core::mem_ld_lw(uint32_t &dst, int addr) {
@@ -477,11 +497,26 @@ void core::mem_ld_lw(uint32_t &dst, int addr) {
   }
   int idx = (addr >> CACHE_LINE) & ((1 << CACHE_IDX) - 1);
   int tag = addr >> (CACHE_LINE + CACHE_IDX);
-  if(cache_tbl[idx] == tag) {
-    cache_hit++;
-  } else {
-    cache_miss++;
-    cache_tbl[idx] = tag;
+  if(CACHE_WAY == 1) {          // direct mapped
+    if(cache_tbl[idx] == tag) {
+      cache_hit++;
+    } else {
+      cache_miss++;
+      cache_tbl[idx] = tag;
+    }
+  } else {                      // 2way
+    if(cache2_tbl[idx].tag[0] == tag) {
+      cache_hit++;
+      cache2_tbl[idx].newer = 0;
+    } else if(cache2_tbl[idx].tag[1] == tag) {
+      cache_hit++;
+      cache2_tbl[idx].newer = 1;
+    } else {
+      cache_miss++;
+      int replaced = 1 - cache2_tbl[idx].newer;
+      cache2_tbl[idx].tag[replaced] = tag;
+      cache2_tbl[idx].newer = replaced;
+    }
   }
 }
 
@@ -545,7 +580,7 @@ void core::i_bsr(int ra, int disp) {
   if(blog) {
     map<unsigned, long long>::iterator p = br_map.find(pc);
     if(p == br_map.end()) {
-      br_map.insert(make_pair(pc, 1LL));
+      br_map.insert(make_pair(pc, 1ll));
     } else {
       p->second++;
     }

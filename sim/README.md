@@ -58,3 +58,10 @@ $fa xxxxxxxx
   * `bsr`命令のジャンプ先の統計を取り、`<logfile>`に出力する
   * `asm/stat <assembly> <logfile>`でラベルと対応付けることができる
   * 出力ファイル名を省略した場合は`機械語ファイル名.log`に出力
+* `-cache x y`
+  * tagがxビット、lineがyビット、すなわち 2^y words 2^x lines の
+  ダイレクトマップキャッシュを使用する
+  * デフォルトは`-cache 7 3`
+* `-cache2 x y`
+  * tagがxビット、lineがyビット、すなわち 2^y words (2^x * 2) lines の
+  2wayセットアソシアティブキャッシュを使用する
