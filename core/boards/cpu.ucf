@@ -515,6 +515,3 @@ TIMESPEC TS_mclk1 = PERIOD "mclk1" 14.52 ns HIGH 50%;
 # Data In : Hold  : tKQX(1.5) = 1.5
 NET "zd[*]" OFFSET = IN 6.0 ns VALID 6.5 ns BEFORE "mclk1" RISING;
 
-INST "datacachec/r.state_FSM_FFd2" TNM = dcache_slack_src;
-INST "datacachec/r.head_3" TNM = dcache_slack_dst;
-TIMESPEC ts_dcache_slack = FROM dcache_slack_src TO dcache_slack_dst 10.0 ns;

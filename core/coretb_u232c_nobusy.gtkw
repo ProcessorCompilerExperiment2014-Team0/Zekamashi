@@ -1,20 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.3.64 (w)1999-2014 BSI
-[*] Tue Mar  3 18:01:13 2015
+[*] Wed Mar 11 00:56:20 2015
 [*]
 [dumpfile] "/home/zeptometer/podgorica/Zekamashi/core/coretb_u232c_nobusy.ghw"
-[dumpfile_mtime] "Tue Mar  3 17:55:45 2015"
-[dumpfile_size] 1490035
+[dumpfile_mtime] "Wed Mar 11 00:56:20 2015"
+[dumpfile_size] 2914895
 [savefile] "/home/zeptometer/podgorica/Zekamashi/core/coretb_u232c_nobusy.gtkw"
-[timestart] 532000000
+[timestart] 2872300000
 [size] 1920 1017
-[pos] -9 -33
-*-24.000000 635000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] -1 -1
+*-25.000000 2885000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] top.
 [treeopen] top.coretb_u232c_nobusy.
 [treeopen] top.coretb_u232c_nobusy.alui.
 [treeopen] top.coretb_u232c_nobusy.aluo.
-[treeopen] top.coretb_u232c_nobusy.corec.
 [treeopen] top.coretb_u232c_nobusy.corec.iri.
 [treeopen] top.coretb_u232c_nobusy.corec.iro.
 [treeopen] top.coretb_u232c_nobusy.corec.r.
@@ -26,7 +25,15 @@
 [treeopen] top.coretb_u232c_nobusy.corec.r.m.
 [treeopen] top.coretb_u232c_nobusy.corec.r.w.
 [treeopen] top.coretb_u232c_nobusy.corec.r.wbbuf.
+[treeopen] top.coretb_u232c_nobusy.datacachec.
+[treeopen] top.coretb_u232c_nobusy.datacachec.cachei.
+[treeopen] top.coretb_u232c_nobusy.datacachec.cacheo.
+[treeopen] top.coretb_u232c_nobusy.datacachec.dout.
 [treeopen] top.coretb_u232c_nobusy.datacachec.r.
+[treeopen] top.coretb_u232c_nobusy.datacachec.tagarri.
+[treeopen] top.coretb_u232c_nobusy.datacachec.tagarri.[0].
+[treeopen] top.coretb_u232c_nobusy.datacachec.tagarro.[0].
+[treeopen] top.coretb_u232c_nobusy.datacachec.tagarro.[1].
 [treeopen] top.coretb_u232c_nobusy.dcachei.
 [treeopen] top.coretb_u232c_nobusy.dcacheo.
 [treeopen] top.coretb_u232c_nobusy.fpui.
@@ -42,7 +49,7 @@
 [treeopen] top.coretb_u232c_nobusy.u232c_outc.din.
 [treeopen] top.coretb_u232c_nobusy.uio.
 [sst_width] 232
-[signals_width] 134
+[signals_width] 158
 [sst_expanded] 1
 [sst_vpaned_height] 297
 @28
@@ -53,9 +60,8 @@ top.coretb_u232c_nobusy.corec.debuginfo.hz
 #{top.coretb_u232c_nobusy.irc.ram[30][31:0]} top.coretb_u232c_nobusy.irc.ram[30][31] top.coretb_u232c_nobusy.irc.ram[30][30] top.coretb_u232c_nobusy.irc.ram[30][29] top.coretb_u232c_nobusy.irc.ram[30][28] top.coretb_u232c_nobusy.irc.ram[30][27] top.coretb_u232c_nobusy.irc.ram[30][26] top.coretb_u232c_nobusy.irc.ram[30][25] top.coretb_u232c_nobusy.irc.ram[30][24] top.coretb_u232c_nobusy.irc.ram[30][23] top.coretb_u232c_nobusy.irc.ram[30][22] top.coretb_u232c_nobusy.irc.ram[30][21] top.coretb_u232c_nobusy.irc.ram[30][20] top.coretb_u232c_nobusy.irc.ram[30][19] top.coretb_u232c_nobusy.irc.ram[30][18] top.coretb_u232c_nobusy.irc.ram[30][17] top.coretb_u232c_nobusy.irc.ram[30][16] top.coretb_u232c_nobusy.irc.ram[30][15] top.coretb_u232c_nobusy.irc.ram[30][14] top.coretb_u232c_nobusy.irc.ram[30][13] top.coretb_u232c_nobusy.irc.ram[30][12] top.coretb_u232c_nobusy.irc.ram[30][11] top.coretb_u232c_nobusy.irc.ram[30][10] top.coretb_u232c_nobusy.irc.ram[30][9] top.coretb_u232c_nobusy.irc.ram[30][8] top.coretb_u232c_nobusy.irc.ram[30][7] top.coretb_u232c_nobusy.irc.ram[30][6] top.coretb_u232c_nobusy.irc.ram[30][5] top.coretb_u232c_nobusy.irc.ram[30][4] top.coretb_u232c_nobusy.irc.ram[30][3] top.coretb_u232c_nobusy.irc.ram[30][2] top.coretb_u232c_nobusy.irc.ram[30][1] top.coretb_u232c_nobusy.irc.ram[30][0]
 @200
 -fetch
-@23
-#{top.coretb_u232c_nobusy.corec.r.f.pc_now[31:0]} top.coretb_u232c_nobusy.corec.r.f.pc_now[31] top.coretb_u232c_nobusy.corec.r.f.pc_now[30] top.coretb_u232c_nobusy.corec.r.f.pc_now[29] top.coretb_u232c_nobusy.corec.r.f.pc_now[28] top.coretb_u232c_nobusy.corec.r.f.pc_now[27] top.coretb_u232c_nobusy.corec.r.f.pc_now[26] top.coretb_u232c_nobusy.corec.r.f.pc_now[25] top.coretb_u232c_nobusy.corec.r.f.pc_now[24] top.coretb_u232c_nobusy.corec.r.f.pc_now[23] top.coretb_u232c_nobusy.corec.r.f.pc_now[22] top.coretb_u232c_nobusy.corec.r.f.pc_now[21] top.coretb_u232c_nobusy.corec.r.f.pc_now[20] top.coretb_u232c_nobusy.corec.r.f.pc_now[19] top.coretb_u232c_nobusy.corec.r.f.pc_now[18] top.coretb_u232c_nobusy.corec.r.f.pc_now[17] top.coretb_u232c_nobusy.corec.r.f.pc_now[16] top.coretb_u232c_nobusy.corec.r.f.pc_now[15] top.coretb_u232c_nobusy.corec.r.f.pc_now[14] top.coretb_u232c_nobusy.corec.r.f.pc_now[13] top.coretb_u232c_nobusy.corec.r.f.pc_now[12] top.coretb_u232c_nobusy.corec.r.f.pc_now[11] top.coretb_u232c_nobusy.corec.r.f.pc_now[10] top.coretb_u232c_nobusy.corec.r.f.pc_now[9] top.coretb_u232c_nobusy.corec.r.f.pc_now[8] top.coretb_u232c_nobusy.corec.r.f.pc_now[7] top.coretb_u232c_nobusy.corec.r.f.pc_now[6] top.coretb_u232c_nobusy.corec.r.f.pc_now[5] top.coretb_u232c_nobusy.corec.r.f.pc_now[4] top.coretb_u232c_nobusy.corec.r.f.pc_now[3] top.coretb_u232c_nobusy.corec.r.f.pc_now[2] top.coretb_u232c_nobusy.corec.r.f.pc_now[1] top.coretb_u232c_nobusy.corec.r.f.pc_now[0]
 @22
+#{top.coretb_u232c_nobusy.corec.r.f.pc_now[31:0]} top.coretb_u232c_nobusy.corec.r.f.pc_now[31] top.coretb_u232c_nobusy.corec.r.f.pc_now[30] top.coretb_u232c_nobusy.corec.r.f.pc_now[29] top.coretb_u232c_nobusy.corec.r.f.pc_now[28] top.coretb_u232c_nobusy.corec.r.f.pc_now[27] top.coretb_u232c_nobusy.corec.r.f.pc_now[26] top.coretb_u232c_nobusy.corec.r.f.pc_now[25] top.coretb_u232c_nobusy.corec.r.f.pc_now[24] top.coretb_u232c_nobusy.corec.r.f.pc_now[23] top.coretb_u232c_nobusy.corec.r.f.pc_now[22] top.coretb_u232c_nobusy.corec.r.f.pc_now[21] top.coretb_u232c_nobusy.corec.r.f.pc_now[20] top.coretb_u232c_nobusy.corec.r.f.pc_now[19] top.coretb_u232c_nobusy.corec.r.f.pc_now[18] top.coretb_u232c_nobusy.corec.r.f.pc_now[17] top.coretb_u232c_nobusy.corec.r.f.pc_now[16] top.coretb_u232c_nobusy.corec.r.f.pc_now[15] top.coretb_u232c_nobusy.corec.r.f.pc_now[14] top.coretb_u232c_nobusy.corec.r.f.pc_now[13] top.coretb_u232c_nobusy.corec.r.f.pc_now[12] top.coretb_u232c_nobusy.corec.r.f.pc_now[11] top.coretb_u232c_nobusy.corec.r.f.pc_now[10] top.coretb_u232c_nobusy.corec.r.f.pc_now[9] top.coretb_u232c_nobusy.corec.r.f.pc_now[8] top.coretb_u232c_nobusy.corec.r.f.pc_now[7] top.coretb_u232c_nobusy.corec.r.f.pc_now[6] top.coretb_u232c_nobusy.corec.r.f.pc_now[5] top.coretb_u232c_nobusy.corec.r.f.pc_now[4] top.coretb_u232c_nobusy.corec.r.f.pc_now[3] top.coretb_u232c_nobusy.corec.r.f.pc_now[2] top.coretb_u232c_nobusy.corec.r.f.pc_now[1] top.coretb_u232c_nobusy.corec.r.f.pc_now[0]
 #{top.coretb_u232c_nobusy.corec.r.f.pc_inc[31:0]} top.coretb_u232c_nobusy.corec.r.f.pc_inc[31] top.coretb_u232c_nobusy.corec.r.f.pc_inc[30] top.coretb_u232c_nobusy.corec.r.f.pc_inc[29] top.coretb_u232c_nobusy.corec.r.f.pc_inc[28] top.coretb_u232c_nobusy.corec.r.f.pc_inc[27] top.coretb_u232c_nobusy.corec.r.f.pc_inc[26] top.coretb_u232c_nobusy.corec.r.f.pc_inc[25] top.coretb_u232c_nobusy.corec.r.f.pc_inc[24] top.coretb_u232c_nobusy.corec.r.f.pc_inc[23] top.coretb_u232c_nobusy.corec.r.f.pc_inc[22] top.coretb_u232c_nobusy.corec.r.f.pc_inc[21] top.coretb_u232c_nobusy.corec.r.f.pc_inc[20] top.coretb_u232c_nobusy.corec.r.f.pc_inc[19] top.coretb_u232c_nobusy.corec.r.f.pc_inc[18] top.coretb_u232c_nobusy.corec.r.f.pc_inc[17] top.coretb_u232c_nobusy.corec.r.f.pc_inc[16] top.coretb_u232c_nobusy.corec.r.f.pc_inc[15] top.coretb_u232c_nobusy.corec.r.f.pc_inc[14] top.coretb_u232c_nobusy.corec.r.f.pc_inc[13] top.coretb_u232c_nobusy.corec.r.f.pc_inc[12] top.coretb_u232c_nobusy.corec.r.f.pc_inc[11] top.coretb_u232c_nobusy.corec.r.f.pc_inc[10] top.coretb_u232c_nobusy.corec.r.f.pc_inc[9] top.coretb_u232c_nobusy.corec.r.f.pc_inc[8] top.coretb_u232c_nobusy.corec.r.f.pc_inc[7] top.coretb_u232c_nobusy.corec.r.f.pc_inc[6] top.coretb_u232c_nobusy.corec.r.f.pc_inc[5] top.coretb_u232c_nobusy.corec.r.f.pc_inc[4] top.coretb_u232c_nobusy.corec.r.f.pc_inc[3] top.coretb_u232c_nobusy.corec.r.f.pc_inc[2] top.coretb_u232c_nobusy.corec.r.f.pc_inc[1] top.coretb_u232c_nobusy.corec.r.f.pc_inc[0]
 #{top.coretb_u232c_nobusy.corec.r.f.pc_jmp[31:0]} top.coretb_u232c_nobusy.corec.r.f.pc_jmp[31] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[30] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[29] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[28] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[27] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[26] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[25] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[24] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[23] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[22] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[21] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[20] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[19] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[18] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[17] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[16] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[15] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[14] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[13] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[12] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[11] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[10] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[9] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[8] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[7] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[6] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[5] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[4] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[3] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[2] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[1] top.coretb_u232c_nobusy.corec.r.f.pc_jmp[0]
 #{top.coretb_u232c_nobusy.corec.r.f.data[31:0]} top.coretb_u232c_nobusy.corec.r.f.data[31] top.coretb_u232c_nobusy.corec.r.f.data[30] top.coretb_u232c_nobusy.corec.r.f.data[29] top.coretb_u232c_nobusy.corec.r.f.data[28] top.coretb_u232c_nobusy.corec.r.f.data[27] top.coretb_u232c_nobusy.corec.r.f.data[26] top.coretb_u232c_nobusy.corec.r.f.data[25] top.coretb_u232c_nobusy.corec.r.f.data[24] top.coretb_u232c_nobusy.corec.r.f.data[23] top.coretb_u232c_nobusy.corec.r.f.data[22] top.coretb_u232c_nobusy.corec.r.f.data[21] top.coretb_u232c_nobusy.corec.r.f.data[20] top.coretb_u232c_nobusy.corec.r.f.data[19] top.coretb_u232c_nobusy.corec.r.f.data[18] top.coretb_u232c_nobusy.corec.r.f.data[17] top.coretb_u232c_nobusy.corec.r.f.data[16] top.coretb_u232c_nobusy.corec.r.f.data[15] top.coretb_u232c_nobusy.corec.r.f.data[14] top.coretb_u232c_nobusy.corec.r.f.data[13] top.coretb_u232c_nobusy.corec.r.f.data[12] top.coretb_u232c_nobusy.corec.r.f.data[11] top.coretb_u232c_nobusy.corec.r.f.data[10] top.coretb_u232c_nobusy.corec.r.f.data[9] top.coretb_u232c_nobusy.corec.r.f.data[8] top.coretb_u232c_nobusy.corec.r.f.data[7] top.coretb_u232c_nobusy.corec.r.f.data[6] top.coretb_u232c_nobusy.corec.r.f.data[5] top.coretb_u232c_nobusy.corec.r.f.data[4] top.coretb_u232c_nobusy.corec.r.f.data[3] top.coretb_u232c_nobusy.corec.r.f.data[2] top.coretb_u232c_nobusy.corec.r.f.data[1] top.coretb_u232c_nobusy.corec.r.f.data[0]
@@ -168,8 +174,12 @@ top.coretb_u232c_nobusy.u232c_outc.dout.busy
 @200
 -* mmu
 @28
+top.coretb_u232c_nobusy.mmuc.r.state
 top.coretb_u232c_nobusy.mmuc.r.src
+top.coretb_u232c_nobusy.mmuc.r.cache_we
 @22
+#{top.coretb_u232c_nobusy.mmuc.r.cache_data[31:0]} top.coretb_u232c_nobusy.mmuc.r.cache_data[31] top.coretb_u232c_nobusy.mmuc.r.cache_data[30] top.coretb_u232c_nobusy.mmuc.r.cache_data[29] top.coretb_u232c_nobusy.mmuc.r.cache_data[28] top.coretb_u232c_nobusy.mmuc.r.cache_data[27] top.coretb_u232c_nobusy.mmuc.r.cache_data[26] top.coretb_u232c_nobusy.mmuc.r.cache_data[25] top.coretb_u232c_nobusy.mmuc.r.cache_data[24] top.coretb_u232c_nobusy.mmuc.r.cache_data[23] top.coretb_u232c_nobusy.mmuc.r.cache_data[22] top.coretb_u232c_nobusy.mmuc.r.cache_data[21] top.coretb_u232c_nobusy.mmuc.r.cache_data[20] top.coretb_u232c_nobusy.mmuc.r.cache_data[19] top.coretb_u232c_nobusy.mmuc.r.cache_data[18] top.coretb_u232c_nobusy.mmuc.r.cache_data[17] top.coretb_u232c_nobusy.mmuc.r.cache_data[16] top.coretb_u232c_nobusy.mmuc.r.cache_data[15] top.coretb_u232c_nobusy.mmuc.r.cache_data[14] top.coretb_u232c_nobusy.mmuc.r.cache_data[13] top.coretb_u232c_nobusy.mmuc.r.cache_data[12] top.coretb_u232c_nobusy.mmuc.r.cache_data[11] top.coretb_u232c_nobusy.mmuc.r.cache_data[10] top.coretb_u232c_nobusy.mmuc.r.cache_data[9] top.coretb_u232c_nobusy.mmuc.r.cache_data[8] top.coretb_u232c_nobusy.mmuc.r.cache_data[7] top.coretb_u232c_nobusy.mmuc.r.cache_data[6] top.coretb_u232c_nobusy.mmuc.r.cache_data[5] top.coretb_u232c_nobusy.mmuc.r.cache_data[4] top.coretb_u232c_nobusy.mmuc.r.cache_data[3] top.coretb_u232c_nobusy.mmuc.r.cache_data[2] top.coretb_u232c_nobusy.mmuc.r.cache_data[1] top.coretb_u232c_nobusy.mmuc.r.cache_data[0]
+#{top.coretb_u232c_nobusy.mmuc.r.cache_addr[19:0]} top.coretb_u232c_nobusy.mmuc.r.cache_addr[19] top.coretb_u232c_nobusy.mmuc.r.cache_addr[18] top.coretb_u232c_nobusy.mmuc.r.cache_addr[17] top.coretb_u232c_nobusy.mmuc.r.cache_addr[16] top.coretb_u232c_nobusy.mmuc.r.cache_addr[15] top.coretb_u232c_nobusy.mmuc.r.cache_addr[14] top.coretb_u232c_nobusy.mmuc.r.cache_addr[13] top.coretb_u232c_nobusy.mmuc.r.cache_addr[12] top.coretb_u232c_nobusy.mmuc.r.cache_addr[11] top.coretb_u232c_nobusy.mmuc.r.cache_addr[10] top.coretb_u232c_nobusy.mmuc.r.cache_addr[9] top.coretb_u232c_nobusy.mmuc.r.cache_addr[8] top.coretb_u232c_nobusy.mmuc.r.cache_addr[7] top.coretb_u232c_nobusy.mmuc.r.cache_addr[6] top.coretb_u232c_nobusy.mmuc.r.cache_addr[5] top.coretb_u232c_nobusy.mmuc.r.cache_addr[4] top.coretb_u232c_nobusy.mmuc.r.cache_addr[3] top.coretb_u232c_nobusy.mmuc.r.cache_addr[2] top.coretb_u232c_nobusy.mmuc.r.cache_addr[1] top.coretb_u232c_nobusy.mmuc.r.cache_addr[0]
 #{top.coretb_u232c_nobusy.mmuc.r.data[7:0]} top.coretb_u232c_nobusy.mmuc.r.data[7] top.coretb_u232c_nobusy.mmuc.r.data[6] top.coretb_u232c_nobusy.mmuc.r.data[5] top.coretb_u232c_nobusy.mmuc.r.data[4] top.coretb_u232c_nobusy.mmuc.r.data[3] top.coretb_u232c_nobusy.mmuc.r.data[2] top.coretb_u232c_nobusy.mmuc.r.data[1] top.coretb_u232c_nobusy.mmuc.r.data[0]
 @200
 -in
@@ -191,12 +201,11 @@ top.coretb_u232c_nobusy.mmuc.dout.miss
 @28
 top.coretb_u232c_nobusy.datacachec.r.state
 top.coretb_u232c_nobusy.datacachec.r.cnt
+top.coretb_u232c_nobusy.datacachec.r.hot[0]
 @22
-#{top.coretb_u232c_nobusy.datacachec.r.head[16:0]} top.coretb_u232c_nobusy.datacachec.r.head[16] top.coretb_u232c_nobusy.datacachec.r.head[15] top.coretb_u232c_nobusy.datacachec.r.head[14] top.coretb_u232c_nobusy.datacachec.r.head[13] top.coretb_u232c_nobusy.datacachec.r.head[12] top.coretb_u232c_nobusy.datacachec.r.head[11] top.coretb_u232c_nobusy.datacachec.r.head[10] top.coretb_u232c_nobusy.datacachec.r.head[9] top.coretb_u232c_nobusy.datacachec.r.head[8] top.coretb_u232c_nobusy.datacachec.r.head[7] top.coretb_u232c_nobusy.datacachec.r.head[6] top.coretb_u232c_nobusy.datacachec.r.head[5] top.coretb_u232c_nobusy.datacachec.r.head[4] top.coretb_u232c_nobusy.datacachec.r.head[3] top.coretb_u232c_nobusy.datacachec.r.head[2] top.coretb_u232c_nobusy.datacachec.r.head[1] top.coretb_u232c_nobusy.datacachec.r.head[0]
-@28
-top.coretb_u232c_nobusy.datacachec.r.idx
-@22
-#{top.coretb_u232c_nobusy.datacachec.r.data[31:0]} top.coretb_u232c_nobusy.datacachec.r.data[31] top.coretb_u232c_nobusy.datacachec.r.data[30] top.coretb_u232c_nobusy.datacachec.r.data[29] top.coretb_u232c_nobusy.datacachec.r.data[28] top.coretb_u232c_nobusy.datacachec.r.data[27] top.coretb_u232c_nobusy.datacachec.r.data[26] top.coretb_u232c_nobusy.datacachec.r.data[25] top.coretb_u232c_nobusy.datacachec.r.data[24] top.coretb_u232c_nobusy.datacachec.r.data[23] top.coretb_u232c_nobusy.datacachec.r.data[22] top.coretb_u232c_nobusy.datacachec.r.data[21] top.coretb_u232c_nobusy.datacachec.r.data[20] top.coretb_u232c_nobusy.datacachec.r.data[19] top.coretb_u232c_nobusy.datacachec.r.data[18] top.coretb_u232c_nobusy.datacachec.r.data[17] top.coretb_u232c_nobusy.datacachec.r.data[16] top.coretb_u232c_nobusy.datacachec.r.data[15] top.coretb_u232c_nobusy.datacachec.r.data[14] top.coretb_u232c_nobusy.datacachec.r.data[13] top.coretb_u232c_nobusy.datacachec.r.data[12] top.coretb_u232c_nobusy.datacachec.r.data[11] top.coretb_u232c_nobusy.datacachec.r.data[10] top.coretb_u232c_nobusy.datacachec.r.data[9] top.coretb_u232c_nobusy.datacachec.r.data[8] top.coretb_u232c_nobusy.datacachec.r.data[7] top.coretb_u232c_nobusy.datacachec.r.data[6] top.coretb_u232c_nobusy.datacachec.r.data[5] top.coretb_u232c_nobusy.datacachec.r.data[4] top.coretb_u232c_nobusy.datacachec.r.data[3] top.coretb_u232c_nobusy.datacachec.r.data[2] top.coretb_u232c_nobusy.datacachec.r.data[1] top.coretb_u232c_nobusy.datacachec.r.data[0]
+#{top.coretb_u232c_nobusy.datacachec.r.tag[7:0]} top.coretb_u232c_nobusy.datacachec.r.tag[7] top.coretb_u232c_nobusy.datacachec.r.tag[6] top.coretb_u232c_nobusy.datacachec.r.tag[5] top.coretb_u232c_nobusy.datacachec.r.tag[4] top.coretb_u232c_nobusy.datacachec.r.tag[3] top.coretb_u232c_nobusy.datacachec.r.tag[2] top.coretb_u232c_nobusy.datacachec.r.tag[1] top.coretb_u232c_nobusy.datacachec.r.tag[0]
+#{top.coretb_u232c_nobusy.datacachec.r.tag_idx[7:0]} top.coretb_u232c_nobusy.datacachec.r.tag_idx[7] top.coretb_u232c_nobusy.datacachec.r.tag_idx[6] top.coretb_u232c_nobusy.datacachec.r.tag_idx[5] top.coretb_u232c_nobusy.datacachec.r.tag_idx[4] top.coretb_u232c_nobusy.datacachec.r.tag_idx[3] top.coretb_u232c_nobusy.datacachec.r.tag_idx[2] top.coretb_u232c_nobusy.datacachec.r.tag_idx[1] top.coretb_u232c_nobusy.datacachec.r.tag_idx[0]
+#{top.coretb_u232c_nobusy.datacachec.r.line_idx[3:0]} top.coretb_u232c_nobusy.datacachec.r.line_idx[3] top.coretb_u232c_nobusy.datacachec.r.line_idx[2] top.coretb_u232c_nobusy.datacachec.r.line_idx[1] top.coretb_u232c_nobusy.datacachec.r.line_idx[0]
 @200
 -in
 @28
@@ -208,9 +217,46 @@ top.coretb_u232c_nobusy.dcachei.we
 @200
 -out
 @28
+top.coretb_u232c_nobusy.datacachec.dout.busy
 top.coretb_u232c_nobusy.dcacheo.miss
 @22
 #{top.coretb_u232c_nobusy.dcacheo.data[31:0]} top.coretb_u232c_nobusy.dcacheo.data[31] top.coretb_u232c_nobusy.dcacheo.data[30] top.coretb_u232c_nobusy.dcacheo.data[29] top.coretb_u232c_nobusy.dcacheo.data[28] top.coretb_u232c_nobusy.dcacheo.data[27] top.coretb_u232c_nobusy.dcacheo.data[26] top.coretb_u232c_nobusy.dcacheo.data[25] top.coretb_u232c_nobusy.dcacheo.data[24] top.coretb_u232c_nobusy.dcacheo.data[23] top.coretb_u232c_nobusy.dcacheo.data[22] top.coretb_u232c_nobusy.dcacheo.data[21] top.coretb_u232c_nobusy.dcacheo.data[20] top.coretb_u232c_nobusy.dcacheo.data[19] top.coretb_u232c_nobusy.dcacheo.data[18] top.coretb_u232c_nobusy.dcacheo.data[17] top.coretb_u232c_nobusy.dcacheo.data[16] top.coretb_u232c_nobusy.dcacheo.data[15] top.coretb_u232c_nobusy.dcacheo.data[14] top.coretb_u232c_nobusy.dcacheo.data[13] top.coretb_u232c_nobusy.dcacheo.data[12] top.coretb_u232c_nobusy.dcacheo.data[11] top.coretb_u232c_nobusy.dcacheo.data[10] top.coretb_u232c_nobusy.dcacheo.data[9] top.coretb_u232c_nobusy.dcacheo.data[8] top.coretb_u232c_nobusy.dcacheo.data[7] top.coretb_u232c_nobusy.dcacheo.data[6] top.coretb_u232c_nobusy.dcacheo.data[5] top.coretb_u232c_nobusy.dcacheo.data[4] top.coretb_u232c_nobusy.dcacheo.data[3] top.coretb_u232c_nobusy.dcacheo.data[2] top.coretb_u232c_nobusy.dcacheo.data[1] top.coretb_u232c_nobusy.dcacheo.data[0]
+@200
+-* tagarray
+@28
+top.coretb_u232c_nobusy.datacachec.tagarri[0].we
+@22
+#{top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[7:0]} top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[7] top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[6] top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[5] top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[4] top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[3] top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[2] top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[1] top.coretb_u232c_nobusy.datacachec.tagarri[0].addr[0]
+#{top.coretb_u232c_nobusy.datacachec.tagarri[0].data[7:0]} top.coretb_u232c_nobusy.datacachec.tagarri[0].data[7] top.coretb_u232c_nobusy.datacachec.tagarri[0].data[6] top.coretb_u232c_nobusy.datacachec.tagarri[0].data[5] top.coretb_u232c_nobusy.datacachec.tagarri[0].data[4] top.coretb_u232c_nobusy.datacachec.tagarri[0].data[3] top.coretb_u232c_nobusy.datacachec.tagarri[0].data[2] top.coretb_u232c_nobusy.datacachec.tagarri[0].data[1] top.coretb_u232c_nobusy.datacachec.tagarri[0].data[0]
+@200
+-0
+@c00022
+#{top.coretb_u232c_nobusy.datacachec.tagarro[0].data[7:0]} top.coretb_u232c_nobusy.datacachec.tagarro[0].data[7] top.coretb_u232c_nobusy.datacachec.tagarro[0].data[6] top.coretb_u232c_nobusy.datacachec.tagarro[0].data[5] top.coretb_u232c_nobusy.datacachec.tagarro[0].data[4] top.coretb_u232c_nobusy.datacachec.tagarro[0].data[3] top.coretb_u232c_nobusy.datacachec.tagarro[0].data[2] top.coretb_u232c_nobusy.datacachec.tagarro[0].data[1] top.coretb_u232c_nobusy.datacachec.tagarro[0].data[0]
+@28
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[7]
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[6]
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[5]
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[4]
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[3]
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[2]
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[1]
+top.coretb_u232c_nobusy.datacachec.tagarro[0].data[0]
+@1401200
+-group_end
+@200
+-1
+@22
+#{top.coretb_u232c_nobusy.datacachec.tagarro[1].data[7:0]} top.coretb_u232c_nobusy.datacachec.tagarro[1].data[7] top.coretb_u232c_nobusy.datacachec.tagarro[1].data[6] top.coretb_u232c_nobusy.datacachec.tagarro[1].data[5] top.coretb_u232c_nobusy.datacachec.tagarro[1].data[4] top.coretb_u232c_nobusy.datacachec.tagarro[1].data[3] top.coretb_u232c_nobusy.datacachec.tagarro[1].data[2] top.coretb_u232c_nobusy.datacachec.tagarro[1].data[1] top.coretb_u232c_nobusy.datacachec.tagarro[1].data[0]
+@200
+-* cache_ram
+@29
+top.coretb_u232c_nobusy.datacachec.cachei.en
+@28
+top.coretb_u232c_nobusy.datacachec.cachei.we
+@22
+#{top.coretb_u232c_nobusy.datacachec.cachei.addr[12:0]} top.coretb_u232c_nobusy.datacachec.cachei.addr[12] top.coretb_u232c_nobusy.datacachec.cachei.addr[11] top.coretb_u232c_nobusy.datacachec.cachei.addr[10] top.coretb_u232c_nobusy.datacachec.cachei.addr[9] top.coretb_u232c_nobusy.datacachec.cachei.addr[8] top.coretb_u232c_nobusy.datacachec.cachei.addr[7] top.coretb_u232c_nobusy.datacachec.cachei.addr[6] top.coretb_u232c_nobusy.datacachec.cachei.addr[5] top.coretb_u232c_nobusy.datacachec.cachei.addr[4] top.coretb_u232c_nobusy.datacachec.cachei.addr[3] top.coretb_u232c_nobusy.datacachec.cachei.addr[2] top.coretb_u232c_nobusy.datacachec.cachei.addr[1] top.coretb_u232c_nobusy.datacachec.cachei.addr[0]
+#{top.coretb_u232c_nobusy.datacachec.cachei.data[31:0]} top.coretb_u232c_nobusy.datacachec.cachei.data[31] top.coretb_u232c_nobusy.datacachec.cachei.data[30] top.coretb_u232c_nobusy.datacachec.cachei.data[29] top.coretb_u232c_nobusy.datacachec.cachei.data[28] top.coretb_u232c_nobusy.datacachec.cachei.data[27] top.coretb_u232c_nobusy.datacachec.cachei.data[26] top.coretb_u232c_nobusy.datacachec.cachei.data[25] top.coretb_u232c_nobusy.datacachec.cachei.data[24] top.coretb_u232c_nobusy.datacachec.cachei.data[23] top.coretb_u232c_nobusy.datacachec.cachei.data[22] top.coretb_u232c_nobusy.datacachec.cachei.data[21] top.coretb_u232c_nobusy.datacachec.cachei.data[20] top.coretb_u232c_nobusy.datacachec.cachei.data[19] top.coretb_u232c_nobusy.datacachec.cachei.data[18] top.coretb_u232c_nobusy.datacachec.cachei.data[17] top.coretb_u232c_nobusy.datacachec.cachei.data[16] top.coretb_u232c_nobusy.datacachec.cachei.data[15] top.coretb_u232c_nobusy.datacachec.cachei.data[14] top.coretb_u232c_nobusy.datacachec.cachei.data[13] top.coretb_u232c_nobusy.datacachec.cachei.data[12] top.coretb_u232c_nobusy.datacachec.cachei.data[11] top.coretb_u232c_nobusy.datacachec.cachei.data[10] top.coretb_u232c_nobusy.datacachec.cachei.data[9] top.coretb_u232c_nobusy.datacachec.cachei.data[8] top.coretb_u232c_nobusy.datacachec.cachei.data[7] top.coretb_u232c_nobusy.datacachec.cachei.data[6] top.coretb_u232c_nobusy.datacachec.cachei.data[5] top.coretb_u232c_nobusy.datacachec.cachei.data[4] top.coretb_u232c_nobusy.datacachec.cachei.data[3] top.coretb_u232c_nobusy.datacachec.cachei.data[2] top.coretb_u232c_nobusy.datacachec.cachei.data[1] top.coretb_u232c_nobusy.datacachec.cachei.data[0]
+#{top.coretb_u232c_nobusy.datacachec.cacheo.data[31:0]} top.coretb_u232c_nobusy.datacachec.cacheo.data[31] top.coretb_u232c_nobusy.datacachec.cacheo.data[30] top.coretb_u232c_nobusy.datacachec.cacheo.data[29] top.coretb_u232c_nobusy.datacachec.cacheo.data[28] top.coretb_u232c_nobusy.datacachec.cacheo.data[27] top.coretb_u232c_nobusy.datacachec.cacheo.data[26] top.coretb_u232c_nobusy.datacachec.cacheo.data[25] top.coretb_u232c_nobusy.datacachec.cacheo.data[24] top.coretb_u232c_nobusy.datacachec.cacheo.data[23] top.coretb_u232c_nobusy.datacachec.cacheo.data[22] top.coretb_u232c_nobusy.datacachec.cacheo.data[21] top.coretb_u232c_nobusy.datacachec.cacheo.data[20] top.coretb_u232c_nobusy.datacachec.cacheo.data[19] top.coretb_u232c_nobusy.datacachec.cacheo.data[18] top.coretb_u232c_nobusy.datacachec.cacheo.data[17] top.coretb_u232c_nobusy.datacachec.cacheo.data[16] top.coretb_u232c_nobusy.datacachec.cacheo.data[15] top.coretb_u232c_nobusy.datacachec.cacheo.data[14] top.coretb_u232c_nobusy.datacachec.cacheo.data[13] top.coretb_u232c_nobusy.datacachec.cacheo.data[12] top.coretb_u232c_nobusy.datacachec.cacheo.data[11] top.coretb_u232c_nobusy.datacachec.cacheo.data[10] top.coretb_u232c_nobusy.datacachec.cacheo.data[9] top.coretb_u232c_nobusy.datacachec.cacheo.data[8] top.coretb_u232c_nobusy.datacachec.cacheo.data[7] top.coretb_u232c_nobusy.datacachec.cacheo.data[6] top.coretb_u232c_nobusy.datacachec.cacheo.data[5] top.coretb_u232c_nobusy.datacachec.cacheo.data[4] top.coretb_u232c_nobusy.datacachec.cacheo.data[3] top.coretb_u232c_nobusy.datacachec.cacheo.data[2] top.coretb_u232c_nobusy.datacachec.cacheo.data[1] top.coretb_u232c_nobusy.datacachec.cacheo.data[0]
 @200
 -* sram
 -in

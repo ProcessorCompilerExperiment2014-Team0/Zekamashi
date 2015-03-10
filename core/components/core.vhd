@@ -178,7 +178,6 @@ architecture behavior of core is
     wb      : reg_index_t;
     src     : iwb_src_t;
     alu_out : word_t;
-    mmui    : mmu_in_t;
   end record latch_wb_t;
 
   type latch_fwb_t is record
@@ -243,11 +242,7 @@ architecture behavior of core is
     pc      => (others => '1'),
     wb      => 31,
     src     => IWB_SRC_ALU,
-    alu_out => (others => '0'),
-    mmui    => (en   => '0',
-                we   => '-',
-                addr => (others => '-'),
-                data => (others => '-')));
+    alu_out => (others => '0'));
 
   constant fw_bubble : latch_fwb_t :=  (
     bubble => true,
@@ -765,9 +760,9 @@ begin
             v.e.fwd_a := FWD_FR;
             v.e.memop := MEM_STORE;
             v.e.iwb   := 31;
-            v.e.isrc  := IWB_SRC_ALU;
-            v.e.fsrc  := FWB_SRC_FPU;
+            v.e.isrc  := IWB_SRC_MEM;
             v.e.fwb   := 31;
+            v.e.fsrc  := FWB_SRC_FPU;
 
           when others =>
             assert false report "invalid instruction" severity error;
@@ -855,7 +850,7 @@ begin
             v.e.fwd_b     := FWD_IR;
             v.e.memop     := MEM_STORE;
             v.e.iwb       := 31;
-            v.e.isrc      := IWB_SRC_ALU;
+            v.e.isrc      := IWB_SRC_MEM;
             v.e.fwb       := 31;
             v.e.fsrc      := FWB_SRC_FPU;
 
@@ -1010,6 +1005,8 @@ begin
     -- Memory
     -------------------------------------------------------------------------
 
+    assert r.m.pc /= x"00001a82" report "hi, zeptometer!" severity note;
+
     case r.m.memop is
       when MEM_LOAD =>
         mmuv := (addr => r.m.alu_out(20 downto 0),
@@ -1033,7 +1030,6 @@ begin
     v.w.wb      := r.m.wb;
     v.w.src     := r.m.src;
     v.w.alu_out := r.m.alu_out;
-    v.w.mmui    := mmuv;
 
     v.fw2 := r.fw1;
 
@@ -1135,8 +1131,8 @@ begin
         v.fw2   := r.fw2;
 
         icachev.addr := r.f.pc_now(12 downto 0);
-        fpuv.stall := '1';
-        mmuv       := r.w.mmui;
+        fpuv.stall   := '1';
+        mmuv.en      := '0';
 
       when others => null;
     end case;

@@ -4,15 +4,15 @@ CFLAGS = -std=c99
 TESTBENCH = coretb coretb_nomiss coretb_u232c_nobusy loopbacktb u232ctb
 GHDLC = ghdl
 GHDLFLAGS  = -g --ieee=synopsys --mb-comments -fexplicit
-GHDL_SIM_OPT = --stop-time=100us
-CORETB_DEPS = alu.vhd core.vhd datacache.vhd datacache_ram.vhd fpu.vhd inputbuf.vhd instcache.vhd meminit.vhd mmu.vhd regfile.vhd sram.vhd u232c_in.vhd u232c_out.vhd
+GHDL_SIM_OPT = --stop-time=500us
+CORETB_DEPS = alu.vhd core.vhd datacache.vhd datacache_ram.vhd fpu.vhd inputbuf.vhd instcache.vhd meminit.vhd mmu.vhd regfile.vhd sram.vhd u232c_in.vhd u232c_out.vhd ram.vhd
 CORETB_SIM = coretb.vhd rxtx.vhd sramsim.vhd util.vhd
 CORETB_NOMISS_SIM = coretb_nomiss.vhd datacache_nomiss.vhd rxtx.vhd sramsim.vhd util.vhd
 CORETB_U232C_NOBUSY_SIM = coretb_u232c_nobusy.vhd u232c_nobusy.vhd sramsim.vhd util.vhd
 LOOPBACKTB_DEPS = inputbuf.vhd loopback.vhd u232c_in.vhd u232c_out.vhd
 LOOPBACKTB_SIM = loopbacktb.vhd rxtx.vhd
 FPU_DEPS = fpu_common.vhd fadd_pipeline.vhd fmul_pipeline.vhd ftoi_func.vhd \
-	   ftoi_pipeline.vhd itof_func.vhd itof_pipeline.vhd fcmp.vhd feq_pipeline.vhd \
+	   ftoi_pipeline.vhd itof_pipeline.vhd fcmp.vhd feq_pipeline.vhd \
 	   fle_pipeline.vhd flt_pipeline.vhd finv.vhd fsqrt.vhd table.vhd
 
 .PHONY: clean reload $(TESTBENCH)
