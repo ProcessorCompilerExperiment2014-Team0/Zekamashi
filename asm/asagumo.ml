@@ -5,22 +5,26 @@ open Conv
 
 exception Option_format
 
-type opt = {mutable ofile: string; mutable bootloader: bool}
+type opt = {mutable ofile: string; mutable bootloader: int option}
 
 let write ot tbl asm =
   List.iter (put_int ot) (List.map (Conv.encode tbl) asm)
 
 let print_options () =
   prerr_endline "Option format error";
-  prerr_endline "Usage: zasm [input file] [options]";
-  prerr_endline "  -b            Output for bootloader";
+  prerr_endline "Usage: asagumo [input file] [options]";
+  prerr_endline "  -b <offset>   Output for bootloader";
   prerr_endline "  -o <filename> Set output file"
 
 let rec get_option n opt =
   let len = Array.length Sys.argv in
   if n < len
   then match Sys.argv.(n) with
-  | "-b" -> opt.bootloader <- true;
+  | "-b" ->
+    if (n+1) < len && String.get Sys.argv.(n+1) 0 <> '-'
+    then let _ = opt.bootloader <- Some (int_of_string Sys.argv.(n+1)) in
+    get_option (n+2) opt
+    else let _ = opt.bootloader <- Some 0x40 in
     get_option (n+1) opt
   | "-o" ->
     if (n+1) < len
@@ -32,23 +36,24 @@ let rec get_option n opt =
 
 let main () =
   if Array.length Sys.argv < 2 then
-    prerr_endline "Usage: zasm [input file] [options]"
+    prerr_endline "Usage: asagumo [input file] [options]"
   else
     try
       let input = open_in Sys.argv.(1) in
       let lexbuf = Lexing.from_channel input in
       let asm = insts token lexbuf in
       let ofile = String.sub Sys.argv.(1) 0 (String.length Sys.argv.(1) - 2) in
-      let opt = get_option 2 {ofile = ofile; bootloader = false} in
+      let opt = get_option 2 {ofile = ofile; bootloader = None} in
       let output = open_out_bin opt.ofile in
       let tbl = Hashtbl.create (List.length asm) in
       try
-        let origin = if opt.bootloader then 0x40 else 0 in
+        let origin = match opt.bootloader with
+          | None -> 0
+          | Some n -> n in
         let asm' = expand [] tbl (align [] tbl origin asm) in
         write output tbl asm';
-        if opt.bootloader then
-          List.iter (output_byte output) [0;0;0;0]
-        else ();
+        if opt.bootloader = None then ()
+        else List.iter (output_byte output) [0;0;0;0];
         List.iter (show stdout tbl) asm'
       with
       | Unbound_label (l,p,m,a) -> prerr_endline "Unbound label:";
