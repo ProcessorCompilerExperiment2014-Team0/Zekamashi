@@ -16,7 +16,7 @@ using namespace std;
 #define ADDR_SENTINEL  0x100004
 
 enum Opt {
-  OPTION_D, OPTION_R, OPTION_M, OPTION_S, OPTION_N,
+  OPTION_D, OPTION_R, OPTION_M, OPTION_N,
   OPTION_N_ADDS, OPTION_N_SUBS, OPTION_N_MULS, OPTION_N_INVS, OPTION_N_SQRTS,
   OPTION_N_CVTSL, OPTION_N_CVTLS
 };
@@ -35,6 +35,12 @@ union data_type {
   float f;
 };
 
+struct cache2_cont {
+  int tag[2];
+  int newer;
+  cache2_cont() : tag{0,1}, newer(0) {}
+};
+
 class core {
 private:
   unsigned pc;
@@ -45,17 +51,27 @@ private:
   data_type wt_data;
   uint32_t *mem;
 
+  unsigned opt; 
   long long i_count;
   long long i_limit;
   long long i_stat[I_SENTINEL];
-  char stat_file[256];
+  ofstream *blog;
   ofstream *ilog;
   ofstream *flog;
-  unsigned opt; 
   map<int, uint32_t> test_map;
   map<unsigned, long long> br_map;
+
+  const int CACHE_WAY;
+  const int CACHE_IDX;
+  const int CACHE_LINE;
+  int *cache_tbl;
+  cache2_cont *cache2_tbl;
+  long long cache_hit;
+  long long cache_miss;
 public:
-  core(int argc, char **argv);
+  core(const string &program, ifstream *test_file, unsigned opt,
+       long long i_limit, ofstream *blog, ofstream *ilog, ofstream *flog,
+       int cache_way, int cache_idx, int cache_line);
   ~core();
   int verify();
   void run();
@@ -65,7 +81,7 @@ public:
   void write_br_stat();
   friend ostream &operator<<(ostream &os, const core &c);
 private:
-  void set_test(const char*);
+  void set_test(ifstream*);
   inline void mem_st_lw(uint32_t &src, int addr);
   inline void mem_ld_lw(uint32_t &dst, int addr);
   inline void inc_pc();
