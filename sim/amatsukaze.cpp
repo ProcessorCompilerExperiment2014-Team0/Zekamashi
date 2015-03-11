@@ -18,6 +18,7 @@ void print_options() {
     "(default: code.ilog)\n"
     "  -fr <file>  Output contents of floating-point registers to <file> "
     "(default: code.flog)\n"
+    "  -c          Output stall statistics to <file> (default: code.slog)\n"
     "  -cache x y  Use direct-mapped cache whose index is x bits and line is y bits "
     "(default: -cache 7 3)\n"
     "  -cache2 x y Use 2way set associative cache\n";
@@ -36,6 +37,7 @@ int main(int argc, char **argv) {
   ofstream *blog = NULL;
   ofstream *ilog = NULL;
   ofstream *flog = NULL;
+  ofstream *slog = NULL;
   unsigned opt = 0u;
   long long i_limit = -1ll;
   int cache_way = 1;
@@ -108,6 +110,14 @@ int main(int argc, char **argv) {
             buf.assign(argv[++i]);
           }
           flog = new ofstream(buf);
+        } else if(!strcmp(argv[i], "-c")) {
+          if(i+1 >= argc || argv[i+1][0] == '-') {
+            buf.assign(program);
+            buf.append(".slog");
+          } else {
+            buf.assign(argv[++i]);
+          }
+          slog = new ofstream(buf);
         } else if(!strcmp(argv[i], "-l")) {
           i++;
           if(i >= argc) {
@@ -137,11 +147,12 @@ int main(int argc, char **argv) {
     }
   }
 
-  core c(program, test_file, opt, i_limit, blog, ilog, flog,
+  core c(program, test_file, opt, i_limit, blog, ilog, flog, slog,
          cache_way, cache_idx, cache_line);
   c.run();
 
   cerr << c;
   c.write_br_stat();
+  c.write_stall_stat();
   return c.verify();
 }

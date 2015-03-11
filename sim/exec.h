@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <map>
 #include <cstdint>
 using namespace std;
@@ -58,6 +59,7 @@ private:
   ofstream *blog;
   ofstream *ilog;
   ofstream *flog;
+  ofstream *slog;
   map<int, uint32_t> test_map;
   map<unsigned, long long> br_map;
 
@@ -68,10 +70,23 @@ private:
   cache2_cont *cache2_tbl;
   long long cache_hit;
   long long cache_miss;
+
+  static const int DELAY_INT = 1;
+  static const int DELAY_FLOAT = 3;
+  static const int DELAY_HIT = 2;
+  static const int DELAY_MISS = 8;
+  static const int DELAY_MAX = (DELAY_FLOAT > DELAY_MISS) ?
+                          DELAY_FLOAT : DELAY_MISS;
+  static const int DELAY_BRANCH = 2;
+
+  vector<unsigned> unwritten_ir;
+  vector<unsigned> unwritten_fr;
+  long long stall_count;
+  map<unsigned, long long> stall_map;
 public:
   core(const string &program, ifstream *test_file, unsigned opt,
        long long i_limit, ofstream *blog, ofstream *ilog, ofstream *flog,
-       int cache_way, int cache_idx, int cache_line);
+       ofstream *slog, int cache_way, int cache_idx, int cache_line);
   ~core();
   int verify();
   void run();
@@ -79,11 +94,25 @@ public:
   void show_ir(ostream &os);
   void show_fr(ostream &os);
   void write_br_stat();
+  void write_stall_stat();
   friend ostream &operator<<(ostream &os, const core &c);
 private:
   void set_test(ifstream*);
   inline void mem_st_lw(uint32_t &src, int addr);
   inline void mem_ld_lw(uint32_t &dst, int addr);
+  inline void reserve_write_ir(int a);
+  inline void reserve_write_fr(int a);
+  inline void reserve_write_ir_ld(int a, int addr);
+  inline void reserve_write_fr_ld(int a, int addr);
+  inline bool ir_is_unwritten(int a, int offset);
+  inline bool fr_is_unwritten(int a, int offset);
+  inline void read_ir(int a);
+  inline void read_fr(int a);
+  inline void read_ir_br(int a);
+  inline void read_fr_br(int a);
+  inline void elasp_clock();
+  inline void stall();
+  inline void stall_branch();
   inline void inc_pc();
   inline void i_lda(int ra, int rb, int disp);
   inline void i_ldah(int ra, int rb, int disp);

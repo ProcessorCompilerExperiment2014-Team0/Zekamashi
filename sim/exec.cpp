@@ -54,11 +54,11 @@ const char *INST_NAME[] = {
 
 core::core(const string &program, ifstream *test_file, unsigned opt,
            long long i_limit, ofstream *blog, ofstream *ilog, ofstream *flog,
-           int cache_way, int cache_idx, int cache_line)
-  : opt(opt), i_limit(i_limit), blog(blog), ilog(ilog), flog(flog),
+           ofstream *slog, int cache_way, int cache_idx, int cache_line)
+  : opt(opt), i_limit(i_limit), blog(blog), ilog(ilog), flog(flog), slog(slog),
     CACHE_WAY(cache_way), CACHE_IDX(cache_idx), CACHE_LINE(cache_line),
-    cache_tbl(NULL), cache2_tbl(NULL),
-    cache_hit(0ll), cache_miss(0ll) {
+    cache_tbl(NULL), cache2_tbl(NULL), cache_hit(0ll), cache_miss(0ll),
+    unwritten_ir(DELAY_MAX), unwritten_fr(DELAY_MAX), stall_count(0ll) {
   mem = new uint32_t[SIZE_OF_MEM];
   ifstream input(program, ios::binary);
   if(!input) {
@@ -106,6 +106,7 @@ core::~core() {
   if(blog) delete blog;
   if(ilog) delete ilog;
   if(flog) delete flog;
+  if(slog) delete slog;
 }
 
 void core::set_test(ifstream *test_file) {
@@ -156,6 +157,7 @@ void core::run() {
         ra = (inst >> 21) & 0x1F;
         rb = (inst >> 16) & 0x1F;
         df = inst & 0xFFFF;
+        read_ir(rb);
         switch(opcd) {
         case 0x08:
           i_lda(ra, rb, df);
@@ -185,6 +187,7 @@ void core::run() {
           ra = (inst >> 21) & 0x1F;
           rb = (inst >> 16) & 0x1F;
           df = inst & 0xFF;
+          read_ir_br(rb);
           switch(df >> 14) {
           case 0x0:
             i_jmp(ra, rb, df);
@@ -204,6 +207,7 @@ void core::run() {
           rb = (inst >> 16) & 0x1F;
           rc = inst & 0x1F;
           df = (inst >> 5) & 0x7FF;
+          read_fr(rc);
           switch(df) {
           case 0x78:
             i_ftois(ra, rc);
@@ -253,9 +257,11 @@ void core::run() {
           case 0x14:
             switch(df) {
             case 0x004:
+              read_ir(rc);
               i_itofs(ra, rc);
               break;
             case 0x08b:
+              read_fr(rc);
               i_sqrts(rb, rc);
               break;
             default:
@@ -263,23 +269,30 @@ void core::run() {
             }
             break;
           case 0x16:
+            read_fr(rc);
             switch(df) {
             case 0x0a5:
+              read_fr(rb);
               i_cmpseq(ra, rb, rc);
               break;
             case 0x0a7:
+              read_fr(rb);
               i_cmpsle(ra, rb, rc);
               break;
             case 0x0a6:
+              read_fr(rb);
               i_cmpslt(ra, rb, rc);
               break;
             case 0x080:
+              read_fr(rb);
               i_adds(ra, rb, rc);
               break;
             case 0x081:
+              read_fr(rb);
               i_subs(ra, rb, rc);
               break;
             case 0x082:
+              read_fr(rb);
               i_muls(ra, rb, rc);
               break;
             case 0x083:
@@ -302,10 +315,12 @@ void core::run() {
           ra = (inst >> 21) & 0x1F;
           df = (inst >> 5) & 0x7F;
           rc = inst & 0x1F;
+          read_ir(rc);
           if(inst >> 12 & 1) {    // literal
             b = (inst >> 13) & 0xFF;
           } else {                // register
             rb = (inst >> 16) & 0x1F;
+            read_ir(rb);
             b = ir[rb].i;
           }
           switch(opcd) {
@@ -376,6 +391,7 @@ void core::run() {
            << hex << setfill('0') << setw(8) << uppercase << i << endl;
       return;
     }
+    elasp_clock();
     ir[NUM_OF_R - 1].i = 0;
     fr[NUM_OF_R - 1].i = 0;
   }
@@ -495,28 +511,143 @@ void core::mem_ld_lw(uint32_t &dst, int addr) {
          << dmanip << addr << ", value = "
          << dmanip << dst << '\n';
   }
+}
+
+void core::reserve_write_ir(int a) {
+  unwritten_ir[DELAY_INT] |= 1u << a;
+}
+
+void core::reserve_write_fr(int a) {
+  unwritten_fr[DELAY_FLOAT] |= 1u << a;
+}
+
+void core::reserve_write_ir_ld(int a, int addr) {
   int idx = (addr >> CACHE_LINE) & ((1 << CACHE_IDX) - 1);
   int tag = addr >> (CACHE_LINE + CACHE_IDX);
   if(CACHE_WAY == 1) {          // direct mapped
     if(cache_tbl[idx] == tag) {
       cache_hit++;
+      unwritten_ir[DELAY_HIT] |= 1u << a;
     } else {
       cache_miss++;
       cache_tbl[idx] = tag;
+      unwritten_ir[DELAY_MISS] |= 1u << a;
     }
   } else {                      // 2way
     if(cache2_tbl[idx].tag[0] == tag) {
       cache_hit++;
       cache2_tbl[idx].newer = 0;
+      unwritten_ir[DELAY_HIT] |= 1u << a;
     } else if(cache2_tbl[idx].tag[1] == tag) {
       cache_hit++;
       cache2_tbl[idx].newer = 1;
+      unwritten_ir[DELAY_HIT] |= 1u << a;
     } else {
       cache_miss++;
       int replaced = 1 - cache2_tbl[idx].newer;
       cache2_tbl[idx].tag[replaced] = tag;
       cache2_tbl[idx].newer = replaced;
+      unwritten_ir[DELAY_MISS] |= 1u << a;
     }
+  }
+}
+
+void core::reserve_write_fr_ld(int a, int addr) {
+  int idx = (addr >> CACHE_LINE) & ((1 << CACHE_IDX) - 1);
+  int tag = addr >> (CACHE_LINE + CACHE_IDX);
+  if(CACHE_WAY == 1) {          // direct mapped
+    if(cache_tbl[idx] == tag) {
+      cache_hit++;
+      unwritten_fr[DELAY_HIT] |= 1u << a;
+    } else {
+      cache_miss++;
+      cache_tbl[idx] = tag;
+      unwritten_fr[DELAY_MISS] |= 1u << a;
+    }
+  } else {                      // 2way
+    if(cache2_tbl[idx].tag[0] == tag) {
+      cache_hit++;
+      cache2_tbl[idx].newer = 0;
+      unwritten_fr[DELAY_HIT] |= 1u << a;
+    } else if(cache2_tbl[idx].tag[1] == tag) {
+      cache_hit++;
+      cache2_tbl[idx].newer = 1;
+      unwritten_fr[DELAY_HIT] |= 1u << a;
+    } else {
+      cache_miss++;
+      int replaced = 1 - cache2_tbl[idx].newer;
+      cache2_tbl[idx].tag[replaced] = tag;
+      cache2_tbl[idx].newer = replaced;
+      unwritten_fr[DELAY_MISS] |= 1u << a;
+    }
+  }
+}
+
+bool core::ir_is_unwritten(int a, int offset) {
+  for(int i=offset; i<DELAY_MAX; i++) {
+    if((unwritten_ir[i] >> a) & 1u) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool core::fr_is_unwritten(int a, int offset) {
+  for(int i=offset; i<DELAY_MAX; i++) {
+    if((unwritten_fr[i] >> a) & 1u) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void core::read_ir(int a) {
+  while(ir_is_unwritten(a, 1)) {
+    stall();
+  }
+}
+
+void core::read_fr(int a) {
+  while(fr_is_unwritten(a, 1)) {
+    stall();
+  }
+}
+
+void core::read_ir_br(int a) {
+  while(ir_is_unwritten(a, 0)) {
+    stall();
+  }
+}
+
+void core::read_fr_br(int a) {
+  while(fr_is_unwritten(a, 0)) {
+    stall();
+  }
+}
+
+void core::elasp_clock() {
+  unwritten_ir.push_back(0u);
+  unwritten_ir.erase(unwritten_ir.begin());
+  unwritten_fr.push_back(0u);
+  unwritten_fr.erase(unwritten_fr.begin());
+}
+
+void core::stall() {
+  stall_count++;
+  elasp_clock();
+  if(slog) {
+    map<unsigned, long long>::iterator p = stall_map.find(pc);
+    if(p == stall_map.end()) {
+      stall_map.insert(make_pair(pc, 1ll));
+    } else {
+      p->second++;
+    }
+  }
+}
+
+void core::stall_branch() {
+  for(int i=0; i<DELAY_BRANCH; i++) {
+    stall();
   }
 }
 
@@ -526,12 +657,14 @@ void core::inc_pc() {
 
 void core::i_lda(int ra, int rb, int disp) {
   ir[ra].i = ir[rb].i + extend(disp, 16);
+  reserve_write_ir(ra);
   inc_pc();
   i_stat[I_LDA]++;
 }
 
 void core::i_ldah(int ra, int rb, int disp) {
   ir[ra].i = ir[rb].i + extend(disp, 16) * 65536;
+  reserve_write_ir(ra);
   inc_pc();
   i_stat[I_LDAH]++;
 }
@@ -539,6 +672,7 @@ void core::i_ldah(int ra, int rb, int disp) {
 void core::i_lds(int ra, int rb, int disp) {
   int addr = ir[rb].i + extend(disp, 16);
   mem_ld_lw(fr[ra].u, addr);
+  reserve_write_fr_ld(ra, addr);
   inc_pc();
   i_stat[I_LDS]++;
 }
@@ -553,6 +687,7 @@ void core::i_sts(int ra, int rb, int disp) {
 void core::i_ldl(int ra, int rb, int disp) {
   int addr = ir[rb].i + extend(disp, 16);
   mem_ld_lw(ir[ra].u, addr);
+  reserve_write_ir_ld(ra, addr);
   inc_pc();
   i_stat[I_LDL]++;
 }
@@ -569,6 +704,7 @@ int core::i_br(int ra, int disp) {
   if(disp == 0) {
     return 1;
   }
+  stall_branch();
   pc += extend(disp, 16);
   i_stat[I_BR]++;
   return 0;
@@ -576,6 +712,7 @@ int core::i_br(int ra, int disp) {
 
 void core::i_bsr(int ra, int disp) {
   ir[ra].i = pc + 1;
+  stall_branch();
   pc += extend(disp, 16);
   if(blog) {
     map<unsigned, long long>::iterator p = br_map.find(pc);
@@ -590,6 +727,7 @@ void core::i_bsr(int ra, int disp) {
 
 void core::i_beq(int ra, int disp) {
   if(ir[ra].i == 0) {
+    stall_branch();
     pc += extend(disp, 16);
   } else {
     inc_pc();
@@ -599,6 +737,7 @@ void core::i_beq(int ra, int disp) {
 
 void core::i_bne(int ra, int disp) {
   if(ir[ra].i != 0) {
+    stall_branch();
     pc += extend(disp, 16);
   } else {
     inc_pc();
@@ -608,6 +747,7 @@ void core::i_bne(int ra, int disp) {
 
 void core::i_fbeq(int fa, int disp) {
   if(fr[fa].f == 0.0) {
+    stall_branch();
     pc += extend(disp, 16);
   } else {
     inc_pc();
@@ -617,6 +757,7 @@ void core::i_fbeq(int fa, int disp) {
 
 void core::i_fbne(int fa, int disp) {
   if(fr[fa].f != 0.0) {
+    stall_branch();
     pc += extend(disp, 16);
   } else {
     inc_pc();
@@ -627,6 +768,7 @@ void core::i_fbne(int fa, int disp) {
 void core::i_jmp(int ra, int rb, int func) {
   int temp = ir[rb].i;
   ir[ra].i = pc + 1;
+  stall_branch();
   pc = temp;
   i_stat[I_JMP]++;
 }
@@ -634,6 +776,7 @@ void core::i_jmp(int ra, int rb, int func) {
 void core::i_jsr(int ra, int rb, int func) {
   int temp = ir[rb].i;
   ir[ra].i = pc + 1;
+  stall_branch();
   pc = temp;
   i_stat[I_JSR]++;
 }
@@ -641,84 +784,98 @@ void core::i_jsr(int ra, int rb, int func) {
 void core::i_ret(int ra, int rb, int func) {
   int temp = ir[rb].i;
   ir[ra].i = pc + 1;
+  stall_branch();
   pc = temp;
   i_stat[I_RET]++;
 }
 
 void core::i_addl(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i + b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_ADDL]++;
 }
 
 void core::i_subl(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i - b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_SUBL]++;
 }
 
 void core::i_cmpeq(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i == b ? 1 : 0;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_CMPEQ]++;
 }
 
 void core::i_cmple(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i <= b ? 1 : 0;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_CMPLE]++;
 }
 
 void core::i_cmplt(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i < b ? 1 : 0;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_CMPLT]++;
 }
 
 void core::i_and(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i & b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_AND]++;
 }
 
 void core::i_bis(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i | b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_BIS]++;
 }
 
 void core::i_xor(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i ^ b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_XOR]++;
 }
 
 void core::i_eqv(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i ^ ~b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_EQV]++;
 }
 
 void core::i_sll(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i << b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_SLL]++;
 }
 
 void core::i_srl(int ra, int b, int rc) {
   ir[rc].u = ir[ra].u >> b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_SRL]++;
 }
 
 void core::i_sra(int ra, int b, int rc) {
   ir[rc].i = ir[ra].i >> b;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_SRA]++;
 }
 
 void core::i_itofs(int ra, int fc) {
   fr[fc].u = ir[ra].u;
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_ITOFS]++;
 }
@@ -729,6 +886,7 @@ void core::i_adds(int fa, int fb, int fc) {
   } else {
     fr[fc].u = fadd(fr[fa].u, fr[fb].u);
   }
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_ADDS]++;
 }
@@ -739,6 +897,7 @@ void core::i_subs(int fa, int fb, int fc) {
   } else {
     fr[fc].u = fsub(fr[fa].u, fr[fb].u);
   }
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_SUBS]++;
 }
@@ -749,6 +908,7 @@ void core::i_muls(int fa, int fb, int fc) {
   } else {
     fr[fc].u = fmul(fr[fa].u, fr[fb].u);
   }
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_MULS]++;
 }
@@ -759,6 +919,7 @@ void core::i_invs(int fb, int fc) {
   } else {
     fr[fc].u = finv(fr[fb].u);
   }
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_INVS]++;
 }
@@ -769,24 +930,28 @@ void core::i_sqrts(int fb, int fc) {
   } else {
     fr[fc].u = fsqrt(fr[fb].u);
   }
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_SQRTS]++;
 }
 
 void core::i_cmpseq(int fa, int fb, int fc) {
   fr[fc].f = fr[fa].f == fr[fb].f ? 2.0 : 0.0;
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_CMPSEQ]++;
 }
 
 void core::i_cmpsle(int fa, int fb, int fc) {
   fr[fc].f = fr[fa].f <= fr[fb].f ? 2.0 : 0.0;
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_CMPSLE]++;
 }
 
 void core::i_cmpslt(int fa, int fb, int fc) {
   fr[fc].f = fr[fa].f < fr[fb].f ? 2.0 : 0.0;
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_CMPSLT]++;
 }
@@ -797,6 +962,7 @@ void core::i_cvtsl_c(int fb, int fc) {
   } else {
     fr[fc].u = ftrc(fr[fb].u);
   }
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_CVTSL]++;
 }
@@ -807,12 +973,14 @@ void core::i_cvtls(int fb, int fc) {
   } else {
     fr[fc].u = itof(fr[fb].u);
   }
+  reserve_write_fr(fc);
   inc_pc();
   i_stat[I_CVTLS]++;
 }
 
 void core::i_ftois(int fa, int rc) {
   ir[rc].u = fr[fa].u;
+  reserve_write_ir(rc);
   inc_pc();
   i_stat[I_FTOIS]++;
 }
@@ -869,7 +1037,8 @@ ostream &operator<<(ostream &os, const core &c) {
   os << "cache hit  : " << c.cache_hit << " ("
      << 100.0*(c.cache_hit)/(c.cache_hit+c.cache_miss) << " %)\n"
      << "cache miss : " << c.cache_miss << " ("
-     << 100.0*(c.cache_miss)/(c.cache_hit+c.cache_miss) << " %)\n";
+     << 100.0*(c.cache_miss)/(c.cache_hit+c.cache_miss) << " %)\n"
+     << "stall : " << c.stall_count << endl;
   os.flags(initflag);
   return os;
 }
@@ -879,5 +1048,13 @@ void core::write_br_stat() {
   map<unsigned, long long>::iterator p;
   for(p = br_map.begin(); p != br_map.end(); p++) {
     *blog << p->first << " " << p->second << '\n';
+  }
+}
+
+void core::write_stall_stat() {
+  if(!slog) return;
+  map<unsigned, long long>::iterator p;
+  for(p = stall_map.begin(); p != stall_map.end(); p++) {
+    *slog << p->first << " " << p->second << '\n';
   }
 }
