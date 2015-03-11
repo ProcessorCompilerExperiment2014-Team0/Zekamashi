@@ -49,4 +49,6 @@ begin
     wait for 5 ns;
   end process;
 
+  xrst <= '1';
+
 end architecture behavior;

@@ -9,7 +9,7 @@ CORETB_DEPS = alu.vhd core.vhd datacache.vhd datacache_ram.vhd fpu.vhd inputbuf.
 CORETB_SIM = coretb.vhd rxtx.vhd sramsim.vhd util.vhd
 CORETB_NOMISS_SIM = coretb_nomiss.vhd datacache_nomiss.vhd rxtx.vhd sramsim.vhd util.vhd
 CORETB_U232C_NOBUSY_SIM = coretb_u232c_nobusy.vhd u232c_nobusy.vhd sramsim.vhd util.vhd
-LOOPBACKTB_DEPS = inputbuf.vhd loopback.vhd u232c_in.vhd u232c_out.vhd
+LOOPBACKTB_DEPS = loopback.vhd u232c_in.vhd u232c_out.vhd ram.vhd
 LOOPBACKTB_SIM = loopbacktb.vhd rxtx.vhd
 FPU_DEPS = fpu_common.vhd fadd_pipeline.vhd fmul_pipeline.vhd ftoi_func.vhd \
 	   ftoi_pipeline.vhd itof_pipeline.vhd fcmp.vhd feq_pipeline.vhd \
