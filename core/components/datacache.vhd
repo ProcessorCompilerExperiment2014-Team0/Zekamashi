@@ -113,37 +113,52 @@ architecture behavior of datacache is
   type cache_in_t is record
     en   : std_logic;
     we   : std_logic;
-    addr : unsigned(12 downto 0);
-    data : unsigned(31 downto 0);
+    addr1 : unsigned(11 downto 0);
+    addr2 : unsigned(11 downto 0);
+    data1 : unsigned(31 downto 0);
   end record cache_in_t;
 
   type cache_out_t is record
-    data : unsigned(31 downto 0);
+    data1 : unsigned(31 downto 0);
+    data2 : unsigned(31 downto 0);
   end record cache_out_t;
 
-  signal cachei : cache_in_t;
-  signal cacheo : cache_out_t;
+  type cache_in_array_t is array (0 to 1) of cache_in_t;
+  type cache_out_array_t is array (0 to 1) of cache_out_t;
+
+  signal cachei : cache_in_array_t;
+  signal cacheo : cache_out_array_t;
 
   -- state
 
   type state_t is (ST_FINE, ST_BUSY);
 
   type latch_t is record
-    state    : state_t;
-    cnt      : integer range 0 to 19;
-    hot      : unsigned(0 downto 0);
-    tag      : unsigned(7 downto 0);
-    tag_idx  : unsigned(7 downto 0);
-    line_idx : unsigned(3 downto 0);
+    state        : state_t;
+    cnt          : integer range 0 to 19;
+    hit          : std_logic;
+    hot          : unsigned(0 downto 0);
+    tag          : unsigned(7 downto 0);
+    tag_idx      : unsigned(7 downto 0);
+    line_idx     : unsigned(3 downto 0);
+    we           : std_logic;
+    write_data   : unsigned(31 downto 0);
+    forward      : std_logic;
+    forward_data : unsigned(31 downto 0);
   end record latch_t;
 
   constant latch_init : latch_t := (
-    state    => ST_FINE,
-    cnt      => 0,
-    hot      => (others => '-'),
-    tag      => (others => '-'),
-    tag_idx  => (others => '-'),
-    line_idx => (others => '-'));
+    state        => ST_FINE,
+    cnt          => 0,
+    hit          => '0',
+    hot          => (others => '0'),
+    tag          => (others => '-'),
+    tag_idx      => (others => '-'),
+    line_idx     => (others => '-'),
+    we           => '0',
+    write_data   => (others => '-'),
+    forward      => '0',
+    forward_data => (others => '-'));
 
   signal r, rin : latch_t := latch_init;
 
@@ -185,22 +200,40 @@ begin
       idata => tagarri(1).data,
       odata => tagarro(1).data);
 
-  cache : blockram_single
+  cache0 : blockram_dual
     generic map (
-      length => 32,
-      width  => 13,
-      init_value => to_unsigned(0, 13))
+      length     => 32,
+      width      => 12,
+      init_value => to_unsigned(0, 32))
     port map (
-      clk   => clk,
-      en    => cachei.en,
-      we    => cachei.we,
-      addr  => cachei.addr,
-      idata => cachei.data,
-      odata => cacheo.data);
+      clk    => clk,
+      en     => cachei(0).en,
+      we     => cachei(0).we,
+      addr1  => cachei(0).addr1,
+      addr2  => cachei(0).addr2,
+      idata1 => cachei(0).data1,
+      odata1 => cacheo(0).data1,
+      odata2 => cacheo(0).data2);
+
+  cache1 : blockram_dual
+    generic map (
+      length     => 32,
+      width      => 12,
+      init_value => to_unsigned(0, 32))
+    port map (
+      clk    => clk,
+      en     => cachei(1).en,
+      we     => cachei(1).we,
+      addr1  => cachei(1).addr1,
+      addr2  => cachei(1).addr2,
+      idata1 => cachei(1).data1,
+      odata1 => cacheo(1).data1,
+      odata2 => cacheo(1).data2);
 
   process (din, hotbito, tagarro, cacheo, sramo, r) is
 
     -- temporary variables
+    variable hot      : unsigned(0 downto 0);
     variable tag      : unsigned(7 downto 0);
     variable tag_idx  : unsigned(7 downto 0);
     variable line_idx : unsigned(3 downto 0);
@@ -210,11 +243,11 @@ begin
     variable dv      : datacache_out_t;
     variable hotbitv : hotbit_in_t;
     variable tagarrv : tagarray_in_array_t;
-    variable cachev  : cache_in_t;
+    variable cachev  : cache_in_array_t;
     variable sramv   : sram_in_t;
 
   begin
-    v  := r;
+    v := r;
     dv := (
       data => (others => '-'),
       miss => '-',
@@ -227,11 +260,12 @@ begin
       we   => '0',
       addr => (others => '0'),
       data => (others => '-')));
-    cachev := (
-      en   => '0',
-      we   => '-',
-      addr => (others => '-'),
-      data => (others => '-'));
+    cachev := (others => (
+      en    => '1',
+      we    => '0',
+      addr1 => (others => '0'),
+      addr2 => (others => '0'),
+      data1 => (others => '-')));
     sramv := (
       we   => '0',
       addr => (others => '-'),
@@ -239,11 +273,32 @@ begin
 
     case r.state is
       when ST_FINE =>
-        if din.en = '1' then
-          tag      := din.addr(19 downto 12);
-          tag_idx  := din.addr(11 downto 4);
-          line_idx := din.addr(3 downto 0);
 
+        tag      := din.addr(19 downto 12);
+        tag_idx  := din.addr(11 downto 4);
+        line_idx := din.addr(3 downto 0);
+
+        if r.hit = '1' then
+          hotbitv := (
+            we   => '1',
+            addr => r.tag_idx,
+            data => r.hot);
+
+          if r.we = '1' then
+            cachev(to_integer(r.hot)).we    := '1';
+            cachev(to_integer(r.hot)).addr1 := r.tag_idx & (r.line_idx - 1);
+            cachev(to_integer(r.hot)).data1 := r.write_data;
+
+            v.forward_data := r.write_data;
+            if (tag = r.tag) and (tag_idx = r.tag_idx) and (line_idx = r.line_idx - 1) then
+              v.forward := '1';
+            else
+              v.forward := '0';
+            end if;
+          end if;
+        end if;
+
+        if din.en = '1' then
           tagarrv(0) := (
             we   => '0',
             addr => tag_idx,
@@ -253,66 +308,36 @@ begin
             addr => tag_idx,
             data => (others => '-'));
 
-          if din.we = '1' then
-            if tag = tagarro(0).data then
-              cachev := (
-                en   => '1',
-                we   => '1',
-                addr => tag_idx & "0" & line_idx,
-                data => din.data);
-              hotbitv := (
-                we   => '1',
-                addr => tag_idx,
-                data => "0");
-            elsif tag = tagarro(1).data then
-              cachev := (
-                en   => '1',
-                we   => '1',
-                addr => tag_idx & "1" & line_idx,
-                data => din.data);
-              hotbitv := (
-                we   => '1',
-                addr => tag_idx,
-                data => "1");
-            end if;
-
-            sramv := (
-              we   => '1',
-              addr => tag & tag_idx & line_idx,
-              data => din.data);
+          if tag = tagarro(0).data then
+            v.hit := '1';
+            v.hot := "0";
+          elsif tag = tagarro(1).data then
+            v.hit := '1';
+            v.hot := "1";
           else
-            if tag = tagarro(0).data then
-              cachev := (
-                en   => '1',
-                we   => '0',
-                addr => tag_idx & "0" & line_idx,
-                data => (others => '-'));
-              hotbitv := (
-                we   => '1',
-                addr => tag_idx,
-                data => "0");
-              v.state := ST_FINE;
-            elsif tag = tagarro(1).data then
-              cachev := (
-                en   => '1',
-                we   => '0',
-                addr => tag_idx & "1" & line_idx,
-                data => (others => '-'));
-              hotbitv := (
-                we   => '1',
-                addr => tag_idx,
-                data => "1");
+            v.hit := '0';
+          end if;
+
+          cachev(0).addr2 := tag_idx & line_idx;
+          cachev(1).addr2 := tag_idx & line_idx;
+
+          sramv := (
+            we   => din.we,
+            addr => tag & tag_idx & line_idx,
+            data => din.data);
+
+          v.we         := din.we;
+          v.write_data := din.data;
+          v.tag        := tag;
+          v.tag_idx    := tag_idx;
+          v.line_idx   := line_idx + 1;
+
+          if din.we = '0' then
+            if (tag = tagarro(0).data) or (tag = tagarro(1).data) then
               v.state := ST_FINE;
             else
-              sramv := (
-                addr => tag & tag_idx & line_idx,
-                data => (others => '-'),
-                we   => '0');
-              v.state    := ST_BUSY;
-              v.cnt      := 1;
-              v.tag      := tag;
-              v.tag_idx  := tag_idx;
-              v.line_idx := line_idx + 1;
+              v.state := ST_BUSY;
+              v.cnt   := 1;
             end if;
           end if;
         end if;
@@ -346,11 +371,9 @@ begin
         end if;
 
         if r.cnt >= 4 then
-          cachev := (
-            en   => '1',
-            we   => '1',       
-            addr => r.tag_idx & r.hot & (r.line_idx - 4),
-            data => sramo.data);
+          cachev(to_integer(r.hot)).we    := '1';
+          cachev(to_integer(r.hot)).addr1 := r.tag_idx & (r.line_idx - 4);
+          cachev(to_integer(r.hot)).data1 := sramo.data;
         end if;
 
         if r.cnt <= 15 then
@@ -372,8 +395,13 @@ begin
     -- Output
     case r.state is
       when ST_FINE =>
-        dv.data := cacheo.data;
+        if r.forward = '1' then
+          dv.data := r.forward_data;
+        else
+          dv.data := cacheo(to_integer(r.hot)).data2;
+        end if;
         dv.busy := '0';
+
       when ST_BUSY =>
         dv.data := sramo.data;
         dv.busy := '1';
