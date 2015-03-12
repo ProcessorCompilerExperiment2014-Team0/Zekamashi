@@ -19,7 +19,6 @@ package u232c_out_p is
 
   component u232c_out
     generic (
-      report_write : boolean := false;
       wtime : unsigned(15 downto 0));
     port (
       clk  : in  std_logic;
@@ -46,7 +45,6 @@ use work.u232c_out_p.all;
 
 entity u232c_out is
   generic (
-    report_write : boolean;
     wtime        : unsigned(15 downto 0) := x"1ADB");
   port (
     clk  : in  std_logic;
