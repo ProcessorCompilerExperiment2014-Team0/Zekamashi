@@ -138,6 +138,8 @@ architecture behavior of core is
     bubble : boolean;
     reset  : std_logic;
     pc     : word_t;
+    stall  : std_logic;
+    inst   : word_t;
   end record latch_id_t;
 
   -- integer pipeline
@@ -187,14 +189,6 @@ architecture behavior of core is
     src    : fwb_src_t;
   end record latch_fwb_t;
 
-  -- wb buf(for data forwarding)
-  type wbbuf_t is record
-    iwb   : reg_index_t;
-    idata : word_t;
-    fwb   : reg_index_t;
-    fdata : word_t;
-  end record wbbuf_t;
-
   -- bubbles
 
   constant f_bubble : latch_if_t := (
@@ -207,7 +201,9 @@ architecture behavior of core is
   constant d_bubble : latch_id_t := (
     bubble   => true,
     reset    => '1',
-    pc       => (others => '1'));
+    pc       => (others => '1'),
+    stall    => '0',
+    inst     => (others => '-'));
 
   constant e_bubble : latch_exe_t := (
     bubble    => true,
@@ -250,12 +246,6 @@ architecture behavior of core is
     wb     => 31,
     src    => FWB_SRC_FPU);
 
-  constant wbbuf_bubble : wbbuf_t := (
-    iwb   => 31,
-    idata => (others => '-'),
-    fwb   => 31,
-    fdata => (others => '-'));
-
   type latch_t is record
     f     : latch_if_t;
     d     : latch_id_t;
@@ -264,7 +254,6 @@ architecture behavior of core is
     w     : latch_wb_t;
     fw1   : latch_fwb_t;
     fw2   : latch_fwb_t;
-    wbbuf : wbbuf_t;
   end record latch_t;
 
   constant latch_init : latch_t := (
@@ -274,8 +263,7 @@ architecture behavior of core is
     m     => m_bubble,
     w     => w_bubble,
     fw1   => fw_bubble,
-    fw2   => fw_bubble,
-    wbbuf => wbbuf_bubble);
+    fw2   => fw_bubble);
 
   signal r, rin : latch_t := latch_init;
 
@@ -349,25 +337,18 @@ architecture behavior of core is
   -- Data Forwarding
   ---------------------------------------------------------------------------
 
-  type hazard_t is (
-    HZ_FINE, -- there is no hazard
-    HZ_ID,
-    HZ_EXE, -- there is raw hazard, where op cannot see the result of load
-    HZ_WB); -- there is cache miss
-
   procedure forward_data_ir_id (
     dst : out   word_t;
-    hz  : inout hazard_t;
+    hz  : inout std_logic;
     v   : in    word_t;
     n   : in    reg_index_t) is
-    variable hz0 : hazard_t;
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
       hz  := hz;
     elsif n = r.e.iwb then
       dst := (others => '-');
-      hz  := HZ_ID;
+      hz  := '1';
     elsif n = r.m.wb then
       case r.m.src is
         when IWB_SRC_ALU =>
@@ -375,7 +356,7 @@ architecture behavior of core is
           hz  := hz;
         when IWB_SRC_MEM =>
           dst := (others => '-');
-          hz  := HZ_ID;
+          hz  := '1';
       end case;
     elsif n = r.w.wb then
       case r.w.src is
@@ -386,9 +367,6 @@ architecture behavior of core is
           dst := mmuo.data;
           hz  := hz;
       end case;
-    elsif n = r.wbbuf.iwb then
-      dst := r.wbbuf.idata;
-      hz  := hz;
     else
       dst := v;
       hz  := hz;
@@ -397,7 +375,7 @@ architecture behavior of core is
 
   procedure forward_data_ir_exe (
     dst : out   word_t;
-    hz  : inout hazard_t;
+    hz  : inout std_logic;
     v   : in    word_t;
     n   : in    reg_index_t) is
   begin
@@ -411,7 +389,7 @@ architecture behavior of core is
           hz  := hz;
         when IWB_SRC_MEM =>
           dst := (others => '-');
-          hz  := HZ_EXE;
+          hz  := '1';
       end case;
     elsif n = r.w.wb then
       case r.w.src is
@@ -422,9 +400,6 @@ architecture behavior of core is
           dst := mmuo.data;
           hz  := hz;
       end case;
-    elsif n = r.wbbuf.iwb then
-      dst := r.wbbuf.idata;
-      hz  := hz;
     else
       dst := v;
       hz  := hz;
@@ -433,7 +408,7 @@ architecture behavior of core is
 
   procedure forward_data_fr_id (
     dst : out   word_t;
-    hz  : inout hazard_t;
+    hz  : inout std_logic;
     v   : in    word_t;
     n   : in    reg_index_t) is
   begin
@@ -442,16 +417,13 @@ architecture behavior of core is
       hz  := hz;
     elsif n = r.e.fwb then
       dst := (others => '-');
-      hz  := HZ_ID;
+      hz  := '1';
     elsif n = r.fw1.wb then
       dst := (others => '-');
-      hz  := HZ_ID;
+      hz  := '1';
     elsif n = r.fw2.wb then
       dst := (others => '-');
-      hz  := HZ_ID;
-    elsif n = r.wbbuf.fwb then
-      dst := r.wbbuf.fdata;
-      hz  := hz;
+      hz  := '1';
     else
       dst := v;
       hz  := hz;
@@ -460,7 +432,7 @@ architecture behavior of core is
 
   procedure forward_data_fr_exe (
     dst : out   word_t;
-    hz  : inout hazard_t;
+    hz  : inout std_logic;
     v   : in    word_t;
     n   : in    reg_index_t) is
   begin
@@ -469,13 +441,10 @@ architecture behavior of core is
       hz  := hz;
     elsif n = r.fw1.wb then
       dst := (others => '-');
-      hz  := HZ_EXE;
+      hz  := '1';
     elsif n = r.fw2.wb then
       dst := (others => '-');
-      hz  := HZ_EXE;
-    elsif n = r.wbbuf.fwb then
-      dst := r.wbbuf.fdata;
-      hz  := hz;
+      hz  := '1';
     else
       dst := v;
       hz  := hz;
@@ -483,13 +452,15 @@ architecture behavior of core is
   end procedure forward_data_fr_exe;
 
   -----------------------------------------------------------------------------
-  -- debug
+  -- Debug
   -----------------------------------------------------------------------------
 
   type regfile_t is array (0 to 31) of word_t;
 
   type debug_t is record
-    hz        : hazard_t;
+    hz_id     : std_logic;
+    hz_exe    : std_logic;
+    hz_wb     : std_logic;
     ir        : regfile_t;
     ir_idx    : reg_index_t;
     ir_data   : word_t;
@@ -503,7 +474,9 @@ architecture behavior of core is
   end record debug_t;
 
   constant debuginfo_init : debug_t := (
-    hz        => HZ_FINE,
+    hz_id     => '0',
+    hz_exe    => '0',
+    hz_wb     => '0',
     ir        => (others => (others => '0')),
     ir_idx    => 31,
     ir_data   => (others => '-'),
@@ -543,23 +516,31 @@ begin
     variable ra     : reg_index_t;
     variable rb     : reg_index_t;
     variable rc     : reg_index_t;
-    variable fadata : word_t;
-    variable fbdata : word_t;
-    variable adata  : word_t;
-    variable bdata  : word_t;
     variable opfunc : unsigned(6 downto 0);
     variable fpfunc : unsigned(10 downto 0);
     variable bdisp  : unsigned(20 downto 0);
     variable cond   : word_t;
+    variable frad    : word_t;
+    variable frbd    : word_t;
+    variable rad     : word_t;
+    variable rbd     : word_t;
+
+    -- variables for execution
+    variable fadata : word_t;
+    variable fbdata : word_t;
+    variable adata  : word_t;
+    variable bdata  : word_t;
 
     -- variables for write back
-    variable ir_idx  : reg_index_t;
-    variable ir_data : word_t;
-    variable fr_idx  : reg_index_t;
-    variable fr_data : word_t;
+    variable wb_ir_idx  : reg_index_t;
+    variable wb_ir_data : word_t;
+    variable wb_fr_idx  : reg_index_t;
+    variable wb_fr_data : word_t;
 
     variable flush  : boolean;
-    variable hazard : hazard_t;
+    variable hz_id  : std_logic;
+    variable hz_exe : std_logic;
+    variable hz_wb  : std_logic;
 
   begin
     v       := r;
@@ -576,7 +557,49 @@ begin
              en   => '0',
              we   => '0');
 
-    hazard  := hz_fine;
+    hz_id  := '0';
+    hz_exe := '0';
+    hz_wb  := '0';
+
+    -------------------------------------------------------------------------
+    -- Write Back
+    -------------------------------------------------------------------------
+
+    case r.w.src is
+      when IWB_SRC_ALU =>
+        wb_ir_idx  := r.w.wb;
+        wb_ir_data := r.w.alu_out;
+      when IWB_SRC_MEM =>
+        if mmuo.miss = '0' then
+          wb_ir_idx  := r.w.wb;
+          wb_ir_data := mmuo.data;
+        else
+          wb_ir_idx  := 31;
+          wb_ir_data := (others => '-');
+          hz_wb      := '1';
+        end if;
+    end case;
+
+    iri.w <= wb_ir_idx;
+    iri.d <= wb_ir_data;
+
+    case r.fw2.src is
+      when FWB_SRC_FPU =>
+        wb_fr_idx  := r.fw2.wb;
+        wb_fr_data := fpuo.o;
+      when FWB_SRC_IR =>
+        if hz_wb = '0' then
+          wb_fr_idx  := r.fw2.wb;
+          wb_fr_data := wb_ir_data;
+        else
+          wb_fr_idx  := 31;
+          wb_fr_data := (others => '-');
+        end if;
+    end case;
+
+    fri.w <= wb_fr_idx;
+    fri.d <= wb_fr_data;
+
 
     -------------------------------------------------------------------------
     -- Instruction Fetch
@@ -634,7 +657,9 @@ begin
     v.d := (
       bubble => false,
       reset  => '0',
-      pc     => resize(nextpc, 32));
+      pc     => resize(nextpc, 32),
+      stall  => '0',
+      inst   => (others => '-'));
 
     -------------------------------------------------------------------------
     -- Instruction Decode
@@ -642,6 +667,8 @@ begin
 
     if r.d.reset = '1' then
       inst := unop;
+    elsif r.d.stall = '1' then
+      inst := r.d.inst;
     else
       inst := icacheo.data;
     end if;
@@ -654,6 +681,30 @@ begin
     iri.r2 <= rb;
     fri.r1 <= ra;
     fri.r2 <= rb;
+
+    if ra /= 31 and ra = wb_ir_idx then
+      rad := wb_ir_data;
+    else
+      rad := iro.d1;
+    end if;
+
+    if rb /= 31 and rb = wb_ir_idx then
+      rbd := wb_ir_data;
+    else
+      rbd := iro.d2;
+    end if;
+
+    if ra /= 31 and ra = wb_fr_idx then
+      frad := wb_fr_data;
+    else
+      frad := fro.d1;
+    end if;
+
+    if rb /= 31 and rb = wb_fr_idx then
+      frbd := wb_fr_data;
+    else
+      frbd := fro.d2;
+    end if;
     
     v.e.bubble := r.d.bubble;
     v.e.pc     := r.d.pc;
@@ -669,8 +720,8 @@ begin
       when "010" =>                                     -- operation format
         case opcode is
           when b"01_0000" | b"01_0001" | b"01_0010" =>  -- integer arithmetic
-            v.e.rav      := iro.d1;
-            v.e.rbv      := iro.d2;
+            v.e.rav      := rad;
+            v.e.rbv      := rbd;
             v.e.fwd_a    := FWD_IR;
             v.e.fpu_inst := FPU_INST_NOP;
             v.e.memop    := MEM_NOP;
@@ -690,8 +741,8 @@ begin
             v.e.alu_inst := decode_alu_inst(opcode, opfunc);
 
           when b"01_0110" =>            -- floating-point arithmetic
-            v.e.rav       := fro.d1;
-            v.e.rbv       := fro.d2;
+            v.e.rav       := frad;
+            v.e.rbv       := frbd;
             v.e.alu_input := ALU_INPUT_NONE;
             v.e.alu_inst  := ALU_INST_NOP;
             v.e.fwd_a     := FWD_FR;
@@ -705,8 +756,8 @@ begin
             v.e.fpu_inst := decode_fpu_inst(fpfunc);
 
           when b"01_0100" =>
-            v.e.rav   := iro.d1;
-            v.e.rbv   := fro.d2;
+            v.e.rav   := rad;
+            v.e.rbv   := frbd;
             v.e.fwd_a := FWD_IR;
             v.e.fwd_b := FWD_FR;
 
@@ -740,8 +791,8 @@ begin
         end case;
 
       when "100" =>                     -- memory format / fr
-        v.e.rav       := fro.d1;
-        v.e.rbv       := iro.d2;
+        v.e.rav       := frad;
+        v.e.rbv       := rbd;
         v.e.alu_input := ALU_INPUT_MEM;
         v.e.alu_inst  := ALU_INST_ADD;
         v.e.fpu_inst  := FPU_INST_NOP;
@@ -769,8 +820,8 @@ begin
         end case;
 
       when "011" =>                     -- JSR / FTOIS
-        v.e.rav       := fro.d1;
-        v.e.rbv       := iro.d2;
+        v.e.rav       := frad;
+        v.e.rbv       := rbd;
 
         case opcode is
           when b"01_1010" =>            -- JMP
@@ -784,7 +835,7 @@ begin
             v.e.fwb       := 31;
             v.e.fsrc      := FWB_SRC_FPU;
 
-            forward_data_ir_id(v.f.pc_jmp, hazard, v.e.rbv, rb);
+            forward_data_ir_id(v.f.pc_jmp, hz_id, v.e.rbv, rb);
             v.f.data := (others => '-');
             v.f.br_op := BRANCH_TRUE;
 
@@ -808,8 +859,8 @@ begin
         end case;
 
       when "001" | "101" =>     -- memory format
-        v.e.rav      := iro.d1;
-        v.e.rbv      := iro.d2;
+        v.e.rav      := rad;
+        v.e.rbv      := rbd;
 
         v.e.alu_inst := ALU_INST_ADD;
 
@@ -858,8 +909,8 @@ begin
         end case;
 
       when "111" =>                     -- integer conditional branch
-        v.e.rav       := iro.d1;
-        v.e.rbv       := iro.d2;
+        v.e.rav       := rad;
+        v.e.rbv       := rbd;
         v.e.fwd_a     := FWD_NONE;
         v.e.fwd_b     := FWD_NONE;
         v.e.isrc      := IWB_SRC_ALU;
@@ -872,7 +923,7 @@ begin
 
         bdisp        := inst(20 downto 0);
 
-        forward_data_ir_id(cond, hazard, v.e.rav, ra);  -- refer v
+        forward_data_ir_id(cond, hz_id, v.e.rav, ra);  -- refer v
         v.f.data     := cond;
         v.f.pc_jmp   := unsigned(signed(r.d.pc) + signed(bdisp));
 
@@ -885,7 +936,7 @@ begin
         end case;
 
       when "110" =>  -- unconditional branch / floating-point branch
-        v.e.rav   := fro.d1;
+        v.e.rav   := frad;
         v.e.rbv   := (others => '-');
         v.e.fwd_a := FWD_NONE;
         v.e.fwd_b := FWD_NONE;
@@ -910,7 +961,7 @@ begin
           v.e.alu_input := ALU_INPUT_NONE;
           v.e.iwb       := 31;
 
-          forward_data_fr_id(cond, hazard, v.e.rav, ra);  -- refer v
+          forward_data_fr_id(cond, hz_id, v.e.rav, ra);  -- refer v
           v.f.data     := cond;
           v.f.pc_jmp   := unsigned(signed(r.d.pc) + signed(bdisp));
 
@@ -945,10 +996,10 @@ begin
     -- Data Forwarding
     case r.e.fwd_a is
       when FWD_IR =>
-        forward_data_ir_exe(adata, hazard, r.e.rav, r.e.ra);
+        forward_data_ir_exe(adata, hz_exe, r.e.rav, r.e.ra);
         fadata := (others => '0');
       when FWD_FR =>
-        forward_data_fr_exe(adata, hazard, r.e.rav, r.e.ra);
+        forward_data_fr_exe(adata, hz_exe, r.e.rav, r.e.ra);
         fadata := adata;
       when FWD_NONE =>
         adata  := (others => '-');
@@ -957,10 +1008,10 @@ begin
 
     case r.e.fwd_b is
       when FWD_IR =>
-        forward_data_ir_exe(bdata, hazard, r.e.rbv, r.e.rb);
+        forward_data_ir_exe(bdata, hz_exe, r.e.rbv, r.e.rb);
         fbdata := (others => '0');
       when FWD_FR =>
-        forward_data_fr_exe(bdata, hazard, r.e.rbv, r.e.rb);
+        forward_data_fr_exe(bdata, hz_exe, r.e.rbv, r.e.rb);
         fbdata := bdata;
       when FWD_NONE =>
         bdata  := (others => '-');
@@ -1033,61 +1084,18 @@ begin
 
     v.fw2 := r.fw1;
 
-    -------------------------------------------------------------------------
-    -- Write Back
-    -------------------------------------------------------------------------
-
-    case r.w.src is
-      when IWB_SRC_ALU =>
-        ir_idx  := r.w.wb;
-        ir_data := r.w.alu_out;
-      when IWB_SRC_MEM =>
-        if mmuo.miss = '0' then
-          ir_idx  := r.w.wb;
-          ir_data := mmuo.data;
-        else
-          ir_idx  := 31;
-          ir_data := (others => '-');
-          hazard  := HZ_WB;
-        end if;
-    end case;
-
-    iri.w <= ir_idx;
-    iri.d <= ir_data;
-
-    v.wbbuf.iwb   := ir_idx;
-    v.wbbuf.idata := ir_data;
-
-    case r.fw2.src is
-      when FWB_SRC_FPU =>
-        fr_idx  := r.fw2.wb;
-        fr_data := fpuo.o;
-      when FWB_SRC_IR =>
-        if hazard /= HZ_WB then
-          fr_idx  := r.fw2.wb;
-          fr_data := ir_data;
-        else
-          fr_idx  := 31;
-          fr_data := (others => '-');
-        end if;
-    end case;
-
-    fri.w <= fr_idx;
-    fri.d <= fr_data;
-
-    v.wbbuf.fwb   := fr_idx;
-    v.wbbuf.fdata := fr_data;
-
 
     debuginfo.ir_bubble <= r.w.bubble;
     debuginfo.ir_pc     <= r.w.pc;
-    debuginfo.ir_idx    <= ir_idx;
-    debuginfo.ir_data   <= ir_data;
+    debuginfo.ir_idx    <= wb_ir_idx;
+    debuginfo.ir_data   <= wb_ir_data;
     debuginfo.fr_bubble <= r.fw2.bubble;
     debuginfo.fr_pc     <= r.fw2.pc;
-    debuginfo.fr_idx    <= fr_idx;
-    debuginfo.fr_data   <= fr_data;
-    debuginfo.hz        <= hazard;
+    debuginfo.fr_idx    <= wb_fr_idx;
+    debuginfo.fr_data   <= wb_fr_data;
+    debuginfo.hz_id     <= hz_id;
+    debuginfo.hz_exe    <= hz_exe;
+    debuginfo.hz_wb     <= hz_wb;
 
     ---------------------------------------------------------------------------
     -- Pipeline Flushing/Stalling
@@ -1098,44 +1106,42 @@ begin
       v.f.br_op := BRANCH_FALSE;
     end if;
 
-    case hazard is
-      when HZ_ID =>
-        if not flush then
-          v.f := r.f;
-          v.d := r.d;
-          v.e := e_bubble;
+    if hz_wb = '1' then
+      v.f       := r.f;
+      v.d       := r.d;
+      v.d.stall := '1';
+      v.d.inst  := inst;
+      v.e       := r.e;
+      v.e.rav   := adata;
+      v.e.rbv   := bdata;
+      v.m       := r.m;
+      v.w       := r.w;
+      v.fw1     := r.fw1;
+      v.fw2     := r.fw2;
 
-          icachev.addr := r.f.pc_now(12 downto 0);
-        end if;
+      fpuv.stall   := '1';
+      mmuv.en      := '0';
 
-      when HZ_EXE =>
-        v.f     := r.f;
-        v.d     := r.d;
-        v.e     := r.e;
-        v.e.rav := adata;
-        v.e.rbv := bdata;
-        v.m     := m_bubble;
-        v.fw1   := fw_bubble;
+    elsif hz_exe = '1' then
+      v.f       := r.f;
+      v.d       := r.d;
+      v.d.stall := '1';
+      v.d.inst  := inst;
+      v.e       := r.e;
+      v.e.rav   := adata;
+      v.e.rbv   := bdata;
+      v.m       := m_bubble;
+      v.fw1     := fw_bubble;
 
-        icachev.addr := r.f.pc_now(12 downto 0);
-
-      when HZ_WB =>
-        v.f     := r.f;
-        v.d     := r.d;
-        v.e     := r.e;
-        v.e.rav := adata;
-        v.e.rbv := bdata;
-        v.m     := r.m;
-        v.w     := r.w;
-        v.fw1   := r.fw1;
-        v.fw2   := r.fw2;
-
-        icachev.addr := r.f.pc_now(12 downto 0);
-        fpuv.stall   := '1';
-        mmuv.en      := '0';
-
-      when others => null;
-    end case;
+    elsif hz_id = '1' then
+      if not flush then
+        v.f       := r.f;
+        v.d       := r.d;
+        v.d.stall := '1';
+        v.d.inst  := inst;
+        v.e       := e_bubble;
+      end if;
+    end if;
 
     mmui    <= mmuv;
     icachei <= icachev;
@@ -1154,7 +1160,7 @@ begin
 
       -- register dump
       if dump_ir then
-        if not debuginfo.ir_bubble and debuginfo.hz /= HZ_WB then
+        if not debuginfo.ir_bubble and debuginfo.hz_wb = '0' then
           write(l, string'("PC : "));
           hwrite(l, std_logic_vector(debuginfo.ir_pc));
           writeline(ir_dump, l);
@@ -1174,7 +1180,7 @@ begin
       end if;
 
       if dump_fr then
-        if not debuginfo.fr_bubble and debuginfo.hz /= HZ_WB then
+        if not debuginfo.fr_bubble and debuginfo.hz_wb = '0' then
           write(l, string'("PC : "));
           hwrite(l, std_logic_vector(debuginfo.fr_pc));
           writeline(fr_dump, l);
