@@ -458,6 +458,7 @@ architecture behavior of core is
   type regfile_t is array (0 to 31) of word_t;
 
   type debug_t is record
+    count     : unsigned(31 downto 0);
     hz_id     : std_logic;
     hz_exe    : std_logic;
     hz_wb     : std_logic;
@@ -474,6 +475,7 @@ architecture behavior of core is
   end record debug_t;
 
   constant debuginfo_init : debug_t := (
+    count     => (others => '0'),
     hz_id     => '0',
     hz_exe    => '0',
     hz_wb     => '0',
@@ -1132,9 +1134,9 @@ begin
       elsif r.e.fwd_a = FWD_FR and wb_fr_idx /= 31 and wb_fr_idx = r.e.ra then
         v.e.rav := wb_fr_data;
       end if;
-      if r.e.fwd_b = FWD_IR and wb_fr_idx /= 31 and wb_ir_idx = r.e.rb then
+      if r.e.fwd_b = FWD_IR and wb_ir_idx /= 31 and wb_ir_idx = r.e.rb then
         v.e.rbv := wb_ir_data;
-      elsif r.e.fwd_b = FWD_FR and wb_fr_idx = r.e.rb then
+      elsif r.e.fwd_b = FWD_FR and wb_fr_idx /= 31 and wb_fr_idx = r.e.rb then
         v.e.rbv := wb_fr_data;
       end if;
 
@@ -1162,6 +1164,11 @@ begin
       r <= latch_init;
     elsif rising_edge(clk) then
       r <= rin;
+
+      if (not debuginfo.ir_bubble and debuginfo.hz_wb = '0')
+        or (not debuginfo.fr_bubble and debuginfo.hz_wb = '0') then
+        debuginfo.count <= debuginfo.count + 1;
+      end if;
 
       -- register dump
       if dump_ir then
