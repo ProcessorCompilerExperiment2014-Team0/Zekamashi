@@ -1056,8 +1056,6 @@ begin
     -- Memory
     -------------------------------------------------------------------------
 
-    assert r.m.pc /= x"00001a82" report "hi, zeptometer!" severity note;
-
     case r.m.memop is
       when MEM_LOAD =>
         mmuv := (addr => r.m.alu_out(20 downto 0),
@@ -1112,8 +1110,6 @@ begin
       v.d.stall := '1';
       v.d.inst  := inst;
       v.e       := r.e;
-      v.e.rav   := adata;
-      v.e.rbv   := bdata;
       v.m       := r.m;
       v.w       := r.w;
       v.fw1     := r.fw1;
@@ -1128,10 +1124,19 @@ begin
       v.d.stall := '1';
       v.d.inst  := inst;
       v.e       := r.e;
-      v.e.rav   := adata;
-      v.e.rbv   := bdata;
       v.m       := m_bubble;
       v.fw1     := fw_bubble;
+
+      if r.e.fwd_a = FWD_IR and wb_ir_idx /= 31 and wb_ir_idx = r.e.ra then
+        v.e.rav := wb_ir_data;
+      elsif r.e.fwd_a = FWD_FR and wb_fr_idx /= 31 and wb_fr_idx = r.e.ra then
+        v.e.rav := wb_fr_data;
+      end if;
+      if r.e.fwd_b = FWD_IR and wb_fr_idx /= 31 and wb_ir_idx = r.e.rb then
+        v.e.rbv := wb_ir_data;
+      elsif r.e.fwd_b = FWD_FR and wb_fr_idx = r.e.rb then
+        v.e.rbv := wb_fr_data;
+      end if;
 
     elsif hz_id = '1' then
       if not flush then
