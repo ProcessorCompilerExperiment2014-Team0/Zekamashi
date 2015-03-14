@@ -48,7 +48,7 @@ end entity cpu;
 architecture rtl of cpu is
 
   -- constant wtime : unsigned(15 downto 0) := x"035B";
-  constant wtime : unsigned(15 downto 0) := x"0394";
+  constant wtime : unsigned(15 downto 0) := x"03ba";
 
   signal clk, iclk, dcm_clk1, dcm_clkfd, dcm_clkfx: std_logic;
 
@@ -84,8 +84,8 @@ begin
 
   dcm : dcm_base
     generic map (
-      clkfx_divide   => 5,
-      clkfx_multiply => 8)
+      clkfx_divide   => 3,
+      clkfx_multiply => 5)
     port map (
       rst      => not xrst,
       clkin    => iclk,
