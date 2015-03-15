@@ -49,6 +49,7 @@ entity cpu-midi is
     midi_rx : in std_logic;
 
     -- AUDIO
+    audio_xrs : out std_logic;
     audio_a   : out std_logic;
     audio_xcs : out std_logic;
     audio_xwr : out std_logic;
@@ -251,6 +252,7 @@ begin
     port map (
       clk  => clk,
       xrst => xrst,
+      xrs  => audio_xrs,
       a    => audio_a,
       xwr  => audio_xwr,
       xcs  => audio_xcs,

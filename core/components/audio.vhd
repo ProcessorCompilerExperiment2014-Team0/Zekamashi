@@ -30,10 +30,11 @@ package audio_p is
       clk  : in  std_logic;
       xrst : in  std_logic;
 
-      a    : out std_logic;
-      xcs  : out std_logic;
-      xwr  : out std_logic;
-      d    : out std_logic_vector(7 downto 0);
+      xrs : out std_logic;
+      a   : out std_logic;
+      xcs : out std_logic;
+      xwr : out std_logic;
+      d   : out std_logic_vector(7 downto 0);
 
       din  : in  audio_in_t;
       dout : out audio_out_t);
@@ -58,12 +59,13 @@ entity audio is
   port (
     clk  : in  std_logic;
     xrst : in  std_logic;
-    din  : in  audio_in_t;
-    dout : out audio_out_t;
-    xwr  : out std_logic;
-    xcs  : out std_logic;
+    xrs  : out std_logic;
     a    : out std_logic;
-    d    : out std_logic_vector(7 downto 0));
+    xcs  : out std_logic;
+    xwr  : out std_logic;
+    d    : out std_logic_vector(7 downto 0);
+    din  : in  audio_in_t;
+    dout : out audio_out_t);
 end entity audio;
 
 architecture behavior of audio is
@@ -140,9 +142,11 @@ begin
   process (clk, xrst) is
   begin
     if xrst = '0' then
-      r <= latch_init;
+      r   <= latch_init;
+      xrs <= '0';
     elsif rising_edge(clk) then
       r <= rin;
+      xrs <= '1';
     end if;
   end process;
 
