@@ -27,12 +27,14 @@ package audio_p is
     port (
       clk  : in  std_logic;
       xrst : in  std_logic;
-      din  : in  audio_in_t;
-      dout : out audio_out_t;
+
       a    : out std_logic;
-      xwr  : out std_logic;
       xcs  : out std_logic;
-      d    : out std_logic_vector(7 downto 0));
+      xwr  : out std_logic;
+      d    : out std_logic_vector(7 downto 0);
+
+      din  : in  audio_in_t;
+      dout : out audio_out_t);
   end component audio;
 
 end package audio_p;
