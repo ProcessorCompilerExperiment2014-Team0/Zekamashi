@@ -1,4 +1,19 @@
 -------------------------------------------------------------------------------
+-- System Bus
+--
+--    Mapping                           31                              0
+--    0x0----- : IO Data Cache           dddddddddddddddddddddddddddddddd
+--    0x100000 : I  Serial input ready   -------------------------------d
+--    0x100001 : I  Serial input data    ------------------------dddddddd
+--    0x100002 : I  Serial output ready  -------------------------------d
+--    0x100003 :  O Serial output data   ------------------------dddddddd
+--    0x100004 : I  Audio ready          -------------------------------d
+--    0x100005 :  O Audio addr/data      --------------------aaaadddddddd
+--    0x100006 : I  MIDI ready           -------------------------------d
+--    0x100007 : I  MIDI data            ------------------------dddddddd
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
 -- Declaration
 -------------------------------------------------------------------------------
 
@@ -7,6 +22,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
+use work.audio_p.all;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.datacache_p.all;
@@ -35,6 +51,10 @@ package mmu_p is
       uio     : in  u232c_in_out_t;
       uoi     : out u232c_out_in_t;
       uoo     : in  u232c_out_out_t;
+      audioi  : out audio_out_t;
+      audioo  : in  audio_in_t;
+      midii   : out u232c_in_in_t;
+      midio   : in  u232c_in_out_t;
       dcachei : out datacache_in_t;
       dcacheo : in  datacache_out_t;
       icachei : out instcache_write_in_t;
@@ -55,6 +75,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
+use work.audio_p.all;
 use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.datacache_p.all;
@@ -70,6 +91,10 @@ entity mmu is
     uio     : in  u232c_in_out_t;
     uoi     : out u232c_out_in_t;
     uoo     : in  u232c_out_out_t;
+    audioi  : out audio_out_t;
+    audioo  : in  audio_in_t;
+    midii   : out u232c_in_in_t;
+    midio   : in  u232c_in_out_t;
     dcachei : out datacache_in_t;
     dcacheo : in  datacache_out_t;
     icachei : out instcache_write_in_t;
@@ -131,6 +156,12 @@ begin
     uov := (
       data => (others => '-'),
       go   => '0');
+    audiov := (
+      en   => '0',
+      addr => (others => '-'),
+      data => (others => '-'));
+    midiv := (
+      rden => '0');
     dcachev := (
       addr => (others => '-'),
       data => (others => '-'),
@@ -169,12 +200,17 @@ begin
 
             if din.we = '1' then
               case addr19 is
-                when x"00000" | x"00001" | x"00002" =>
+                when x"00000" | x"00001" | x"00002" | x"00004" | x"000006" | x"000007" =>
                   assert false report "cannot write to this address" severity error;
                 when x"00003" =>
                   uov.data := din.data(7 downto 0);
                   uov.go   := '1';
                   v.src    := SRC_NOPE;
+                when x"00005" =>
+                  audiov.en   := '1';
+                  audiov.addr := din.data(11 downto 8);
+                  audiov.data := din.data(7 downto 0);
+                  v.src       := SRC_NOPE;
                 when others => null;
               end case;
             else
@@ -190,7 +226,18 @@ begin
                   v.data := (0      => not uoo.busy,
                              others => '0');
                   v.src := SRC_DATA;
-                when x"00003" =>
+                when x"00004" =>
+                  v.data := (0      => not audioo.busy,
+                             others => '0');
+                  v.src := SRC_DATA;
+                when x"00006" =>
+                  v.data := (0      => not midio.busy,
+                             others => '0');
+                  v.src := SRC_DATA;
+                when x"00007" =>
+                  midiv.rden := '1';
+                  v.src      := SRC_MIDI;
+                when x"00003" | x"00005" =>
                   assert false report "cannot read from this address" severity error;
                 when others => null;
               end case;
@@ -234,6 +281,8 @@ begin
     rin     <= v;
     uii     <= uiv;
     uoi     <= uov;
+    auudioi <= audiov;
+    midii   <= midiv;
     dcachei <= dcachev;
     icachei <= icachev;
     dout    <= dv;
