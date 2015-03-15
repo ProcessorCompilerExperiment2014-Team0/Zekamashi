@@ -246,6 +246,8 @@ begin
       dout => uoo);
 
   audioc : audio
+    generic map (
+      interval => 3)
     port map (
       clk  => clk,
       xrst => xrst,

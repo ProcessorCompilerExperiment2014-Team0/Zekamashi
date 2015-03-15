@@ -24,6 +24,8 @@ package audio_p is
   end record audio_out_t;
 
   component audio is
+    generic (
+      interval : integer);
     port (
       clk  : in  std_logic;
       xrst : in  std_logic;
@@ -51,6 +53,8 @@ library work;
 use work.audio_p.all;
 
 entity audio is
+  generic (
+    interval : integer := 3);
   port (
     clk  : in  std_logic;
     xrst : in  std_logic;
@@ -64,103 +68,66 @@ end entity audio;
 
 architecture behavior of audio is
 
+  constant n_step   : integer                   := 7;
+  constant tim_a    : unsigned(0 to n_step - 1) := "1000111";
+  constant tim_cs   : unsigned(0 to n_step - 1) := "1001001";
+  constant tim_wr   : unsigned(0 to n_step - 1) := "1001001";
+  constant tim_addr : unsigned(0 to n_step - 1) := "0010000";
+  constant tim_data : unsigned(0 to n_step - 1) := "0000010";
+
   type latch_t is record
     addr : unsigned(3 downto 0);
     data : unsigned(7 downto 0);
-    cnt  : integer range 0 to 12;
+    idx  : integer range 0 to n_step - 1;
+    cnt  : integer range 0 to interval - 1;
   end record latch_t;
 
   constant latch_init : latch_t := (
     addr => (others => '-'),
     data => (others => '-'),
+    idx  => 0,
     cnt  => 0);
 
   signal r, rin : latch_t := latch_init;
 
 begin
 
-  process (r, en, addr, data) is
+  process (r, din) is
     variable v  : latch_t;
     variable dv : audio_out_t;
   begin
     v     := r;
-    v.cnt := r.cnt + 1;;
 
-    case r.cnt is
-      when 0 =>
-        if en = 1 then
-          v.cnt  := 1;
-          v.addr := din.addr;
-          v.data := din.data;
-        end if;
+    if r.cnt /= 0 then
+      v.cnt := r.cnt - 1;
+    else
+      v.cnt := interval - 1;
+      v.idx := r.idx + 1;;
 
-        a   <= '1';
-        xcs <= '1';
-        xwr <= '1';
-        d   <= (others => '-');
-      when 1 =>
-        a   <= '0';
-        xcs <= '1';
-        xwr <= '1';
-        d   <= (others => '-');
-      when 2 =>
-        a   <= '0';
-        xcs <= '0';
-        xwr <= '0';
-        d   <= "0000" & r.addr;
-      when 3 =>
-        a   <= '0';
-        xcs <= '0';
-        xwr <= '0';
-        d   <= "0000" & r.addr;
-      when 4 =>
-        a   <= '0';
-        xcs <= '0';
-        xwr <= '0';
-        d   <= "0000" & r.addr;
-      when 5 =>
-        a   <= '0';
-        xcs <= '1';
-        xwr <= '0';
-        d   <= "0000" & r.addr;
-      when 6 =>
-        a   <= '1';
-        xcs <= '1';
-        xwr <= '1';
-        d   <= (others => '-');
-      when 7 =>
-        a   <= '1';
-        xcs <= '1';
-        xwr <= '1';
-        d   <= (others => '-');
-      when 8 =>
-        a   <= '1';
-        xcs <= '1';
-        xwr <= '1';
-        d   <= (others => '-');
-      when 9 =>
-        a   <= '1';
-        xcs <= '0';
-        xwr <= '0';
-        d   <= r.data;
-      when 10 =>
-        a   <= '1';
-        xcs <= '0';
-        xwr <= '0';
-        d   <= r.data;
-      when 11 =>
-        a   <= '1';
-        xcs <= '0';
-        xwr <= '0';
-        d   <= r.data;
-      when 12 =>
-        v.cnt := 0;
+      case r.cnt is
+        when 0 =>
+          if din.en = '1' then
+            v.idx  := 1;
+            v.addr := din.addr;
+            v.data := din.data;
+          end if;
+        when n_step - 1 =>
+          v.idx := 0;
+        when others =>
+          v.idx := r.idx + 1;
+      end case;
+    end if;
 
-        a   <= '1';
-        xcs <= '1';
-        xwr <= '0';
-        d   <= r.data;
-    end case;
+    a   <= tim_a(r.idx);
+    xcs <= tim_xcs(r.idx);
+    xwr <= tim_xwr(r.idx);
+    if tim_addr(r.idx) = '1' then
+      d <= "0000" & r.addr;
+    elsif tim_data(r.idx) = '1' then
+      d <= r.data;
+    else
+      d <= x"00";
+    end if;
 
     if r.cnt = 0 then
       dout.busy <= '0';
