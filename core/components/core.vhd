@@ -127,11 +127,15 @@ architecture behavior of core is
   -----------------------------------------------------------------------------
 
   type latch_if_t is record
-    pc_now : word_t;
-    pc_inc : word_t;
-    pc_jmp : word_t;
-    br_op  : branch_op_t;
-    data   : word_t;
+    pc_now          : word_t;
+    pc_inc          : word_t;
+    pc_jmp          : word_t;
+    br_op           : branch_op_t;
+    cond            : word_t;
+    -- forwarded values
+    fwd_pc_jmp      : std_logic;
+    fwd_cond        : std_logic;
+    fwd_data        : word_t;
   end record latch_if_t;
 
   type latch_id_t is record
@@ -192,11 +196,14 @@ architecture behavior of core is
   -- bubbles
 
   constant f_bubble : latch_if_t := (
-    pc_now => (others => '0'),
-    pc_inc => (others => '0'),
-    pc_jmp => (others => '-'),
-    br_op  => BRANCH_FALSE,
-    data   => (others => '-'));
+    pc_now     => (others => '0'),
+    pc_inc     => (others => '0'),
+    pc_jmp     => (others => '-'),
+    br_op      => BRANCH_FALSE,
+    cond       => (others => '-'),
+    fwd_pc_jmp => '-',
+    fwd_cond   => '-',
+    fwd_data   => (others => '-')) ;
 
   constant d_bubble : latch_id_t := (
     bubble   => true,
@@ -338,17 +345,28 @@ architecture behavior of core is
   ---------------------------------------------------------------------------
 
   procedure forward_data_ir_id (
-    dst : out   word_t;
-    hz  : inout std_logic;
-    v   : in    word_t;
-    n   : in    reg_index_t) is
+    dst   : out   word_t;
+    hz    : inout std_logic;
+    later : out   std_logic;
+    v     : in    word_t;
+    n     : in    reg_index_t) is
   begin
+    hz    := '0';
+    later := '0';
+
     if n = 31 then
       dst := to_unsigned(0, 32);
       hz  := hz;
     elsif n = r.e.iwb then
-      dst := (others => '-');
-      hz  := '1';
+      case r.e.isrc is
+        when IWB_SRC_ALU =>
+          dst       := (others => '-');
+          later     := '1';
+          hz        := hz;
+        when IWB_SRC_MEM =>
+          dst := (others => '-');
+          hz  := '1';
+      end case;
     elsif n = r.m.wb then
       case r.m.src is
         when IWB_SRC_ALU =>
@@ -458,6 +476,7 @@ architecture behavior of core is
   type regfile_t is array (0 to 31) of word_t;
 
   type debug_t is record
+    count     : unsigned(31 downto 0);
     hz_id     : std_logic;
     hz_exe    : std_logic;
     hz_wb     : std_logic;
@@ -474,6 +493,7 @@ architecture behavior of core is
   end record debug_t;
 
   constant debuginfo_init : debug_t := (
+    count     => (others => '0'),
     hz_id     => '0',
     hz_exe    => '0',
     hz_wb     => '0',
@@ -507,6 +527,7 @@ begin
     variable mmuv    : mmu_in_t;
 
     -- variables for instruction fetch
+    variable br_cond      : word_t;
     variable pcinc, pcjmp : unsigned(12 downto 0);
     variable nextpc       : unsigned(12 downto 0);
 
@@ -606,7 +627,17 @@ begin
     -------------------------------------------------------------------------
 
     pcinc := r.f.pc_inc(12 downto 0);
-    pcjmp := r.f.pc_jmp(12 downto 0);
+    if r.f.fwd_pc_jmp = '1' then
+      pcjmp := r.f.fwd_data(12 downto 0);
+    else
+      pcjmp := r.f.pc_jmp(12 downto 0);
+    end if;
+    if r.f.fwd_cond = '1' then
+      br_cond := r.f.fwd_data;
+    else
+      br_cond := r.f.cond;
+    end if;
+
     flush := false;
 
     case r.f.br_op is
@@ -616,28 +647,28 @@ begin
       when BRANCH_FALSE =>
         nextpc := pcinc;
       when BRANCH_EQ =>
-        if r.f.data = 0 then
+        if br_cond = 0 then
           flush  := true;
           nextpc := pcjmp;
         else
           nextpc := pcinc;
         end if;
       when BRANCH_NE =>
-        if r.f.data /= 0 then
+        if br_cond /= 0 then
           flush  := true;
           nextpc := pcjmp;
         else
           nextpc := pcinc;
         end if;
       when BRANCH_FEQ =>
-        if r.f.data(30 downto 0) = 0 then
+        if br_cond(30 downto 0) = 0 then
           flush  := true;
           nextpc := pcjmp;
         else
           nextpc := pcinc;
         end if;
       when BRANCH_FNE =>
-        if r.f.data(30 downto 0) /= 0 then
+        if br_cond(30 downto 0) /= 0 then
           flush  := true;
           nextpc := pcjmp;
         else
@@ -648,11 +679,14 @@ begin
     icachev.addr := nextpc;
 
     v.f := (
-      pc_now => resize(nextpc, 32),
-      pc_inc => resize(nextpc, 32) + 1,
-      pc_jmp => (others => '-'),        -- these properties
-      br_op  => BRANCH_FALSE,           -- will may be set at
-      data   => (others => '-'));       -- instruction decode
+      pc_now     => resize(nextpc, 32),
+      pc_inc     => resize(nextpc, 32) + 1,
+      pc_jmp     => (others => '-'),    -- these properties
+      br_op      => BRANCH_FALSE,       -- will may be set at
+      cond       => (others => '-'),
+      fwd_pc_jmp => '0',
+      fwd_cond   => '0',
+      fwd_data   => aluo.o);         -- instruction decode
 
     v.d := (
       bubble => false,
@@ -835,8 +869,8 @@ begin
             v.e.fwb       := 31;
             v.e.fsrc      := FWB_SRC_FPU;
 
-            forward_data_ir_id(v.f.pc_jmp, hz_id, v.e.rbv, rb);
-            v.f.data := (others => '-');
+            forward_data_ir_id(v.f.pc_jmp, hz_id, v.f.fwd_pc_jmp, v.e.rbv, rb);
+            v.f.cond  := (others => '-');
             v.f.br_op := BRANCH_TRUE;
 
           when b"01_1100" =>
@@ -923,8 +957,8 @@ begin
 
         bdisp        := inst(20 downto 0);
 
-        forward_data_ir_id(cond, hz_id, v.e.rav, ra);  -- refer v
-        v.f.data     := cond;
+        forward_data_ir_id(cond, hz_id, v.f.fwd_cond, v.e.rav, ra);  -- refer v
+        v.f.cond     := cond;
         v.f.pc_jmp   := unsigned(signed(r.d.pc) + signed(bdisp));
 
         case opcode is
@@ -952,7 +986,7 @@ begin
           v.e.alu_input := ALU_INPUT_PC;
           v.e.iwb       := ra;
 
-          v.f.data   := (others => '-');
+          v.f.cond   := (others => '-');
           v.f.pc_jmp := unsigned(signed(r.d.pc) + signed(bdisp));
           v.f.br_op  := BRANCH_TRUE;
         else
@@ -962,7 +996,7 @@ begin
           v.e.iwb       := 31;
 
           forward_data_fr_id(cond, hz_id, v.e.rav, ra);  -- refer v
-          v.f.data     := cond;
+          v.f.cond     := cond;
           v.f.pc_jmp   := unsigned(signed(r.d.pc) + signed(bdisp));
 
           case opcode is
@@ -1132,9 +1166,9 @@ begin
       elsif r.e.fwd_a = FWD_FR and wb_fr_idx /= 31 and wb_fr_idx = r.e.ra then
         v.e.rav := wb_fr_data;
       end if;
-      if r.e.fwd_b = FWD_IR and wb_fr_idx /= 31 and wb_ir_idx = r.e.rb then
+      if r.e.fwd_b = FWD_IR and wb_ir_idx /= 31 and wb_ir_idx = r.e.rb then
         v.e.rbv := wb_ir_data;
-      elsif r.e.fwd_b = FWD_FR and wb_fr_idx = r.e.rb then
+      elsif r.e.fwd_b = FWD_FR and wb_fr_idx /= 31 and wb_fr_idx = r.e.rb then
         v.e.rbv := wb_fr_data;
       end if;
 
@@ -1162,6 +1196,11 @@ begin
       r <= latch_init;
     elsif rising_edge(clk) then
       r <= rin;
+
+      if (not debuginfo.ir_bubble and debuginfo.hz_wb = '0')
+        or (not debuginfo.fr_bubble and debuginfo.hz_wb = '0') then
+        debuginfo.count <= debuginfo.count + 1;
+      end if;
 
       -- register dump
       if dump_ir then
