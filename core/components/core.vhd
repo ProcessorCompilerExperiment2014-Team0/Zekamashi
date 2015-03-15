@@ -364,8 +364,8 @@ architecture behavior of core is
           dst := r.w.alu_out;
           hz  := hz;
         when IWB_SRC_MEM =>
-          dst := mmuo.data;
-          hz  := hz;
+          dst := (others => '-');
+          hz  := '1';
       end case;
     else
       dst := v;
@@ -397,8 +397,8 @@ architecture behavior of core is
           dst := r.w.alu_out;
           hz  := hz;
         when IWB_SRC_MEM =>
-          dst := mmuo.data;
-          hz  := hz;
+          dst := (others => '-');
+          hz  := '1';
       end case;
     else
       dst := v;
