@@ -436,6 +436,19 @@ void core::mem_st_lw(uint32_t &src, int addr) {
       wt_data.u = src & 0xFFu;
       cout << (char)wt_data.u;
       break;
+    case ADDR_AD_STATUS:
+      cerr << "WARNING: audio status register is read-only\n";
+      break;
+    case ADDR_AD_DATA:
+      cerr << "write to audio: " << dmanip << (src >> 8u)
+           << " <- " << dmanip << (src & 0xFFu) << endl;
+      break;
+    case ADDR_MD_STATUS:
+      cerr << "WARNING: midi status register is read-only\n";
+      break;
+    case ADDR_MD_DATA:
+      cerr << "WARNING: midi data register is read-only\n";
+      break;
     }
     return;
   }
@@ -484,6 +497,18 @@ void core::mem_ld_lw(uint32_t &dst, int addr) {
       break;
     case ADDR_WT_DATA:
       dst = wt_data.u;
+      break;
+    case ADDR_AD_STATUS:
+      dst = 1u;
+      break;
+    case ADDR_AD_DATA:
+      dst = 0x1234;
+      break;
+    case ADDR_MD_STATUS:
+      dst = 1u;
+      break;
+    case ADDR_MD_DATA:
+      dst = getchar();
       break;
     }
     return;
