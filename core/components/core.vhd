@@ -106,13 +106,9 @@ architecture behavior of core is
 
   type memop_t is (
     MEM_LOAD,
-    MEM_STORE,
+    MEM_ISTORE,
+    MEM_FSTORE,
     MEM_NOP);
-
-  type fwd_mode_t is (
-    FWD_IR,
-    FWD_FR,
-    FWD_NONE);
 
   type iwb_src_t is (
     IWB_SRC_FR,
@@ -153,7 +149,7 @@ architecture behavior of core is
     rbv       : word_t;
     ra        : reg_index_t;
     rb        : reg_index_t;
-    fwd_mode  : unsigned(3 downto 0);   -- (ra, rb, fa, fb)
+    fwd_mode  : unsigned(0 to 3);   -- (ra, rb, fa, fb)
     alu_input : alu_input_t;
     alu_inst  : alu_inst_t;
     fpu_inst  : fpu_inst_t;
@@ -165,14 +161,15 @@ architecture behavior of core is
   end record latch_exe_t;
 
   type latch_mem_t is record
-    bubble     : boolean;
-    pc         : word_t;
-    wb         : reg_index_t;
-    src        : iwb_src_t;
-    memop      : memop_t;
-    alu_out    : word_t;
-    fr_out     : word_t;
-    store_data : word_t;
+    bubble       : boolean;
+    pc           : word_t;
+    wb           : reg_index_t;
+    src          : iwb_src_t;
+    memop        : memop_t;
+    alu_out      : word_t;
+    fr_out       : word_t;
+    i_store_data : word_t;
+    f_store_data : word_t;
   end record latch_mem_t;
 
   type latch_wb_t is record
@@ -233,7 +230,8 @@ architecture behavior of core is
     memop      => MEM_NOP,
     alu_out    => (others => '-'),
     fr_out     => (others => '-'),
-    store_data => (others => '-'));
+    i_store_data => (others => '-'),
+    f_store_data => (others => '-'));
 
   constant w_bubble : latch_wb_t := (
     bubble  => true,
@@ -473,37 +471,39 @@ architecture behavior of core is
   type regfile_t is array (0 to 31) of word_t;
 
   type debug_t is record
-    count     : unsigned(31 downto 0);
-    hz_id     : std_logic;
-    hz_exe    : std_logic;
-    hz_wb     : std_logic;
-    ir        : regfile_t;
-    ir_idx    : reg_index_t;
-    ir_data   : word_t;
-    ir_bubble : boolean;
-    ir_pc     : word_t;
-    fr        : regfile_t;
-    fr_idx    : reg_index_t;
-    fr_data   : word_t;
-    fr_bubble : boolean;
-    fr_pc     : word_t;
+    count      : unsigned(31 downto 0);
+    hz_id      : std_logic;
+    hz_exe     : std_logic;
+    hz_wb      : std_logic;
+    hz_exe_arr : unsigned(0 to 3);
+    ir         : regfile_t;
+    ir_idx     : reg_index_t;
+    ir_data    : word_t;
+    ir_bubble  : boolean;
+    ir_pc      : word_t;
+    fr         : regfile_t;
+    fr_idx     : reg_index_t;
+    fr_data    : word_t;
+    fr_bubble  : boolean;
+    fr_pc      : word_t;
   end record debug_t;
 
   constant debuginfo_init : debug_t := (
-    count     => (others => '0'),
-    hz_id     => '0',
-    hz_exe    => '0',
-    hz_wb     => '0',
-    ir        => (others => (others => '0')),
-    ir_idx    => 31,
-    ir_data   => (others => '-'),
-    ir_bubble => true,
-    ir_pc     => (others => '1'),
-    fr        => (others => (others => '0')),
-    fr_idx    => 31,
-    fr_data   => (others => '-'),
-    fr_bubble => true,
-    fr_pc     => (others => '1'));
+    count      => (others => '0'),
+    hz_id      => '0',
+    hz_exe     => '0',
+    hz_wb      => '0',
+    hz_exe_arr => "0000",
+    ir         => (others => (others => '0')),
+    ir_idx     => 31,
+    ir_data    => (others => '-'),
+    ir_bubble  => true,
+    ir_pc      => (others => '1'),
+    fr         => (others => (others => '0')),
+    fr_idx     => 31,
+    fr_data    => (others => '-'),
+    fr_bubble  => true,
+    fr_pc      => (others => '1'));
 
   signal debuginfo : debug_t := debuginfo_init;
 
@@ -543,7 +543,7 @@ begin
     variable rbd     : word_t;
 
     -- variables for execution
-    variable hz_exe_arr : unsigned(3 downto 0);
+    variable hz_exe_arr : unsigned(0 to 3);
     variable fadata     : word_t;
     variable fbdata     : word_t;
     variable adata      : word_t;
@@ -836,7 +836,7 @@ begin
           when b"10_0110" =>            -- STS
             v.e.fwd_mode := "0110";
             --f v.e.fwd_a := FWD_FR;
-            v.e.memop    := MEM_STORE;
+            v.e.memop    := MEM_FSTORE;
             v.e.iwb      := 31;
             v.e.isrc     := IWB_SRC_MEM;
             v.e.fwb      := 31;
@@ -932,7 +932,7 @@ begin
             v.e.fwd_mode  := "1100";
             --f v.e.fwd_a     := FWD_IR;
             --f v.e.fwd_b     := FWD_IR;
-            v.e.memop     := MEM_STORE;
+            v.e.memop     := MEM_ISTORE;
             v.e.iwb       := 31;
             v.e.isrc      := IWB_SRC_MEM;
             v.e.fwb       := 31;
@@ -1030,9 +1030,9 @@ begin
 
     -- Data Forwarding
     forward_data_ir_exe(adata,  hz_exe_arr(0), r.e.rav, r.e.ra);
-    forward_data_ir_exe(bdata,  hz_exe_arr(1), r.e.rav, r.e.ra);
+    forward_data_ir_exe(bdata,  hz_exe_arr(1), r.e.rbv, r.e.rb);
     forward_data_fr_exe(fadata, hz_exe_arr(2), r.e.rav, r.e.ra);
-    forward_data_fr_exe(fbdata, hz_exe_arr(3), r.e.rav, r.e.ra);
+    forward_data_fr_exe(fbdata, hz_exe_arr(3), r.e.rbv, r.e.rb);
 
     if (hz_exe_arr and r.e.fwd_mode) = 0 then
       hz_exe := '0';
@@ -1074,7 +1074,8 @@ begin
     fpuv.i2   := fbdata;
 
     -- Save data to write memory
-    v.m.store_data := adata;
+    v.m.i_store_data := adata;
+    v.m.f_store_data := fadata;
 
     -------------------------------------------------------------------------
     -- Memory
@@ -1086,9 +1087,14 @@ begin
                  data => (others => '-'),
                  en   => '1',
                  we   => '0');
-      when MEM_STORE =>
+      when MEM_ISTORE =>
         mmuv := (addr => r.m.alu_out(20 downto 0),
-                 data => r.m.store_data,
+                 data => r.m.i_store_data,
+                 en   => '1',
+                 we   => '1');
+      when MEM_FSTORE =>
+        mmuv := (addr => r.m.alu_out(20 downto 0),
+                 data => r.m.f_store_data,
                  en   => '1',
                  we   => '1');
       when MEM_NOP =>
@@ -1108,17 +1114,18 @@ begin
     v.fw2 := r.fw1;
 
 
-    debuginfo.ir_bubble <= r.w.bubble;
-    debuginfo.ir_pc     <= r.w.pc;
-    debuginfo.ir_idx    <= wb_ir_idx;
-    debuginfo.ir_data   <= wb_ir_data;
-    debuginfo.fr_bubble <= r.fw2.bubble;
-    debuginfo.fr_pc     <= r.fw2.pc;
-    debuginfo.fr_idx    <= wb_fr_idx;
-    debuginfo.fr_data   <= wb_fr_data;
-    debuginfo.hz_id     <= hz_id;
-    debuginfo.hz_exe    <= hz_exe;
-    debuginfo.hz_wb     <= hz_wb;
+    debuginfo.ir_bubble  <= r.w.bubble;
+    debuginfo.ir_pc      <= r.w.pc;
+    debuginfo.ir_idx     <= wb_ir_idx;
+    debuginfo.ir_data    <= wb_ir_data;
+    debuginfo.fr_bubble  <= r.fw2.bubble;
+    debuginfo.fr_pc      <= r.fw2.pc;
+    debuginfo.fr_idx     <= wb_fr_idx;
+    debuginfo.fr_data    <= wb_fr_data;
+    debuginfo.hz_id      <= hz_id;
+    debuginfo.hz_exe     <= hz_exe;
+    debuginfo.hz_wb      <= hz_wb;
+    debuginfo.hz_exe_arr <= hz_exe_arr and r.e.fwd_mode;
 
     ---------------------------------------------------------------------------
     -- Pipeline Flushing/Stalling
