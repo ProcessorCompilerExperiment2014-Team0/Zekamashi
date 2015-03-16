@@ -25,7 +25,9 @@ package audio_p is
 
   component audio is
     generic (
-      interval : integer);
+      report_write : boolean;
+      report_file  : string;
+      interval     : integer);
     port (
       clk  : in  std_logic;
       xrst : in  std_logic;
@@ -46,16 +48,22 @@ end package audio_p;
 -- Definition
 -------------------------------------------------------------------------------
 
+library std;
+use std.textio.all;
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use ieee.std_logic_textio.all;
 
 library work;
 use work.audio_p.all;
 
 entity audio is
   generic (
-    interval : integer := 3);
+      report_write : boolean;
+      report_file  : string;
+      interval     : integer := 3);
   port (
     clk  : in  std_logic;
     xrst : in  std_logic;
@@ -142,7 +150,16 @@ begin
   end process;
 
   process (clk, xrst) is
+    variable l : line;
   begin
+    if report_write and r.idx = 1 and r.cnt = interval - 1 then
+      write(l, string'("addr:x"));
+      hwrite(l, std_logic_vector("0000" & r.addr));
+      write(l, string'(", data:x"));
+      hwrite(l, std_logic_vector(r.data));
+      writeline(ofile, l);
+    end if;
+
     if xrst = '0' then
       r   <= latch_init;
       xrs <= '0';
