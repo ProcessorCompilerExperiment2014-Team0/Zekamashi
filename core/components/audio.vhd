@@ -61,8 +61,8 @@ use work.audio_p.all;
 
 entity audio is
   generic (
-      report_write : boolean;
-      report_file  : string;
+      report_write : boolean := false;
+      report_file  : string  := "audio.dat";
       interval     : integer := 3);
   port (
     clk  : in  std_logic;
@@ -80,12 +80,12 @@ architecture behavior of audio is
 
   file ofile : text open write_mode is "report_file";
 
-  constant n_step   : integer                   := 7;
-  constant tim_a    : unsigned(0 to n_step - 1) := "1000111";
-  constant tim_xcs  : unsigned(0 to n_step - 1) := "1001001";
-  constant tim_xwr  : unsigned(0 to n_step - 1) := "1001001";
-  constant tim_addr : unsigned(0 to n_step - 1) := "0010000";
-  constant tim_data : unsigned(0 to n_step - 1) := "0000010";
+  constant n_step   : integer                   := 5;
+  constant tim_a    : unsigned(0 to n_step - 1) := "10011";
+  constant tim_xcs  : unsigned(0 to n_step - 1) := "10101";
+  constant tim_xwr  : unsigned(0 to n_step - 1) := "10101";
+  constant tim_addr : unsigned(0 to n_step - 1) := "01100";
+  constant tim_data : unsigned(0 to n_step - 1) := "00011";
 
   type latch_t is record
     addr : unsigned(3 downto 0);

@@ -246,7 +246,9 @@ begin
 
   audioc : audio
     generic map (
-      interval => 3)
+      report_write => false,
+      report_file  => "null.dat",
+      interval     => 4)
     port map (
       clk  => clk,
       xrst => xrst,
