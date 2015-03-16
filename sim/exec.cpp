@@ -450,17 +450,19 @@ void core::mem_st_lw(uint32_t &src, int addr) {
   }
   int idx = (addr >> CACHE_LINE) & ((1 << CACHE_IDX) - 1);
   int tag = addr >> (CACHE_LINE + CACHE_IDX);
-  if(CACHE_WAY == 1) {          // direct mapped
-    cache_tbl[idx] = tag;
-  } else {                      // 2way
-    if(cache2_tbl[idx].tag[0] == tag) {
-      cache2_tbl[idx].newer = 0;
-    } else if(cache2_tbl[idx].tag[1] == tag) {
-      cache2_tbl[idx].newer = 1;
-    } else {
-      int replaced = 1 - cache2_tbl[idx].newer;
-      cache2_tbl[idx].tag[replaced] = tag;
-      cache2_tbl[idx].newer = replaced;
+  if(!((opt >> OPTION_NC) & 1)) {
+    if(CACHE_WAY == 1) {          // direct mapped
+      cache_tbl[idx] = tag;
+    } else {                      // 2way
+      if(cache2_tbl[idx].tag[0] == tag) {
+        cache2_tbl[idx].newer = 0;
+      } else if(cache2_tbl[idx].tag[1] == tag) {
+        cache2_tbl[idx].newer = 1;
+      } else {
+        int replaced = 1 - cache2_tbl[idx].newer;
+        cache2_tbl[idx].tag[replaced] = tag;
+        cache2_tbl[idx].newer = replaced;
+      }
     }
   }
 }

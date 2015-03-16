@@ -20,7 +20,8 @@ void print_options() {
     "(default: code.flog)\n"
     "  -cache x y  Use direct-mapped cache whose index is x bits and line is y bits "
     "(default: -cache 7 3)\n"
-    "  -cache2 x y Use 2way set associative cache\n";
+    "  -cache2 x y Use 2way set associative cache\n"
+    "  -nc         Do not update cache in memory store\n";
 }
 
 int main(int argc, char **argv) {
@@ -57,6 +58,8 @@ int main(int argc, char **argv) {
           opt |= 1 << OPTION_D;
         } else if(!strcmp(argv[i], "-m")) {
           opt |= 1 << OPTION_M;
+        } else if(!strcmp(argv[i], "-nc")) {
+          opt |= 1 << OPTION_NC;
         } else if(!strcmp(argv[i], "-n")) {
           if(i+1 >= argc || argv[i+1][0] == '-') {
             opt |= 1 << OPTION_N;
