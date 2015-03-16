@@ -9,7 +9,7 @@ use ieee.numeric_std.all;
 package instcache_p is
 
   type instcache_read_in_t is record
-    addr : unsigned(12 downto 0);
+    addr : unsigned(13 downto 0);
   end record instcache_read_in_t;
 
   type instcache_read_out_t is record
@@ -18,7 +18,7 @@ package instcache_p is
 
   type instcache_write_in_t is record
     we   : std_logic;
-    addr : unsigned(12 downto 0);
+    addr : unsigned(13 downto 0);
     data : unsigned(31 downto 0);
   end record instcache_write_in_t;
 

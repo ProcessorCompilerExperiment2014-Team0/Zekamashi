@@ -509,8 +509,8 @@ begin
     variable mmuv    : mmu_in_t;
 
     -- variables for instruction fetch
-    variable pcinc, pcjmp : unsigned(12 downto 0);
-    variable nextpc       : unsigned(12 downto 0);
+    variable pcinc, pcjmp : unsigned(13 downto 0);
+    variable nextpc       : unsigned(13 downto 0);
 
     -- variables for instruction decode
     variable inst   : word_t;
@@ -607,8 +607,8 @@ begin
     -- Instruction Fetch
     -------------------------------------------------------------------------
 
-    pcinc := r.f.pc_inc(12 downto 0);
-    pcjmp := r.f.pc_jmp(12 downto 0);
+    pcinc := r.f.pc_inc(13 downto 0);
+    pcjmp := r.f.pc_jmp(13 downto 0);
     flush := false;
 
     case r.f.br_op is

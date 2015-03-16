@@ -1,5 +1,5 @@
 require 'erb'
-mems = [["icache_init", 32, 8096, "code"]]
+mems = [["icache_init", 32, 16192, "code"]]
 File.open("meminit.vhd", "w") do |f|
   f.puts ERB.new(DATA.read, nil, '-').result(binding)
 end

@@ -157,10 +157,10 @@ begin
 
       when ST_FINE =>
         if din.en = '1' then
-          if din.addr(20 downto 13) = 0 then
+          if din.addr(20 downto 14) = 0 then
             icachev := (
               we   => '1',
-              addr => din.addr(12 downto 0),
+              addr => din.addr(13 downto 0),
               data => din.data);
           end if;
 
