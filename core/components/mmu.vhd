@@ -51,8 +51,8 @@ package mmu_p is
       uio     : in  u232c_in_out_t;
       uoi     : out u232c_out_in_t;
       uoo     : in  u232c_out_out_t;
-      audioi  : out audio_out_t;
-      audioo  : in  audio_in_t;
+      audioi  : out audio_in_t;
+      audioo  : in  audio_out_t;
       midii   : out u232c_in_in_t;
       midio   : in  u232c_in_out_t;
       dcachei : out datacache_in_t;
@@ -91,8 +91,8 @@ entity mmu is
     uio     : in  u232c_in_out_t;
     uoi     : out u232c_out_in_t;
     uoo     : in  u232c_out_out_t;
-    audioi  : out audio_out_t;
-    audioo  : in  audio_in_t;
+    audioi  : out audio_in_t;
+    audioo  : in  audio_out_t;
     midii   : out u232c_in_in_t;
     midio   : in  u232c_in_out_t;
     dcachei : out datacache_in_t;
@@ -114,6 +114,7 @@ architecture behavior of mmu is
     SRC_SRAM,
     SRC_DATA,
     SRC_U232C,
+	 SRC_MIDI,
     SRC_NOPE);
 
   type latch_t is record
@@ -137,11 +138,13 @@ architecture behavior of mmu is
 
 begin
 
-  process (r, uio, uoo, dcacheo, icacheo, din) is
+  process (r, uio, uoo, audioo, midio, dcacheo, icacheo, din) is
     variable v       : latch_t;
     variable dv      : mmu_out_t;
     variable uiv     : u232c_in_in_t;
     variable uov     : u232c_out_in_t;
+    variable audiov  : audio_in_t;
+    variable midiv   : u232c_in_in_t;
     variable dcachev : datacache_in_t;
     variable icachev : instcache_write_in_t;
 
@@ -200,7 +203,7 @@ begin
 
             if din.we = '1' then
               case addr19 is
-                when x"00000" | x"00001" | x"00002" | x"00004" | x"000006" | x"000007" =>
+                when x"00000" | x"00001" | x"00002" | x"00004" | x"00006" | x"00007" =>
                   assert false report "cannot write to this address" severity error;
                 when x"00003" =>
                   uov.data := din.data(7 downto 0);
@@ -231,7 +234,7 @@ begin
                              others => '0');
                   v.src := SRC_DATA;
                 when x"00006" =>
-                  v.data := (0      => not midio.busy,
+                  v.data := (0      => not midio.empty,
                              others => '0');
                   v.src := SRC_DATA;
                 when x"00007" =>
@@ -272,6 +275,9 @@ begin
           when SRC_U232C =>
             dv.data := resize(uio.data, 32);
             dv.miss := '0';
+          when SRC_MIDI =>
+            dv.data := resize(midio.data, 32);
+            dv.miss := '0';
           when SRC_NOPE =>
             dv.data := (others => '0');
             dv.miss := '0';
@@ -281,7 +287,7 @@ begin
     rin     <= v;
     uii     <= uiv;
     uoi     <= uov;
-    auudioi <= audiov;
+    audioi  <= audiov;
     midii   <= midiv;
     dcachei <= dcachev;
     icachei <= icachev;

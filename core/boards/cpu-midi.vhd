@@ -18,7 +18,7 @@ use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.audio_p.all;
 
-entity cpu-midi is
+entity cpu_midi is
 
   port (
     mclk1 : in  std_logic;
@@ -55,9 +55,9 @@ entity cpu-midi is
     audio_xwr : out std_logic;
     audio_d   : out std_logic_vector(7 downto 0));
 
-end entity cpu-midi;
+end entity cpu_midi;
 
-architecture rtl of cpu-midi is
+architecture hello of cpu_midi is
 
   constant rs_wtime   : unsigned(15 downto 0) := x"023D";
   constant midi_wtime : unsigned(15 downto 0) := x"0840";
@@ -186,8 +186,6 @@ begin
       audioo  => audioo,
       midii   => midii,
       midio   => midio,
-      audioi  => audioi,
-      audioo  => audioo,
       dcachei => dcachei,
       dcacheo => dcacheo,
       icachei => icachewi,
@@ -265,8 +263,9 @@ begin
       wtime => midi_wtime)
     port map (
       clk  => clk,
+      xrst => xrst,
       rx   => midi_rx,
       din  => midii,
       dout => midio);
 
-end architecture rtl;
+end architecture hello;

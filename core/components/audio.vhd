@@ -70,10 +70,12 @@ end entity audio;
 
 architecture behavior of audio is
 
+  file ofile : text open write_mode is "report_file";
+
   constant n_step   : integer                   := 7;
   constant tim_a    : unsigned(0 to n_step - 1) := "1000111";
-  constant tim_cs   : unsigned(0 to n_step - 1) := "1001001";
-  constant tim_wr   : unsigned(0 to n_step - 1) := "1001001";
+  constant tim_xcs  : unsigned(0 to n_step - 1) := "1001001";
+  constant tim_xwr  : unsigned(0 to n_step - 1) := "1001001";
   constant tim_addr : unsigned(0 to n_step - 1) := "0010000";
   constant tim_data : unsigned(0 to n_step - 1) := "0000010";
 
@@ -103,20 +105,20 @@ begin
     if r.cnt /= 0 then
       v.cnt := r.cnt - 1;
     else
-      v.cnt := interval - 1;
-      v.idx := r.idx + 1;;
-
-      case r.cnt is
+      case r.idx is
         when 0 =>
           if din.en = '1' then
             v.idx  := 1;
             v.addr := din.addr;
             v.data := din.data;
+            v.cnt  := interval - 1;
           end if;
         when n_step - 1 =>
           v.idx := 0;
+          v.cnt := interval - 1;
         when others =>
           v.idx := r.idx + 1;
+          v.cnt := interval - 1;
       end case;
     end if;
 
@@ -124,14 +126,14 @@ begin
     xcs <= tim_xcs(r.idx);
     xwr <= tim_xwr(r.idx);
     if tim_addr(r.idx) = '1' then
-      d <= "0000" & r.addr;
+      d <= std_logic_vector("0000" & r.addr);
     elsif tim_data(r.idx) = '1' then
-      d <= r.data;
+      d <= std_logic_vector(r.data);
     else
       d <= x"00";
     end if;
 
-    if r.cnt = 0 then
+    if r.idx = 0 then
       dout.busy <= '0';
     else
       dout.busy <= '1';
@@ -145,7 +147,7 @@ begin
       r   <= latch_init;
       xrs <= '0';
     elsif rising_edge(clk) then
-      r <= rin;
+      r   <= rin;
       xrs <= '1';
     end if;
   end process;
