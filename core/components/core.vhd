@@ -181,11 +181,18 @@ architecture behavior of core is
     fr_out  : word_t;
   end record latch_wb_t;
 
-  type latch_fwb_t is record
+  type latch_fexe_t is record
     bubble : boolean;
     pc     : word_t;
     wb     : reg_index_t;
     src    : fwb_src_t;
+  end record latch_fexe_t;
+
+  type latch_fwb_t is record
+    bubble : boolean;
+    pc     : word_t;
+    wb     : reg_index_t;
+    value  : word_t;
   end record latch_fwb_t;
 
   -- bubbles
@@ -241,30 +248,38 @@ architecture behavior of core is
     alu_out => (others => '0'),
     fr_out     => (others => '-'));
 
-  constant fw_bubble : latch_fwb_t :=  (
+  constant fe_bubble : latch_fexe_t := (
     bubble => true,
     pc     => (others => '1'),
     wb     => 31,
     src    => FWB_SRC_FPU);
 
+  constant fw_bubble : latch_fwb_t := (
+    bubble => true,
+    pc     => (others => '1'),
+    wb     => 31,
+    value  => (others => '0'));
+
   type latch_t is record
-    f     : latch_if_t;
-    d     : latch_id_t;
-    e     : latch_exe_t;
-    m     : latch_mem_t;
-    w     : latch_wb_t;
-    fw1   : latch_fwb_t;
-    fw2   : latch_fwb_t;
+    f   : latch_if_t;
+    d   : latch_id_t;
+    e   : latch_exe_t;
+    m   : latch_mem_t;
+    w   : latch_wb_t;
+    fe1 : latch_fexe_t;
+    fe2 : latch_fexe_t;
+    fw  : latch_fwb_t;
   end record latch_t;
 
   constant latch_init : latch_t := (
-    f     => f_bubble,
-    d     => d_bubble,
-    e     => e_bubble,
-    m     => m_bubble,
-    w     => w_bubble,
-    fw1   => fw_bubble,
-    fw2   => fw_bubble);
+    f   => f_bubble,
+    d   => d_bubble,
+    e   => e_bubble,
+    m   => m_bubble,
+    w   => w_bubble,
+    fe1 => fe_bubble,
+    fe2 => fe_bubble,
+    fw  => fw_bubble);
 
   signal r, rin : latch_t := latch_init;
 
@@ -431,12 +446,15 @@ architecture behavior of core is
     elsif n = r.e.fwb then
       dst := (others => '-');
       hz  := '1';
-    elsif n = r.fw1.wb then
+    elsif n = r.fe1.wb then
       dst := (others => '-');
       hz  := '1';
-    elsif n = r.fw2.wb then
+    elsif n = r.fe2.wb then
       dst := (others => '-');
       hz  := '1';
+    elsif n = r.fw.wb then
+      dst := r.fw.value;
+      hz  := hz;
     else
       dst := v;
       hz  := hz;
@@ -444,20 +462,23 @@ architecture behavior of core is
   end procedure forward_data_fr_id;
 
   procedure forward_data_fr_exe (
-    dst : out   word_t;
-    hz  : inout std_logic;
-    v   : in    word_t;
-    n   : in    reg_index_t) is
+    dst : out word_t;
+    hz  : out std_logic;
+    v   : in  word_t;
+    n   : in  reg_index_t) is
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
       hz  := '0';
-    elsif n = r.fw1.wb then
+    elsif n = r.fe1.wb then
       dst := (others => '-');
       hz  := '1';
-    elsif n = r.fw2.wb then
+    elsif n = r.fe2.wb then
       dst := (others => '-');
       hz  := '1';
+    elsif n = r.fw.wb then
+      dst := r.fw.value;
+      hz  := '0';
     else
       dst := v;
       hz  := '0';
@@ -604,19 +625,8 @@ begin
     iri.w <= wb_ir_idx;
     iri.d <= wb_ir_data;
 
-    case r.fw2.src is
-      when FWB_SRC_FPU =>
-        wb_fr_idx  := r.fw2.wb;
-        wb_fr_data := fpuo.o;
-      when FWB_SRC_IR =>
-        if hz_wb = '0' then
-          wb_fr_idx  := r.fw2.wb;
-          wb_fr_data := wb_ir_data;
-        else
-          wb_fr_idx  := 31;
-          wb_fr_data := (others => '-');
-        end if;
-    end case;
+    wb_fr_idx  := r.fw.wb;
+    wb_fr_data := r.fw.value;
 
     fri.w <= wb_fr_idx;
     fri.d <= wb_fr_data;
@@ -1023,10 +1033,10 @@ begin
     v.m.src    := r.e.isrc;
     v.m.memop  := r.e.memop;
 
-    v.fw1.bubble := r.e.bubble;
-    v.fw1.pc     := r.e.pc;
-    v.fw1.wb     := r.e.fwb;
-    v.fw1.src    := r.e.fsrc;
+    v.fe1.bubble := r.e.bubble;
+    v.fe1.pc     := r.e.pc;
+    v.fe1.wb     := r.e.fwb;
+    v.fe1.src    := r.e.fsrc;
 
     -- Data Forwarding
     forward_data_ir_exe(adata,  hz_exe_arr(0), r.e.rav, r.e.ra);
@@ -1111,15 +1121,37 @@ begin
     v.w.alu_out := r.m.alu_out;
     v.w.fr_out  := r.m.fr_out;
 
-    v.fw2 := r.fw1;
+    ---------------------------------------------------------------------------
+    -- Floating-Point Execute 1
+    ---------------------------------------------------------------------------
+
+    v.fe2 := r.fe1;
+
+    ---------------------------------------------------------------------------
+    -- Floating-Point Execute 2
+    ---------------------------------------------------------------------------
+
+    case r.fe2.src is
+      when FWB_SRC_FPU =>
+        v.fw.wb    := r.fe2.wb;
+        v.fw.value := fpuo.o;
+      when FWB_SRC_IR =>
+        if hz_wb = '0' then
+          v.fw.wb    := r.fe2.wb;
+          v.fw.value := wb_ir_data;
+        else
+          v.fw.wb    := 31;
+          v.fw.value := (others => '-');
+        end if;
+    end case;
 
 
     debuginfo.ir_bubble  <= r.w.bubble;
     debuginfo.ir_pc      <= r.w.pc;
     debuginfo.ir_idx     <= wb_ir_idx;
     debuginfo.ir_data    <= wb_ir_data;
-    debuginfo.fr_bubble  <= r.fw2.bubble;
-    debuginfo.fr_pc      <= r.fw2.pc;
+    debuginfo.fr_bubble  <= r.fw.bubble;
+    debuginfo.fr_pc      <= r.fw.pc;
     debuginfo.fr_idx     <= wb_fr_idx;
     debuginfo.fr_data    <= wb_fr_data;
     debuginfo.hz_id      <= hz_id;
@@ -1144,8 +1176,8 @@ begin
       v.e       := r.e;
       v.m       := r.m;
       v.w       := r.w;
-      v.fw1     := r.fw1;
-      v.fw2     := r.fw2;
+      v.fe1     := r.fe1;
+      v.fe2     := r.fe2;
 
       fpuv.stall   := '1';
       mmuv.en      := '0';
@@ -1157,7 +1189,7 @@ begin
       v.d.inst  := inst;
       v.e       := r.e;
       v.m       := m_bubble;
-      v.fw1     := fw_bubble;
+      v.fe1     := fe_bubble;
 
       if r.e.fwd_mode(0) = '1' and wb_ir_idx /= 31 and wb_ir_idx = r.e.ra then
         v.e.rav := wb_ir_data;
