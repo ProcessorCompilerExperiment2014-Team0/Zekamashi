@@ -115,6 +115,7 @@ architecture behavior of core is
     FWD_NONE);
 
   type iwb_src_t is (
+    IWB_SRC_FR,
     IWB_SRC_ALU,
     IWB_SRC_MEM);
 
@@ -152,8 +153,7 @@ architecture behavior of core is
     rbv       : word_t;
     ra        : reg_index_t;
     rb        : reg_index_t;
-    fwd_a     : fwd_mode_t;
-    fwd_b     : fwd_mode_t;
+    fwd_mode  : unsigned(3 downto 0);   -- (ra, rb, fa, fb)
     alu_input : alu_input_t;
     alu_inst  : alu_inst_t;
     fpu_inst  : fpu_inst_t;
@@ -171,6 +171,7 @@ architecture behavior of core is
     src        : iwb_src_t;
     memop      : memop_t;
     alu_out    : word_t;
+    fr_out     : word_t;
     store_data : word_t;
   end record latch_mem_t;
 
@@ -180,6 +181,7 @@ architecture behavior of core is
     wb      : reg_index_t;
     src     : iwb_src_t;
     alu_out : word_t;
+    fr_out  : word_t;
   end record latch_wb_t;
 
   type latch_fwb_t is record
@@ -213,8 +215,7 @@ architecture behavior of core is
     rbv       => (others => '-'),
     ra        => 31,
     rb        => 31,
-    fwd_a     => FWD_NONE,
-    fwd_b     => FWD_NONE,
+    fwd_mode  => "0000",
     alu_input => ALU_INPUT_NONE,
     alu_inst  => ALU_INST_NOP,
     fpu_inst  => FPU_INST_NOP,
@@ -231,6 +232,7 @@ architecture behavior of core is
     src        => IWB_SRC_ALU,
     memop      => MEM_NOP,
     alu_out    => (others => '-'),
+    fr_out     => (others => '-'),
     store_data => (others => '-'));
 
   constant w_bubble : latch_wb_t := (
@@ -238,7 +240,8 @@ architecture behavior of core is
     pc      => (others => '1'),
     wb      => 31,
     src     => IWB_SRC_ALU,
-    alu_out => (others => '0'));
+    alu_out => (others => '0'),
+    fr_out     => (others => '-'));
 
   constant fw_bubble : latch_fwb_t :=  (
     bubble => true,
@@ -354,6 +357,9 @@ architecture behavior of core is
         when IWB_SRC_ALU =>
           dst := r.m.alu_out;
           hz  := hz;
+        when IWB_SRC_FR =>
+          dst := r.m.fr_out;
+          hz  := hz;
         when IWB_SRC_MEM =>
           dst := (others => '-');
           hz  := '1';
@@ -362,6 +368,9 @@ architecture behavior of core is
       case r.w.src is
         when IWB_SRC_ALU =>
           dst := r.w.alu_out;
+          hz  := hz;
+        when IWB_SRC_FR =>
+          dst := r.w.fr_out;
           hz  := hz;
         when IWB_SRC_MEM =>
           dst := (others => '-');
@@ -374,19 +383,22 @@ architecture behavior of core is
   end procedure forward_data_ir_id;
 
   procedure forward_data_ir_exe (
-    dst : out   word_t;
-    hz  : inout std_logic;
-    v   : in    word_t;
-    n   : in    reg_index_t) is
+    dst : out word_t;
+    hz  : out std_logic;
+    v   : in  word_t;
+    n   : in  reg_index_t) is
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
-      hz  := hz;
+      hz  := '0';
     elsif n = r.m.wb then
       case r.m.src is
         when IWB_SRC_ALU =>
           dst := r.m.alu_out;
-          hz  := hz;
+          hz  := '0';
+        when IWB_SRC_FR =>
+          dst := r.m.fr_out;
+          hz  := '0';
         when IWB_SRC_MEM =>
           dst := (others => '-');
           hz  := '1';
@@ -395,14 +407,17 @@ architecture behavior of core is
       case r.w.src is
         when IWB_SRC_ALU =>
           dst := r.w.alu_out;
-          hz  := hz;
+          hz  := '0';
+        when IWB_SRC_FR =>
+          dst := r.w.fr_out;
+          hz  := '0';
         when IWB_SRC_MEM =>
           dst := (others => '-');
           hz  := '1';
       end case;
     else
       dst := v;
-      hz  := hz;
+      hz  := '0';
     end if;
   end procedure forward_data_ir_exe;
 
@@ -438,7 +453,7 @@ architecture behavior of core is
   begin
     if n = 31 then
       dst := to_unsigned(0, 32);
-      hz  := hz;
+      hz  := '0';
     elsif n = r.fw1.wb then
       dst := (others => '-');
       hz  := '1';
@@ -447,7 +462,7 @@ architecture behavior of core is
       hz  := '1';
     else
       dst := v;
-      hz  := hz;
+      hz  := '0';
     end if;
   end procedure forward_data_fr_exe;
 
@@ -528,10 +543,11 @@ begin
     variable rbd     : word_t;
 
     -- variables for execution
-    variable fadata : word_t;
-    variable fbdata : word_t;
-    variable adata  : word_t;
-    variable bdata  : word_t;
+    variable hz_exe_arr : unsigned(3 downto 0);
+    variable fadata     : word_t;
+    variable fbdata     : word_t;
+    variable adata      : word_t;
+    variable bdata      : word_t;
 
     -- variables for write back
     variable wb_ir_idx  : reg_index_t;
@@ -571,6 +587,9 @@ begin
       when IWB_SRC_ALU =>
         wb_ir_idx  := r.w.wb;
         wb_ir_data := r.w.alu_out;
+      when IWB_SRC_FR =>
+        wb_ir_idx  := r.w.wb;
+        wb_ir_data := r.w.fr_out;
       when IWB_SRC_MEM =>
         if mmuo.miss = '0' then
           wb_ir_idx  := r.w.wb;
@@ -724,7 +743,7 @@ begin
           when b"01_0000" | b"01_0001" | b"01_0010" =>  -- integer arithmetic
             v.e.rav      := rad;
             v.e.rbv      := rbd;
-            v.e.fwd_a    := FWD_IR;
+            --f v.e.fwd_a    := FWD_IR;
             v.e.fpu_inst := FPU_INST_NOP;
             v.e.memop    := MEM_NOP;
             v.e.iwb      := rc;
@@ -734,10 +753,12 @@ begin
 
             if inst(12) = '0' then
               v.e.alu_input := ALU_INPUT_ARITH;
-              v.e.fwd_b     := FWD_IR;
+              v.e.fwd_mode := "1100";
+              --f v.e.fwd_b     := FWD_IR;
             else
               v.e.alu_input := ALU_INPUT_ARITH_LIT;
-              v.e.fwd_b     := FWD_NONE;
+              v.e.fwd_mode := "1000";
+              --f v.e.fwd_b     := FWD_NONE;
             end if;
 
             v.e.alu_inst := decode_alu_inst(opcode, opfunc);
@@ -747,8 +768,9 @@ begin
             v.e.rbv       := frbd;
             v.e.alu_input := ALU_INPUT_NONE;
             v.e.alu_inst  := ALU_INST_NOP;
-            v.e.fwd_a     := FWD_FR;
-            v.e.fwd_b     := FWD_FR;
+            v.e.fwd_mode  := "0011";
+            --f v.e.fwd_a     := FWD_FR;
+            --f v.e.fwd_b     := FWD_FR;
             v.e.memop     := MEM_NOP;
             v.e.iwb       := 31;
             v.e.isrc      := IWB_SRC_ALU;
@@ -758,10 +780,11 @@ begin
             v.e.fpu_inst := decode_fpu_inst(fpfunc);
 
           when b"01_0100" =>
-            v.e.rav   := rad;
-            v.e.rbv   := frbd;
-            v.e.fwd_a := FWD_IR;
-            v.e.fwd_b := FWD_FR;
+            v.e.rav      := rad;
+            v.e.rbv      := frbd;
+            v.e.fwd_mode := "1001";
+            --f v.e.fwd_a := FWD_IR;
+            --f v.e.fwd_b := FWD_FR;
 
             case fpfunc is
               when b"000_0000_0100" =>  -- ITOFS
@@ -798,11 +821,12 @@ begin
         v.e.alu_input := ALU_INPUT_MEM;
         v.e.alu_inst  := ALU_INST_ADD;
         v.e.fpu_inst  := FPU_INST_NOP;
-        v.e.fwd_b     := FWD_IR;
+        --f v.e.fwd_b     := FWD_IR;
 
         case opcode is
           when b"10_0010" =>            -- LDS
-            v.e.fwd_a := FWD_NONE;
+            v.e.fwd_mode := "0100";
+            --f v.e.fwd_a := FWD_NONE;
             v.e.memop := MEM_LOAD;
             v.e.iwb   := 31;
             v.e.isrc  := IWB_SRC_MEM;
@@ -810,12 +834,13 @@ begin
             v.e.fwb   := ra;
 
           when b"10_0110" =>            -- STS
-            v.e.fwd_a := FWD_FR;
-            v.e.memop := MEM_STORE;
-            v.e.iwb   := 31;
-            v.e.isrc  := IWB_SRC_MEM;
-            v.e.fwb   := 31;
-            v.e.fsrc  := FWB_SRC_FPU;
+            v.e.fwd_mode := "0110";
+            --f v.e.fwd_a := FWD_FR;
+            v.e.memop    := MEM_STORE;
+            v.e.iwb      := 31;
+            v.e.isrc     := IWB_SRC_MEM;
+            v.e.fwb      := 31;
+            v.e.fsrc     := FWB_SRC_FPU;
 
           when others =>
             assert false report "invalid instruction" severity error;
@@ -829,8 +854,9 @@ begin
           when b"01_1010" =>            -- JMP
             v.e.alu_inst  := ALU_INST_ADD;
             v.e.alu_input := ALU_INPUT_PC;
-            v.e.fwd_a     := FWD_NONE;
-            v.e.fwd_b     := FWD_NONE;
+            v.e.fwd_mode  := "0000";
+            --f v.e.fwd_a     := FWD_NONE;
+            --f v.e.fwd_b     := FWD_NONE;
             v.e.memop     := MEM_NOP;
             v.e.iwb       := ra;
             v.e.isrc      := IWB_SRC_ALU;
@@ -841,15 +867,16 @@ begin
             v.f.data := (others => '-');
             v.f.br_op := BRANCH_TRUE;
 
-          when b"01_1100" =>
+          when b"01_1100" =>            -- FTOIS
             if fpfunc = b"000_0111_1000" then
               v.e.alu_inst  := ALU_INST_ADD;
               v.e.alu_input := ALU_INPUT_ARITH;
-              v.e.fwd_a     := FWD_FR;
-              v.e.fwd_b     := FWD_IR;
+              v.e.fwd_mode  := "0110";
+              --f v.e.fwd_a     := FWD_FR;
+              --f v.e.fwd_b     := FWD_IR;
               v.e.memop     := MEM_NOP;
               v.e.iwb       := rc;
-              v.e.isrc      := IWB_SRC_ALU;
+              v.e.isrc      := IWB_SRC_FR;
               v.e.fwb       := 31;
               v.e.fsrc      := FWB_SRC_FPU;
             else
@@ -869,8 +896,9 @@ begin
         case opcode is
           when b"00_1000" =>            -- LDA
             v.e.alu_input := ALU_INPUT_MEM;
-            v.e.fwd_a     := FWD_NONE;
-            v.e.fwd_b     := FWD_IR;
+            v.e.fwd_mode  := "0100";
+            --f v.e.fwd_a     := FWD_NONE;
+            --f v.e.fwd_b     := FWD_IR;
             v.e.memop     := MEM_NOP;
             v.e.isrc      := IWB_SRC_ALU;
             v.e.iwb       := ra;
@@ -879,8 +907,9 @@ begin
 
           when b"00_1001" =>            -- LDAH
             v.e.alu_input := ALU_INPUT_LDAH;
-            v.e.fwd_a     := FWD_NONE;
-            v.e.fwd_b     := FWD_IR;
+            v.e.fwd_mode  := "0100";
+            --f v.e.fwd_a     := FWD_NONE;
+            --f v.e.fwd_b     := FWD_IR;
             v.e.memop     := MEM_NOP;
             v.e.iwb       := ra;
             v.e.isrc      := IWB_SRC_ALU;
@@ -889,8 +918,9 @@ begin
 
           when b"10_1000" =>            -- LDL
             v.e.alu_input := ALU_INPUT_MEM;
-            v.e.fwd_a     := FWD_NONE;
-            v.e.fwd_b     := FWD_IR;
+            v.e.fwd_mode  := "0100";
+            --f v.e.fwd_a     := FWD_NONE;
+            --f v.e.fwd_b     := FWD_IR;
             v.e.memop     := MEM_LOAD;
             v.e.iwb       := ra;
             v.e.isrc      := IWB_SRC_MEM;
@@ -899,8 +929,9 @@ begin
 
           when b"10_1100" =>            -- STL
             v.e.alu_input := ALU_INPUT_MEM;
-            v.e.fwd_a     := FWD_IR;
-            v.e.fwd_b     := FWD_IR;
+            v.e.fwd_mode  := "1100";
+            --f v.e.fwd_a     := FWD_IR;
+            --f v.e.fwd_b     := FWD_IR;
             v.e.memop     := MEM_STORE;
             v.e.iwb       := 31;
             v.e.isrc      := IWB_SRC_MEM;
@@ -913,8 +944,9 @@ begin
       when "111" =>                     -- integer conditional branch
         v.e.rav       := rad;
         v.e.rbv       := rbd;
-        v.e.fwd_a     := FWD_NONE;
-        v.e.fwd_b     := FWD_NONE;
+        v.e.fwd_mode  := "0000";
+        --f v.e.fwd_a     := FWD_NONE;
+        --f v.e.fwd_b     := FWD_NONE;
         v.e.isrc      := IWB_SRC_ALU;
         v.e.fsrc      := FWB_SRC_FPU;
         v.e.memop     := MEM_NOP;
@@ -940,8 +972,9 @@ begin
       when "110" =>  -- unconditional branch / floating-point branch
         v.e.rav   := frad;
         v.e.rbv   := (others => '-');
-        v.e.fwd_a := FWD_NONE;
-        v.e.fwd_b := FWD_NONE;
+        v.e.fwd_mode  := "0000";
+        --f v.e.fwd_a := FWD_NONE;
+        --f v.e.fwd_b := FWD_NONE;
         v.e.isrc  := IWB_SRC_ALU;
         v.e.fwb   := 31;
         v.e.fsrc  := FWB_SRC_FPU;
@@ -996,29 +1029,18 @@ begin
     v.fw1.src    := r.e.fsrc;
 
     -- Data Forwarding
-    case r.e.fwd_a is
-      when FWD_IR =>
-        forward_data_ir_exe(adata, hz_exe, r.e.rav, r.e.ra);
-        fadata := (others => '0');
-      when FWD_FR =>
-        forward_data_fr_exe(adata, hz_exe, r.e.rav, r.e.ra);
-        fadata := adata;
-      when FWD_NONE =>
-        adata  := (others => '-');
-        fadata := (others => '-');
-    end case;
+    forward_data_ir_exe(adata,  hz_exe_arr(0), r.e.rav, r.e.ra);
+    forward_data_ir_exe(bdata,  hz_exe_arr(1), r.e.rav, r.e.ra);
+    forward_data_fr_exe(fadata, hz_exe_arr(2), r.e.rav, r.e.ra);
+    forward_data_fr_exe(fbdata, hz_exe_arr(3), r.e.rav, r.e.ra);
 
-    case r.e.fwd_b is
-      when FWD_IR =>
-        forward_data_ir_exe(bdata, hz_exe, r.e.rbv, r.e.rb);
-        fbdata := (others => '0');
-      when FWD_FR =>
-        forward_data_fr_exe(bdata, hz_exe, r.e.rbv, r.e.rb);
-        fbdata := bdata;
-      when FWD_NONE =>
-        bdata  := (others => '-');
-        fbdata := (others => '-');
-    end case;
+    if (hz_exe_arr and r.e.fwd_mode) = 0 then
+      hz_exe := '0';
+    else
+      hz_exe := '1';
+    end if;
+
+    v.m.fr_out := fadata;
 
     -- Set ALU Input
     aluv.inst := r.e.alu_inst;
@@ -1081,6 +1103,7 @@ begin
     v.w.wb      := r.m.wb;
     v.w.src     := r.m.src;
     v.w.alu_out := r.m.alu_out;
+    v.w.fr_out  := r.m.fr_out;
 
     v.fw2 := r.fw1;
 
@@ -1129,14 +1152,14 @@ begin
       v.m       := m_bubble;
       v.fw1     := fw_bubble;
 
-      if r.e.fwd_a = FWD_IR and wb_ir_idx /= 31 and wb_ir_idx = r.e.ra then
+      if r.e.fwd_mode(0) = '1' and wb_ir_idx /= 31 and wb_ir_idx = r.e.ra then
         v.e.rav := wb_ir_data;
-      elsif r.e.fwd_a = FWD_FR and wb_fr_idx /= 31 and wb_fr_idx = r.e.ra then
+      elsif r.e.fwd_mode(2) = '1' and wb_fr_idx /= 31 and wb_fr_idx = r.e.ra then
         v.e.rav := wb_fr_data;
       end if;
-      if r.e.fwd_b = FWD_IR and wb_ir_idx /= 31 and wb_ir_idx = r.e.rb then
+      if r.e.fwd_mode(1) = '1' and wb_ir_idx /= 31 and wb_ir_idx = r.e.rb then
         v.e.rbv := wb_ir_data;
-      elsif r.e.fwd_b = FWD_FR and wb_fr_idx /= 31 and wb_fr_idx = r.e.rb then
+      elsif r.e.fwd_mode(3) = '1' and wb_fr_idx /= 31 and wb_fr_idx = r.e.rb then
         v.e.rbv := wb_fr_data;
       end if;
 
