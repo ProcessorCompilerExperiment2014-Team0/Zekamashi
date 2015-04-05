@@ -31,6 +31,7 @@ package u232c_out_p is
 
 end u232c_out_p;
 
+
 -------------------------------------------------------------------------------
 -- Definition
 -------------------------------------------------------------------------------
@@ -57,7 +58,6 @@ end u232c_out;
 
 architecture behavior of u232c_out is
 
-  -- signals for outputbuf
   type buf_in_t is record
     we    : std_logic;
     en    : std_logic;
@@ -74,7 +74,6 @@ architecture behavior of u232c_out is
   signal bufi : buf_in_t;
   signal bufo : buf_out_t;
 
-  -- latch
 
   type latch_t is record
     -- fifo
@@ -112,7 +111,7 @@ begin
       odata1 => bufo.data1,
       odata2 => bufo.data2);
 
-  process (din, bufo, r) is
+  cmb: process (din, bufo, r) is
     variable v    : latch_t;
     variable dv   : u232c_out_out_t;
     variable bufv : buf_in_t;
@@ -174,7 +173,7 @@ begin
     rin  <= v;
   end process;
 
-  process (clk, xrst)
+  seq: process (clk, xrst)
   begin
     if xrst = '0' then
       r <= latch_init;

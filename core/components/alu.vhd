@@ -62,7 +62,7 @@ end entity alu;
 architecture behavior of alu is
 begin
 
-  process (din) is
+  cmb: process (din) is
     variable i1, i2 : unsigned(31 downto 0);
     variable o : unsigned(31 downto 0);
   begin

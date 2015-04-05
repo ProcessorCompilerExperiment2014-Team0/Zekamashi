@@ -12,21 +12,21 @@ use work.u232c_out_p.all;
 use work.datacache_p.all;
 use work.instcache_p.all;
 
-package mmu_p is
+package sysbus_p is
 
-  type mmu_in_t is record
+  type sysbus_in_t is record
     addr : unsigned(20 downto 0);
     data : unsigned(31 downto 0);
     en   : std_logic;
     we   : std_logic;
-  end record mmu_in_t;
+  end record sysbus_in_t;
 
-  type mmu_out_t is record
+  type sysbus_out_t is record
     data : unsigned(31 downto 0);
     miss : std_logic;
-  end record mmu_out_t;
+  end record sysbus_out_t;
 
-  component mmu is
+  component sysbus is
     port (
       clk  : in std_logic;
       xrst : in std_logic;
@@ -40,11 +40,12 @@ package mmu_p is
       icachei : out instcache_write_in_t;
       icacheo : in  instcache_write_out_t;
 
-      din  : in  mmu_in_t;
-      dout : out mmu_out_t);
-  end component mmu;
+      din  : in  sysbus_in_t;
+      dout : out sysbus_out_t);
+  end component sysbus;
 
-end package mmu_p;
+end package sysbus_p;
+
 
 -------------------------------------------------------------------------------
 -- Definition
@@ -59,9 +60,9 @@ use work.u232c_in_p.all;
 use work.u232c_out_p.all;
 use work.datacache_p.all;
 use work.instcache_p.all;
-use work.mmu_p.all;
+use work.sysbus_p.all;
 
-entity mmu is
+entity sysbus is
   port (
     clk  : in std_logic;
     xrst : in std_logic;
@@ -75,11 +76,11 @@ entity mmu is
     icachei : out instcache_write_in_t;
     icacheo : in  instcache_write_out_t;
 
-    din  : in  mmu_in_t;
-    dout : out mmu_out_t);
-end entity mmu;
+    din  : in  sysbus_in_t;
+    dout : out sysbus_out_t);
+end entity sysbus;
 
-architecture behavior of mmu is
+architecture behavior of sysbus is
 
   type state_t is (
     ST_FINE,                            -- no pending cache access
@@ -114,7 +115,7 @@ begin
 
   process (r, uio, uoo, dcacheo, icacheo, din) is
     variable v       : latch_t;
-    variable dv      : mmu_out_t;
+    variable dv      : sysbus_out_t;
     variable uiv     : u232c_in_in_t;
     variable uov     : u232c_out_in_t;
     variable dcachev : datacache_in_t;

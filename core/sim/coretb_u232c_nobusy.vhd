@@ -27,6 +27,7 @@ architecture testbench of coretb_u232c_nobusy is
 
   constant wtime_a : unsigned(15 downto 0) := x"0255";
   constant wtime_b : unsigned(15 downto 0) := x"023d";
+  constant midi_wtime : unsigned(15 downto 0) := x"0840";
 
   signal clk  : std_logic;
   signal xrst : std_logic;

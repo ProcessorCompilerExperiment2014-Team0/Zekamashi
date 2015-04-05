@@ -33,6 +33,7 @@ package u232c_in_p is
 
 end package;
 
+
 -------------------------------------------------------------------------------
 -- Definition
 -------------------------------------------------------------------------------
@@ -60,7 +61,6 @@ end entity u232c_in;
 
 architecture behavior of u232c_in is
 
-  -- signals for outputbuf
   type buf_in_t is record
     we    : std_logic;
     en    : std_logic;
@@ -77,7 +77,7 @@ architecture behavior of u232c_in is
   signal bufi : buf_in_t;
   signal bufo : buf_out_t;
 
-  -- latch
+
   type latch_t is record
     recvbuf : unsigned(7 downto 0);
     idx     : integer range -1 to 8;
@@ -112,7 +112,7 @@ begin
       odata1 => bufo.data1,
       odata2 => bufo.data2);
 
-  process (r, bufo, rx, din) is
+  cmb: process (r, bufo, rx, din) is
     variable v    : latch_t;
     variable dv   : u232c_in_out_t;
     variable bufv : buf_in_t;
@@ -195,7 +195,7 @@ begin
 
   end process;
 
-  process (clk, xrst) is
+  seq: process (clk, xrst) is
   begin
     if xrst = '0' then
       r <= latch_init_value;

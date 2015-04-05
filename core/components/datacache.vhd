@@ -48,6 +48,7 @@ package datacache_p is
 
 end package datacache_p;
 
+
 -------------------------------------------------------------------------------
 -- Definition
 -------------------------------------------------------------------------------
@@ -75,8 +76,6 @@ end entity datacache;
 
 architecture behavior of datacache is
 
-  -- signals for hot bit
-
   type hotbit_in_t is record
     we   : std_logic;
     addr : unsigned(7 downto 0);
@@ -90,7 +89,6 @@ architecture behavior of datacache is
   signal hotbiti : hotbit_in_t;
   signal hotbito : hotbit_out_t;
 
-  -- signals for tagarray
 
   type tagarray_in_t is record
     we   : std_logic;
@@ -108,7 +106,6 @@ architecture behavior of datacache is
   signal tagarri : tagarray_in_array_t;
   signal tagarro : tagarray_out_array_t;
 
-  -- signals for cache
 
   type cache_in_t is record
     en   : std_logic;
@@ -129,7 +126,6 @@ architecture behavior of datacache is
   signal cachei : cache_in_array_t;
   signal cacheo : cache_out_array_t;
 
-  -- state
 
   type state_t is (ST_FINE, ST_BUSY);
 
@@ -205,8 +201,9 @@ begin
       idata => tagarri(1).data,
       odata => tagarro(1).data);
 
-  cache0 : blockram_dual_writefirst
+  cache0 : blockram_dual
     generic map (
+      writefirst => true,
       length     => 32,
       width      => 12,
       init_value => to_unsigned(0, 32))
@@ -220,8 +217,9 @@ begin
       odata1 => cacheo(0).data1,
       odata2 => cacheo(0).data2);
 
-  cache1 : blockram_dual_writefirst
+  cache1 : blockram_dual
     generic map (
+      writefirst => true,
       length     => 32,
       width      => 12,
       init_value => to_unsigned(0, 32))
@@ -235,7 +233,7 @@ begin
       odata1 => cacheo(1).data1,
       odata2 => cacheo(1).data2);
 
-  process (din, hotbito, tagarro, cacheo, sramo, r) is
+  cmb: process (din, hotbito, tagarro, cacheo, sramo, r) is
 
     -- temporary variables
     variable hot      : unsigned(0 downto 0);
@@ -433,7 +431,7 @@ begin
     rin     <= v;
   end process;
 
-  process (clk, xrst) is
+  seq: process (clk, xrst) is
   begin
     if xrst = '0' then
       r <= latch_init;

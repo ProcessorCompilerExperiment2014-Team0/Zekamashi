@@ -3,7 +3,7 @@ fpudir = ../FPU/
 fpus = def.o fadd.o fmul.o fneg.o finv.o fsqrt.o ftrc.o itof.o table.o
 fpu = $(addprefix $(fpudir), $(fpus))
 CC = gcc
-CPPFLAGS = -Wall -O2
+CPPFLAGS = -Wall -O0 -g
 CXXFLAGS = -std=c++0x
 LOADLIBES = -lm
 

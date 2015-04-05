@@ -90,6 +90,7 @@ architecture behavior of fpu is
   signal s_ftoi : unsigned(31 downto 0);
   signal s_itof : unsigned(31 downto 0);
 
+
   type latch_t is record
     inst0 : fpu_inst_t;
     inst1 : fpu_inst_t;
@@ -185,7 +186,7 @@ begin
     a     => din.i2,
     s     => s_sqrt);
 
-  comb: process (r, din, s_add, s_mul, s_sub, s_eq, s_le, s_lt, s_inv, s_sqrt, s_ftoi, s_itof) is
+  cmb: process (r, din, s_add, s_mul, s_sub, s_eq, s_le, s_lt, s_inv, s_sqrt, s_ftoi, s_itof) is
     variable v : latch_t;
   begin
     v := r;

@@ -1,3 +1,7 @@
+-------------------------------------------------------------------------------
+-- Declaration
+-------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -15,6 +19,11 @@ package loopback_p is
   end component loopback;
 
 end package loopback_p;
+
+
+-------------------------------------------------------------------------------
+-- Definition
+-------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -43,15 +52,19 @@ architecture behavior of loopback is
   signal uoi : u232c_out_in_t;
   signal uoo : u232c_out_out_t;
 
+
   type latch_t is record
     rd   : std_logic;
     wr   : std_logic;
     data : unsigned(7 downto 0);
   end record latch_t;
 
-  signal r, rin : latch_t := (rd   => '0',
-                              wr   => '0',
-                              data => (others => '-'));
+  constant latch_init : latch_t := (
+    rd   => '0',
+    wr   => '0',
+    data => (others => '-'));
+
+  signal r, rin : latch_t := latch_init;
 
 begin
 
@@ -75,7 +88,7 @@ begin
       din  => uoi,
       dout => uoo);
 
-  process (r, rx, uio, uoo) is
+  cmb: process (r, rx, uio, uoo) is
     variable v : latch_t;
   begin
     v := r;
@@ -107,12 +120,10 @@ begin
     rin <= v;
   end process;
 
-  process (clk, xrst) is
+  seq: process (clk, xrst) is
   begin
     if xrst = '0' then
-      r <= (rd => '0',
-            wr => '0',
-            data => (others => '-'));
+      r <= latch_init;
     elsif rising_edge(clk) then
       r <= rin;
     end if;

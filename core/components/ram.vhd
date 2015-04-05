@@ -24,6 +24,7 @@ package ram_p is
 
   component blockram_dual is
     generic (
+      writefirst : boolean;
       length     : integer;
       width      : integer;
       init_value : unsigned);
@@ -37,22 +38,6 @@ package ram_p is
       odata1 : out unsigned(length - 1 downto 0);
       odata2 : out unsigned(length - 1 downto 0));
   end component blockram_dual;
-
-  component blockram_dual_writefirst is
-    generic (
-      length     : integer;
-      width      : integer;
-      init_value : unsigned);
-    port (
-      clk    : in  std_logic;
-      en     : in  std_logic;
-      we     : in  std_logic;
-      addr1  : in  unsigned(width - 1 downto 0);
-      addr2  : in  unsigned(width - 1 downto 0);
-      idata1 : in  unsigned(length - 1 downto 0);
-      odata1 : out unsigned(length - 1 downto 0);
-      odata2 : out unsigned(length - 1 downto 0));
-  end component blockram_dual_writefirst;
 
   component distram_single is
     generic (
@@ -111,7 +96,7 @@ entity blockram_single is
     addr  : in  unsigned(width - 1 downto 0);
     idata : in  unsigned(length - 1 downto 0);
     odata : out unsigned(length - 1 downto 0));
-  
+
 end entity blockram_single;
 
 architecture behavior of blockram_single is
@@ -139,7 +124,7 @@ end architecture behavior;
 
 
 -------------------------------------------------------------------------------
--- blockram_dual
+-- blockram_dual_readfirst
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -148,12 +133,12 @@ use ieee.numeric_std.all;
 library work;
 use work.ram_p.all;
 
-entity blockram_dual is
+entity blockram_dual_readfirst is
 
   generic (
-    length     : integer;
-    width      : integer;
-    init_value : unsigned := "0");
+    length      : integer;
+    width       : integer;
+    init_value  : unsigned := "0");
   port (
     clk    : in  std_logic;
     en     : in  std_logic;
@@ -163,10 +148,10 @@ entity blockram_dual is
     idata1 : in  unsigned(length - 1 downto 0);
     odata1 : out unsigned(length - 1 downto 0);
     odata2 : out unsigned(length - 1 downto 0));
-  
-end entity blockram_dual;
 
-architecture behavior of blockram_dual is
+end entity blockram_dual_readfirst;
+
+architecture behavior of blockram_dual_redfirst is
 
   subtype ram_word_t is unsigned(length - 1 downto 0);
   type ram_array_t is array (0 to 2 ** width - 1) of ram_word_t;
@@ -222,6 +207,22 @@ end entity blockram_dual_writefirst;
 
 architecture behavior of blockram_dual_writefirst is
 
+  component blockram_dual_readfirst is
+    generic (
+      length     : integer;
+      width      : integer;
+      init_value : unsigned := "0");
+    port (
+      clk    : in  std_logic;
+      en     : in  std_logic;
+      we     : in  std_logic;
+      addr1  : in  unsigned(width - 1 downto 0);
+      addr2  : in  unsigned(width - 1 downto 0);
+      idata1 : in  unsigned(length - 1 downto 0);
+      odata1 : out unsigned(length - 1 downto 0);
+      odata2 : out unsigned(length - 1 downto 0));
+  end component blockram_dual_readfirst;
+
   signal odata2_rf : unsigned(length - 1 downto 0);
 
   type latch_t is record
@@ -237,7 +238,7 @@ architecture behavior of blockram_dual_writefirst is
 
 begin
 
-  readfirst : blockram_dual
+  readfirst : blockram_dual_readfirst
     generic map (
       length     => length,
       width      => width,
@@ -261,10 +262,7 @@ begin
     if en = '1' then
       v.data := idata1;
 
-      if we = '1'
-        and (not is_metavalue(addr1))
-        and (not is_metavalue(addr2))
-        and addr1 = addr2 then
+      if we = '1' and addr1 = addr2 then
         v.hit := '1';
       else
         v.hit := '0';
@@ -287,6 +285,108 @@ begin
       r <= rin;
     end if;
   end process;
+
+end architecture behavior;
+
+
+-------------------------------------------------------------------------------
+-- blockram_dual
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+library work;
+use work.ram_p.all;
+
+entity blockram_dual is
+
+  generic (
+    write_first : boolean  := false;
+    length      : integer;
+    width       : integer;
+    init_value  : unsigned := "0");
+  port (
+    clk    : in  std_logic;
+    en     : in  std_logic;
+    we     : in  std_logic;
+    addr1  : in  unsigned(width - 1 downto 0);
+    addr2  : in  unsigned(width - 1 downto 0);
+    idata1 : in  unsigned(length - 1 downto 0);
+    odata1 : out unsigned(length - 1 downto 0);
+    odata2 : out unsigned(length - 1 downto 0));
+
+end entity blockram_dual;
+
+architecture behavior of blockram_dual is
+
+  component blockram_dual_readfirst is
+    generic (
+      length     : integer;
+      width      : integer;
+      init_value : unsigned := "0");
+    port (
+      clk    : in  std_logic;
+      en     : in  std_logic;
+      we     : in  std_logic;
+      addr1  : in  unsigned(width - 1 downto 0);
+      addr2  : in  unsigned(width - 1 downto 0);
+      idata1 : in  unsigned(length - 1 downto 0);
+      odata1 : out unsigned(length - 1 downto 0);
+      odata2 : out unsigned(length - 1 downto 0));
+  end component blockram_dual_readfirst;
+
+  component blockram_dual_writefirst is
+    generic (
+      length     : integer;
+      width      : integer;
+      init_value : unsigned := "0");
+    port (
+      clk    : in  std_logic;
+      en     : in  std_logic;
+      we     : in  std_logic;
+      addr1  : in  unsigned(width - 1 downto 0);
+      addr2  : in  unsigned(width - 1 downto 0);
+      idata1 : in  unsigned(length - 1 downto 0);
+      odata1 : out unsigned(length - 1 downto 0);
+      odata2 : out unsigned(length - 1 downto 0));
+  end component blockram_dual_readfirst;
+
+begin
+
+  gen_writefirst: if writefirst generate
+    writefirst : blockram_dual_writefirst
+      generic map (
+        length     => length,
+        width      => width,
+        init_value => init_value)
+      port map (
+        clk    => clk,
+        en     => en,
+        we     => we,
+        addr1  => addr1,
+        addr2  => addr2,
+        idata1 => idata1,
+        odata1 => odata1,
+        odata2 => odata2)
+  end generate gen_writefirst;
+
+  gen_readfirst: if not writefirst generate
+    readfirst : blockram_dual_readfirst
+      generic map (
+        length     => length,
+        width      => width,
+        init_value => init_value)
+      port map (
+        clk    => clk,
+        en     => en,
+        we     => we,
+        addr1  => addr1,
+        addr2  => addr2,
+        idata1 => idata1,
+        odata1 => odata1,
+        odata2 => odata2)
+  end generate gen_readfirst;
 
 end architecture behavior;
 
@@ -337,6 +437,7 @@ begin
   odata <= ram(to_integer(addr));
 
 end architecture behavior;
+
 
 -------------------------------------------------------------------------------
 -- distram_dual

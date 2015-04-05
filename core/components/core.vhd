@@ -10,7 +10,7 @@ library work;
 use work.instcache_p.all;
 use work.alu_p.all;
 use work.fpu_p.all;
-use work.mmu_p.all;
+use work.sysbus_p.all;
 use work.regfile_p.all;
 
 package core_p is
@@ -33,8 +33,8 @@ package core_p is
       aluo    : in  alu_out_t;
       fpui    : out fpu_in_t;
       fpuo    : in  fpu_out_t;
-      mmui    : out mmu_in_t;
-      mmuo    : in  mmu_out_t);
+      sysbusi : out sysbus_in_t;
+      sysbuso : in  sysbus_out_t);
   end component core;
 
 end package core_p;
@@ -56,9 +56,8 @@ use work.core_p.all;
 use work.instcache_p.all;
 use work.alu_p.all;
 use work.fpu_p.all;
-use work.mmu_p.all;
+use work.sysbus_p.all;
 use work.regfile_p.all;
-use work.util_p.all;
 
 entity core is
   generic (
@@ -78,8 +77,8 @@ entity core is
     aluo    : in  alu_out_t;
     fpui    : out fpu_in_t;
     fpuo    : in  fpu_out_t;
-    mmui    : out mmu_in_t;
-    mmuo    : in  mmu_out_t);
+    sysbusi : out sysbus_in_t;
+    sysbuso : in  sysbus_out_t);
 end entity core;
 
 architecture behavior of core is
@@ -364,8 +363,8 @@ architecture behavior of core is
           dst := r.w.alu_out;
           hz  := hz;
         when IWB_SRC_MEM =>
-          dst := (others => '-');
-          hz  := '1';
+          dst := sysbuso.data;
+          hz  := hz;
       end case;
     else
       dst := v;
@@ -397,8 +396,8 @@ architecture behavior of core is
           dst := r.w.alu_out;
           hz  := hz;
         when IWB_SRC_MEM =>
-          dst := (others => '-');
-          hz  := '1';
+          dst := sysbuso.data;
+          hz  := hz;
       end case;
     else
       dst := v;
@@ -501,12 +500,12 @@ begin
   -- Core Logic
   -----------------------------------------------------------------------------
 
-  comb : process (r, icacheo, aluo, fpuo, mmuo, iro, fro) is
+  comb : process (r, icacheo, aluo, fpuo, sysbuso, iro, fro) is
     variable v       : latch_t;
     variable icachev : instcache_read_in_t;
     variable aluv    : alu_in_t;
     variable fpuv    : fpu_in_t;
-    variable mmuv    : mmu_in_t;
+    variable sysbusv : sysbus_in_t;
 
     -- variables for instruction fetch
     variable pcinc, pcjmp : unsigned(13 downto 0);
@@ -554,10 +553,10 @@ begin
              inst  => FPU_INST_NOP,
              i1    => (others => '-'),
              i2    => (others => '-'));
-    mmuv := (addr => (others => '0'),
-             data => (others => '0'),
-             en   => '0',
-             we   => '0');
+    sysbusv := (addr => (others => '0'),
+                data => (others => '0'),
+                en   => '0',
+                we   => '0');
 
     hz_id  := '0';
     hz_exe := '0';
@@ -572,9 +571,9 @@ begin
         wb_ir_idx  := r.w.wb;
         wb_ir_data := r.w.alu_out;
       when IWB_SRC_MEM =>
-        if mmuo.miss = '0' then
+        if sysbuso.miss = '0' then
           wb_ir_idx  := r.w.wb;
-          wb_ir_data := mmuo.data;
+          wb_ir_data := sysbuso.data;
         else
           wb_ir_idx  := 31;
           wb_ir_data := (others => '-');
@@ -1060,20 +1059,20 @@ begin
 
     case r.m.memop is
       when MEM_LOAD =>
-        mmuv := (addr => r.m.alu_out(20 downto 0),
-                 data => (others => '-'),
-                 en   => '1',
-                 we   => '0');
+        sysbusv := (addr => r.m.alu_out(20 downto 0),
+                    data => (others => '-'),
+                    en   => '1',
+                    we   => '0');
       when MEM_STORE =>
-        mmuv := (addr => r.m.alu_out(20 downto 0),
-                 data => r.m.store_data,
-                 en   => '1',
-                 we   => '1');
+        sysbusv := (addr => r.m.alu_out(20 downto 0),
+                    data => r.m.store_data,
+                    en   => '1',
+                    we   => '1');
       when MEM_NOP =>
-        mmuv := (addr => (others => '-'),
-                 data => (others => '-'),
-                 en   => '0',
-                 we   => '0');
+        sysbusv := (addr => (others => '-'),
+                    data => (others => '-'),
+                    en   => '0',
+                    we   => '0');
     end case;
 
     v.w.bubble  := r.m.bubble;
@@ -1117,8 +1116,8 @@ begin
       v.fw1     := r.fw1;
       v.fw2     := r.fw2;
 
-      fpuv.stall   := '1';
-      mmuv.en      := '0';
+      fpuv.stall := '1';
+      sysbusv.en := '0';
 
     elsif hz_exe = '1' then
       v.f       := r.f;
@@ -1150,7 +1149,7 @@ begin
       end if;
     end if;
 
-    mmui    <= mmuv;
+    sysbusi <= sysbusv;
     icachei <= icachev;
     alui    <= aluv;
     fpui    <= fpuv;
